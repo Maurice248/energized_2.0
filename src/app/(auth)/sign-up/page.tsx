@@ -183,7 +183,8 @@ export default function SignUpPage() {
     setError(null);
     setSubmitting(true);
 
-    const postVerifyPath = role === "jobseeker" ? "/onboarding" : "/";
+    const postVerifyPath =
+      role === "jobseeker" ? "/onboarding" : "/employer/onboarding";
     const { error: signUpError } = await authClient.signUp.email({
       name,
       email,

@@ -42,3 +42,41 @@ export const certificationTypeEnum = pgEnum("certification_type", [
   "fall_protection",
   "other",
 ]);
+
+export const companySizeEnum = pgEnum("company_size", [
+  "1_10",
+  "11_50",
+  "51_120",
+  "120_250",
+  "250_500",
+  "500_1000",
+  "1000_plus",
+]);
+
+export const orgRoleEnum = pgEnum("org_role", [
+  "owner",
+  "admin",
+  "recruiter",
+  "hiring_manager",
+  "viewer",
+]);
+
+export const orgMemberStatusEnum = pgEnum("org_member_status", [
+  "active",
+  "pending",
+  "revoked",
+]);
+
+export const hiringPaceEnum = pgEnum("hiring_pace", [
+  "passive",
+  "when_right",
+  "actively_hiring",
+  "scaling_fast",
+]);
+
+export const workSetupEnum = pgEnum("work_setup", [
+  "onsite",
+  "hybrid_preferred",
+  "remote_ok",
+  "flexible",
+]);
