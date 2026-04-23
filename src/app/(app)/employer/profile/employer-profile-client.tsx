@@ -1,0 +1,1378 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Icon, type IconName } from "@/components/shared/icon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SuggestionCombobox } from "@/components/shared/suggestion-combobox";
+import { api } from "@/lib/trpc/client";
+
+/* ---------- types + constants ---------- */
+
+type CompanySize =
+  | "1_10"
+  | "11_50"
+  | "51_120"
+  | "120_250"
+  | "250_500"
+  | "500_1000"
+  | "1000_plus";
+
+type SectorEnum =
+  | "oil_gas"
+  | "renewables"
+  | "nuclear"
+  | "utilities"
+  | "hydrogen"
+  | "power"
+  | "other";
+
+type WorkSetup = "onsite" | "hybrid_preferred" | "remote_ok" | "flexible";
+type HiringPace =
+  | "passive"
+  | "when_right"
+  | "actively_hiring"
+  | "scaling_fast";
+type OrgRole = "owner" | "admin" | "recruiter" | "hiring_manager" | "viewer";
+
+const COMPANY_SIZE_LABELS: Record<CompanySize, string> = {
+  "1_10": "1–10",
+  "11_50": "11–50",
+  "51_120": "51–120",
+  "120_250": "120–250",
+  "250_500": "250–500",
+  "500_1000": "500–1000",
+  "1000_plus": "1000+",
+};
+
+const SECTOR_LABELS: Record<SectorEnum, string> = {
+  oil_gas: "Oil & Gas",
+  renewables: "Renewable Energy",
+  nuclear: "Nuclear",
+  utilities: "Power Utilities",
+  hydrogen: "Hydrogen",
+  power: "Power",
+  other: "Other",
+};
+
+const WORK_SETUP_OPTIONS: { value: WorkSetup; label: string }[] = [
+  { value: "onsite", label: "Onsite" },
+  { value: "hybrid_preferred", label: "Hybrid preferred" },
+  { value: "remote_ok", label: "Remote OK" },
+  { value: "flexible", label: "Flexible" },
+];
+
+const HIRING_PACE_LABELS: Record<HiringPace, string> = {
+  passive: "Passive / pipeline",
+  when_right: "Hiring when right",
+  actively_hiring: "Actively hiring",
+  scaling_fast: "Scaling fast",
+};
+
+const SECTOR_OPTIONS: { value: SectorEnum; label: string }[] = (
+  Object.keys(SECTOR_LABELS) as SectorEnum[]
+).map((v) => ({ value: v, label: SECTOR_LABELS[v] }));
+
+const COMPANY_SIZE_OPTIONS: { value: CompanySize; label: string }[] = (
+  Object.keys(COMPANY_SIZE_LABELS) as CompanySize[]
+).map((v) => ({ value: v, label: COMPANY_SIZE_LABELS[v] }));
+
+const HIRING_PACE_OPTIONS: { value: HiringPace; label: string }[] = (
+  Object.keys(HIRING_PACE_LABELS) as HiringPace[]
+).map((v) => ({ value: v, label: HIRING_PACE_LABELS[v] }));
+
+const FOCUS_ROLE_OPTIONS = [
+  "Controls & SCADA",
+  "Construction",
+  "Project Management",
+  "Field Ops",
+  "Engineering",
+  "Permitting & GIS",
+  "Commissioning",
+  "Safety (HSE)",
+  "Trade Tickets",
+];
+
+const SUB_SECTOR_OPTIONS = [
+  "Solar PV",
+  "Wind Onshore",
+  "Wind Offshore",
+  "Battery Storage",
+  "Hydroelectric",
+  "Grid-scale",
+  "Distributed",
+  "Transmission",
+  "Upstream",
+  "Downstream",
+  "Pipelines",
+  "LNG",
+  "CCUS",
+];
+
+const ORG_ROLE_LABELS: Record<OrgRole, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  recruiter: "Recruiter",
+  hiring_manager: "Hiring manager",
+  viewer: "Viewer",
+};
+
+const EDITABLE_ROLE_OPTIONS: { value: OrgRole; label: string }[] = (
+  ["admin", "recruiter", "hiring_manager", "viewer"] as OrgRole[]
+).map((v) => ({ value: v, label: ORG_ROLE_LABELS[v] }));
+
+const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
+  { id: "overview", label: "Overview", icon: "building" },
+  { id: "about", label: "About & branding", icon: "sparkles" },
+  { id: "team", label: "Team", icon: "users" },
+  { id: "jobs", label: "Jobs", icon: "briefcase" },
+  { id: "prefs", label: "Hiring preferences", icon: "sliders" },
+  { id: "billing", label: "Plan & billing", icon: "dollar" },
+  { id: "verify", label: "Verification", icon: "shield" },
+];
+
+/* ---------- client ---------- */
+
+export function EmployerProfileClient({
+  email,
+}: {
+  email: string;
+}) {
+  const router = useRouter();
+  const orgQuery = api.employer.getMyOrg.useQuery();
+
+  const [active, setActive] = useState<string>("overview");
+
+  const updateBasics = api.employer.updateBasics.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+  const updatePrefs = api.employer.updatePrefs.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+  const invite = api.employer.inviteMember.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+  const removeMember = api.employer.removeMember.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+  const updateMemberRole = api.employer.updateMemberRole.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+
+  const org = orgQuery.data?.org ?? null;
+  const members = orgQuery.data?.members ?? [];
+
+  const saving =
+    updateBasics.isPending ||
+    updatePrefs.isPending ||
+    invite.isPending ||
+    removeMember.isPending ||
+    updateMemberRole.isPending;
+
+  const completion = useMemo(() => computeCompleteness(org), [org]);
+
+  return (
+    <div className="pp-shell v2">
+      <header className="pp-top">
+        <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
+          <Brand />
+          <div className="pp-crumbs">
+            <span>App</span>
+            <span className="sep">/</span>
+            <span>Employer</span>
+            <span className="sep">/</span>
+            <span className="current">Company profile</span>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div className="ob-save-state">
+            <span className="dot" />
+            <span>{saving ? "Saving…" : "All changes saved"}</span>
+          </div>
+          <button
+            className="v2-btn v2-btn-ghost v2-btn-sm"
+            onClick={() => router.push("/employer/onboarding")}
+          >
+            <Icon name="sliders" size={14} /> Onboarding
+          </button>
+        </div>
+      </header>
+
+      <div className="pp-body">
+        <aside className="pp-side">
+          <div className="pp-identity">
+            <div
+              style={{
+                width: 88,
+                height: 88,
+                borderRadius: 22,
+                margin: "0 auto 16px",
+                background: org?.logoColor ?? "#FF7A59",
+                color: "white",
+                display: "grid",
+                placeItems: "center",
+                fontFamily: "var(--v2-font-serif)",
+                fontSize: 42,
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {org?.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={org.logoUrl}
+                  alt={org.name}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <span>{org?.name.charAt(0).toUpperCase() ?? "?"}</span>
+              )}
+            </div>
+            <div className="pp-name">{org?.name ?? "Untitled company"}</div>
+            <div className="pp-title">
+              {org?.primarySector ? SECTOR_LABELS[org.primarySector] : "Sector not set"}
+              {org?.size ? ` · ${COMPANY_SIZE_LABELS[org.size]} employees` : ""}
+            </div>
+            {org?.hq && (
+              <div className="pp-location">
+                <Icon name="mapPin" size={11} /> {org.hq}
+              </div>
+            )}
+            {org?.verified && (
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 12px",
+                  background: "var(--v2-accent-soft)",
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontFamily: "var(--v2-font-mono)",
+                  color: "var(--v2-ink-900)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                }}
+              >
+                <Icon name="shield" size={11} /> Verified
+              </div>
+            )}
+
+            <div className="pp-completeness">
+              <div className="pp-completeness-head">
+                <span className="pp-completeness-label">Profile strength</span>
+                <span className="pp-completeness-pct">{completion}%</span>
+              </div>
+              <div className="ob-completion-bar">
+                <div
+                  className="ob-completion-bar-fill"
+                  style={{ width: `${completion}%` }}
+                />
+              </div>
+              <div
+                style={{
+                  marginTop: 12,
+                  fontSize: 12,
+                  color: "var(--v2-ink-500)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {completion < 100
+                  ? "Verify the domain and invite teammates to hit 100%."
+                  : "Your company profile is complete."}
+              </div>
+            </div>
+          </div>
+
+          <nav className="pp-nav">
+            {NAV_ITEMS.map((n) => (
+              <div
+                key={n.id}
+                className={`pp-nav-item ${active === n.id ? "active" : ""}`}
+                onClick={() => {
+                  setActive(n.id);
+                  document
+                    .getElementById(`ep-${n.id}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                <Icon name={n.icon} size={16} />
+                <span>{n.label}</span>
+                {n.id === "verify" && org && !org.verified && (
+                  <span className="pp-nav-badge">!</span>
+                )}
+                {n.id === "team" && members.some((m) => m.status === "pending") && (
+                  <span className="pp-nav-badge">
+                    {members.filter((m) => m.status === "pending").length}
+                  </span>
+                )}
+              </div>
+            ))}
+          </nav>
+
+          <div className="pp-side-cta">
+            <h4>
+              Post a <em>new role</em>.
+            </h4>
+            <p>
+              Ember will surface strong matches from your talent pool within
+              the hour.
+            </p>
+            <button
+              className="v2-btn v2-btn-accent v2-btn-sm"
+              style={{ marginTop: 16 }}
+              disabled
+              title="Coming in Phase 4"
+            >
+              New job <Icon name="plus" size={14} />
+            </button>
+          </div>
+        </aside>
+
+        <main className="pp-main">
+          {orgQuery.isLoading && !org && <ProfileSkeleton />}
+
+          {org && (
+            <>
+              {/* Cover + identity */}
+              <div id="ep-overview" style={{ scrollMarginTop: 100 }} />
+              <div className="ep-profile-head">
+                <div className="ep-cover">
+                  <div className="ep-cover-pattern" />
+                </div>
+                <div className="ep-identity-row">
+                  <div
+                    className="ep-logo-big"
+                    style={{ background: org.logoColor }}
+                  >
+                    {org.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={org.logoUrl}
+                        alt={org.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          borderRadius: 20,
+                        }}
+                      />
+                    ) : (
+                      <span>{org.name.charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="ep-identity-text">
+                    <div className="ep-identity-name">
+                      {org.name}
+                      {org.verified && (
+                        <span className="ep-verified">
+                          <Icon name="shield" size={11} /> Verified
+                        </span>
+                      )}
+                    </div>
+                    {org.tagline && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          fontSize: 16,
+                          color: "var(--v2-ink-600)",
+                          fontFamily: "var(--v2-font-serif)",
+                          fontStyle: "italic",
+                        }}
+                      >
+                        {org.tagline}
+                      </div>
+                    )}
+                    <div className="ep-identity-meta">
+                      {org.hq && (
+                        <span>
+                          <Icon name="mapPin" size={14} /> {org.hq}
+                        </span>
+                      )}
+                      {org.size && (
+                        <span>
+                          <Icon name="users" size={14} />{" "}
+                          {COMPANY_SIZE_LABELS[org.size]} employees
+                        </span>
+                      )}
+                      {org.primarySector && (
+                        <span>
+                          <Icon name="building" size={14} />{" "}
+                          {SECTOR_LABELS[org.primarySector]}
+                        </span>
+                      )}
+                      {org.domain && (
+                        <span>
+                          <Icon name="globe" size={14} /> {org.domain}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI strip */}
+              <div className="ep-kpis">
+                <KpiCard label="Profile views · 30d" value="—" trend="Coming soon" />
+                <KpiCard label="Applicants · 30d" value="—" trend="Coming soon" />
+                <KpiCard label="Hires · 30d" value="—" trend="Coming soon" />
+                <KpiCard label="Avg match rate" value="—" trend="Coming soon" />
+              </div>
+
+              {/* About */}
+              <div id="ep-about" style={{ scrollMarginTop: 100 }} />
+              <AboutSection
+                initial={org}
+                saving={updateBasics.isPending}
+                onSave={(input) => updateBasics.mutate(input)}
+              />
+
+              {/* Team */}
+              <div id="ep-team" style={{ scrollMarginTop: 100 }} />
+              <TeamSection
+                members={members}
+                meEmail={email.toLowerCase()}
+                orgDomain={org.domain ?? ""}
+                onInvite={(v) => invite.mutate(v)}
+                onRemove={(id) => removeMember.mutate({ id })}
+                onChangeRole={(id, role) =>
+                  updateMemberRole.mutate({ id, role })
+                }
+                inviteError={invite.error?.message ?? null}
+                inviteBusy={invite.isPending}
+              />
+
+              {/* Jobs — placeholder until Phase 4 */}
+              <div id="ep-jobs" style={{ scrollMarginTop: 100 }} />
+              <JobsPlaceholder />
+
+              {/* Hiring prefs */}
+              <div id="ep-prefs" style={{ scrollMarginTop: 100 }} />
+              <PrefsSection
+                initial={org}
+                saving={updatePrefs.isPending}
+                onSave={(input) => updatePrefs.mutate(input)}
+              />
+
+              {/* Plan & billing */}
+              <div id="ep-billing" style={{ scrollMarginTop: 100 }} />
+              <PlanSection org={org} />
+
+              {/* Verification */}
+              <div id="ep-verify" style={{ scrollMarginTop: 100 }} />
+              <VerificationSection org={org} />
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- shell pieces ---------- */
+
+function Brand() {
+  return (
+    <Image
+      src="/energized-logo.svg"
+      alt="Energized"
+      width={144}
+      height={80}
+      priority
+      style={{ height: 40, width: "auto" }}
+    />
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  trend,
+}: {
+  label: string;
+  value: string;
+  trend: string;
+}) {
+  return (
+    <div className="ep-kpi">
+      <div className="ep-kpi-label">{label}</div>
+      <div className="ep-kpi-value">
+        <em>{value}</em>
+      </div>
+      <div className="ep-kpi-trend">{trend}</div>
+    </div>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <>
+      <div className="ep-profile-head">
+        <Skeleton className="h-44 w-full" />
+      </div>
+      <div className="ep-kpis">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <section className="pp-section">
+        <Skeleton className="h-7 w-32 mb-4" />
+        <Skeleton className="h-40 rounded-[14px]" />
+      </section>
+    </>
+  );
+}
+
+/* ---------- about section ---------- */
+
+type OrgRow = {
+  name: string;
+  domain: string | null;
+  website: string | null;
+  hq: string | null;
+  founded: string | null;
+  tagline: string | null;
+  about: string | null;
+  logoColor: string;
+  size: CompanySize | null;
+  primarySector: SectorEnum | null;
+  subSectors: string[];
+  verified: boolean;
+  verifiedAt: Date | null;
+  verificationToken: string | null;
+  plan: string;
+  planRenewsAt: Date | null;
+  defaultWorkSetup: WorkSetup | null;
+  hiringPace: HiringPace | null;
+  focusRoles: string[];
+  autoMatch: boolean;
+  prioritizeDiverse: boolean;
+};
+
+function AboutSection({
+  initial,
+  saving,
+  onSave,
+}: {
+  initial: OrgRow;
+  saving: boolean;
+  onSave: (input: {
+    name: string;
+    tagline: string | null;
+    website: string | null;
+    hq: string | null;
+    about: string | null;
+    size: CompanySize | null;
+    primarySector: SectorEnum | null;
+    subSectors: string[];
+  }) => void;
+}) {
+  const [name, setName] = useState(initial.name);
+  const [tagline, setTagline] = useState(initial.tagline ?? "");
+  const [website, setWebsite] = useState(initial.website ?? "");
+  const [hq, setHq] = useState(initial.hq ?? "");
+  const [about, setAbout] = useState(initial.about ?? "");
+  const [size, setSize] = useState<CompanySize | null>(initial.size);
+  const [sector, setSector] = useState<SectorEnum | null>(initial.primarySector);
+  const [subSectors, setSubSectors] = useState<string[]>(initial.subSectors);
+
+  const dirty =
+    name !== initial.name ||
+    tagline !== (initial.tagline ?? "") ||
+    website !== (initial.website ?? "") ||
+    hq !== (initial.hq ?? "") ||
+    about !== (initial.about ?? "") ||
+    size !== initial.size ||
+    sector !== initial.primarySector ||
+    JSON.stringify(subSectors) !== JSON.stringify(initial.subSectors);
+
+  const toggleSub = (s: string) =>
+    setSubSectors((curr) =>
+      curr.includes(s)
+        ? curr.filter((x) => x !== s)
+        : curr.length < 4
+          ? [...curr, s]
+          : curr,
+    );
+
+  return (
+    <section className="pp-section">
+      <div className="pp-section-head">
+        <div>
+          <div className="pp-section-title">About &amp; branding</div>
+          <div className="pp-section-sub">
+            Public — shown on every job listing
+          </div>
+        </div>
+        <button
+          className="v2-btn v2-btn-primary v2-btn-sm"
+          disabled={!dirty || saving || !name.trim()}
+          onClick={() =>
+            onSave({
+              name: name.trim(),
+              tagline: tagline.trim() || null,
+              website: website.trim() || null,
+              hq: hq.trim() || null,
+              about: about.trim() || null,
+              size,
+              primarySector: sector,
+              subSectors,
+            })
+          }
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+
+      <div className="ob-grid">
+        <div className="ob-field">
+          <label>Company name</label>
+          <input
+            className="v2-input-block"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="ob-field">
+          <label>Website</label>
+          <input
+            className="v2-input-block"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="https://company.ca"
+          />
+        </div>
+        <div className="ob-field">
+          <label>Headquarters</label>
+          <input
+            className="v2-input-block"
+            value={hq}
+            onChange={(e) => setHq(e.target.value)}
+            placeholder="Calgary, AB"
+          />
+        </div>
+        <SuggestionCombobox
+          label="Primary sector"
+          value={sector ?? ""}
+          onChange={(v) => setSector((v as SectorEnum) || null)}
+          suggestions={SECTOR_OPTIONS}
+          pickPlaceholder="Pick a sector"
+          customPlaceholder=""
+          otherLabel=""
+          allowOther={false}
+        />
+        <div className="ob-field" style={{ gridColumn: "1/-1" }}>
+          <label>Tagline</label>
+          <input
+            className="v2-input-block"
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder="One line that sums up what you do."
+          />
+        </div>
+        <div className="ob-field" style={{ gridColumn: "1/-1" }}>
+          <label>About</label>
+          <textarea
+            className="v2-input-block"
+            value={about}
+            onChange={(e) => setAbout(e.target.value)}
+            rows={4}
+            placeholder="A paragraph on what you build and who you are."
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <div
+          style={{
+            fontFamily: "var(--v2-font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--v2-ink-500)",
+            marginBottom: 10,
+          }}
+        >
+          Company size
+        </div>
+        <div className="v2-filter-chips">
+          {COMPANY_SIZE_OPTIONS.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              className={`v2-filter-chip ${size === s.value ? "active" : ""}`}
+              onClick={() => setSize(s.value)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <div
+          style={{
+            fontFamily: "var(--v2-font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--v2-ink-500)",
+            marginBottom: 10,
+          }}
+        >
+          Sub-sectors · pick up to 4
+        </div>
+        <div className="v2-filter-chips">
+          {SUB_SECTOR_OPTIONS.map((s) => {
+            const active = subSectors.includes(s);
+            return (
+              <button
+                key={s}
+                type="button"
+                className={`v2-filter-chip ${active ? "active" : ""}`}
+                onClick={() => toggleSub(s)}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- team section ---------- */
+
+type MemberRow = {
+  id: string;
+  email: string;
+  role: OrgRole;
+  status: "active" | "pending" | "revoked";
+  userId: string | null;
+};
+
+function TeamSection({
+  members,
+  meEmail,
+  orgDomain,
+  onInvite,
+  onRemove,
+  onChangeRole,
+  inviteError,
+  inviteBusy,
+}: {
+  members: MemberRow[];
+  meEmail: string;
+  orgDomain: string;
+  onInvite: (v: { email: string; role: OrgRole }) => void;
+  onRemove: (id: string) => void;
+  onChangeRole: (id: string, role: OrgRole) => void;
+  inviteError: string | null;
+  inviteBusy: boolean;
+}) {
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<OrgRole>("recruiter");
+
+  const active = members.filter((m) => m.status === "active").length;
+  const pending = members.filter((m) => m.status === "pending").length;
+
+  return (
+    <section className="pp-section">
+      <div className="pp-section-head">
+        <div>
+          <div className="pp-section-title">Team</div>
+          <div className="pp-section-sub">
+            {active} active · {pending} pending
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="ep-invite-row"
+        style={{ marginBottom: 16 }}
+      >
+        <input
+          className="v2-input-block"
+          placeholder={orgDomain ? `name@${orgDomain}` : "name@company.ca"}
+          value={inviteEmail}
+          onChange={(e) => setInviteEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && inviteEmail.trim()) {
+              e.preventDefault();
+              onInvite({
+                email: inviteEmail.trim().toLowerCase(),
+                role: inviteRole,
+              });
+              setInviteEmail("");
+            }
+          }}
+        />
+        <select
+          className="v2-input-block"
+          value={inviteRole}
+          onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+        >
+          {EDITABLE_ROLE_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="v2-btn v2-btn-primary"
+          style={{ width: 40, height: 52, padding: 0, borderRadius: 12 }}
+          disabled={!inviteEmail.trim() || inviteBusy}
+          onClick={() => {
+            if (!inviteEmail.trim()) return;
+            onInvite({
+              email: inviteEmail.trim().toLowerCase(),
+              role: inviteRole,
+            });
+            setInviteEmail("");
+          }}
+        >
+          <Icon name="plus" size={16} />
+        </button>
+      </div>
+
+      {inviteError && (
+        <div
+          role="alert"
+          style={{
+            marginTop: -8,
+            marginBottom: 16,
+            padding: "10px 14px",
+            background: "var(--v2-coral-soft, #FBEBE4)",
+            color: "#A63A20",
+            borderRadius: 10,
+            fontSize: 13,
+          }}
+        >
+          {inviteError}
+        </div>
+      )}
+
+      {members.map((m) => {
+        const isMe = m.email.toLowerCase() === meEmail;
+        const canEditRole = m.role !== "owner" && !isMe;
+        return (
+          <div
+            key={m.id}
+            className={`ep-teammate ${m.status === "pending" ? "pending" : ""}`}
+          >
+            <div
+              className="ep-teammate-avatar"
+              style={{ background: "#2A303F" }}
+            >
+              {m.email.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div className="ep-teammate-name">
+                {m.email.split("@")[0]}
+                {isMe && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      color: "var(--v2-ink-500)",
+                      fontWeight: 400,
+                      fontFamily: "var(--v2-font-mono)",
+                      fontSize: 11,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    · you
+                  </span>
+                )}
+              </div>
+              <div className="ep-teammate-title">{m.email}</div>
+            </div>
+            {canEditRole ? (
+              <select
+                className="v2-input-block"
+                style={{ padding: "6px 10px", fontSize: 12, width: "auto" }}
+                value={m.role}
+                onChange={(e) =>
+                  onChangeRole(m.id, e.target.value as OrgRole)
+                }
+              >
+                {EDITABLE_ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span
+                className={`ep-teammate-role ${m.role === "owner" ? "owner" : ""}`}
+              >
+                {ORG_ROLE_LABELS[m.role]}
+              </span>
+            )}
+            {m.status === "pending" ? (
+              <span className="v2-chip v2-chip-coral">Invite sent</span>
+            ) : (
+              <span className="v2-chip v2-chip-accent">Active</span>
+            )}
+            <button
+              type="button"
+              className="ob-icon-btn danger"
+              onClick={() => onRemove(m.id)}
+              disabled={m.role === "owner"}
+              title={
+                m.role === "owner"
+                  ? "Owner can't be removed"
+                  : "Remove"
+              }
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/* ---------- jobs placeholder ---------- */
+
+function JobsPlaceholder() {
+  return (
+    <section className="pp-section">
+      <div className="pp-section-head">
+        <div>
+          <div className="pp-section-title">Open roles</div>
+          <div className="pp-section-sub">
+            Job posting is landing in the next phase
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          padding: 32,
+          border: "1px dashed var(--v2-ink-200)",
+          borderRadius: "var(--v2-r-lg)",
+          textAlign: "center",
+          color: "var(--v2-ink-500)",
+        }}
+      >
+        <Icon name="briefcase" size={24} />
+        <div
+          style={{
+            marginTop: 10,
+            fontFamily: "var(--v2-font-serif)",
+            fontSize: 20,
+            color: "var(--v2-ink-900)",
+            fontWeight: 400,
+          }}
+        >
+          No jobs posted yet
+        </div>
+        <div style={{ marginTop: 4, fontSize: 14 }}>
+          Job posting, applicants, and match funnel will live here.
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- hiring prefs ---------- */
+
+function PrefsSection({
+  initial,
+  saving,
+  onSave,
+}: {
+  initial: OrgRow;
+  saving: boolean;
+  onSave: (input: {
+    defaultWorkSetup: WorkSetup | null;
+    hiringPace: HiringPace | null;
+    focusRoles: string[];
+    autoMatch: boolean;
+    prioritizeDiverse: boolean;
+  }) => void;
+}) {
+  const [edit, setEdit] = useState(false);
+  const [setup, setSetup] = useState<WorkSetup | null>(initial.defaultWorkSetup);
+  const [pace, setPace] = useState<HiringPace | null>(initial.hiringPace);
+  const [focus, setFocus] = useState<string[]>(initial.focusRoles);
+  const [autoMatch, setAutoMatch] = useState(initial.autoMatch);
+  const [dei, setDei] = useState(initial.prioritizeDiverse);
+
+  const dirty =
+    setup !== initial.defaultWorkSetup ||
+    pace !== initial.hiringPace ||
+    JSON.stringify(focus) !== JSON.stringify(initial.focusRoles) ||
+    autoMatch !== initial.autoMatch ||
+    dei !== initial.prioritizeDiverse;
+
+  const toggleFocus = (f: string) =>
+    setFocus((curr) =>
+      curr.includes(f) ? curr.filter((x) => x !== f) : [...curr, f],
+    );
+
+  if (!edit) {
+    return (
+      <section className="pp-section">
+        <div className="pp-section-head">
+          <div>
+            <div className="pp-section-title">Hiring preferences</div>
+            <div className="pp-section-sub">
+              Defaults applied to every new role
+            </div>
+          </div>
+          <button
+            className="v2-btn v2-btn-ghost v2-btn-sm"
+            onClick={() => {
+              setSetup(initial.defaultWorkSetup);
+              setPace(initial.hiringPace);
+              setFocus(initial.focusRoles);
+              setAutoMatch(initial.autoMatch);
+              setDei(initial.prioritizeDiverse);
+              setEdit(true);
+            }}
+          >
+            Edit preferences
+          </button>
+        </div>
+        <div className="pp-prefs">
+          <PrefTile
+            icon="zap"
+            label="Hiring pace"
+            value={
+              initial.hiringPace
+                ? HIRING_PACE_LABELS[initial.hiringPace]
+                : "Not set"
+            }
+          />
+          <PrefTile
+            icon="building"
+            label="Default work setup"
+            value={
+              initial.defaultWorkSetup
+                ? WORK_SETUP_OPTIONS.find(
+                    (w) => w.value === initial.defaultWorkSetup,
+                  )?.label ?? "Not set"
+                : "Not set"
+            }
+          />
+          <PrefTile
+            icon="sparkles"
+            label="Auto-match"
+            value={initial.autoMatch ? "On" : "Off"}
+          />
+          <PrefTile
+            icon="users"
+            label="Diverse slates"
+            value={initial.prioritizeDiverse ? "Prioritized" : "Standard"}
+          />
+        </div>
+        {initial.focusRoles.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div
+              style={{
+                fontFamily: "var(--v2-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--v2-ink-500)",
+                marginBottom: 10,
+              }}
+            >
+              Focus roles
+            </div>
+            <div className="v2-filter-chips">
+              {initial.focusRoles.map((f) => (
+                <span key={f} className="v2-filter-chip active">
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="pp-section">
+      <div className="pp-section-head">
+        <div>
+          <div className="pp-section-title">Hiring preferences</div>
+          <div className="pp-section-sub">Private · shapes your matches</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="v2-btn v2-btn-ghost v2-btn-sm"
+            onClick={() => setEdit(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="v2-btn v2-btn-primary v2-btn-sm"
+            disabled={!dirty || saving}
+            onClick={() => {
+              onSave({
+                defaultWorkSetup: setup,
+                hiringPace: pace,
+                focusRoles: focus,
+                autoMatch,
+                prioritizeDiverse: dei,
+              });
+              setEdit(false);
+            }}
+          >
+            {saving ? "Saving…" : "Save preferences"}
+          </button>
+        </div>
+      </div>
+
+      <div className="ob-pref-group" style={{ paddingTop: 0, borderTop: 0 }}>
+        <div className="ob-pref-title">Focus roles</div>
+        <div className="v2-filter-chips">
+          {FOCUS_ROLE_OPTIONS.map((f) => {
+            const active = focus.includes(f);
+            return (
+              <button
+                key={f}
+                type="button"
+                className={`v2-filter-chip ${active ? "active" : ""}`}
+                onClick={() => toggleFocus(f)}
+              >
+                {f}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="ob-pref-group">
+        <div className="ob-pref-title">Default work setup</div>
+        <div className="v2-filter-chips">
+          {WORK_SETUP_OPTIONS.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              className={`v2-filter-chip ${setup === s.value ? "active" : ""}`}
+              onClick={() => setSetup(s.value)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ob-pref-group">
+        <div className="ob-pref-title">Hiring pace</div>
+        <div className="v2-filter-chips">
+          {HIRING_PACE_OPTIONS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              className={`v2-filter-chip ${pace === p.value ? "active" : ""}`}
+              onClick={() => setPace(p.value)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="ob-pref-group">
+        <div className="ob-pref-title">Ember settings</div>
+        <div className="ob-toggle-row">
+          <div>
+            <div className="ob-toggle-label">Auto-match candidates</div>
+            <div className="ob-toggle-desc">
+              Ember surfaces strong matches in your feed within an hour of
+              posting.
+            </div>
+          </div>
+          <div
+            className={`ob-toggle ${autoMatch ? "on" : ""}`}
+            role="switch"
+            aria-checked={autoMatch}
+            onClick={() => setAutoMatch(!autoMatch)}
+          />
+        </div>
+        <div className="ob-toggle-row">
+          <div>
+            <div className="ob-toggle-label">Prioritize diverse slates</div>
+            <div className="ob-toggle-desc">
+              Ensure at least one under-represented candidate in every top-10
+              match list.
+            </div>
+          </div>
+          <div
+            className={`ob-toggle ${dei ? "on" : ""}`}
+            role="switch"
+            aria-checked={dei}
+            onClick={() => setDei(!dei)}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PrefTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: IconName;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="pp-pref">
+      <div className="pp-pref-ico">
+        <Icon name={icon} size={16} />
+      </div>
+      <div>
+        <div className="pp-pref-label">{label}</div>
+        <div className="pp-pref-value">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- plan section ---------- */
+
+function PlanSection({ org }: { org: OrgRow }) {
+  const planLabel = (() => {
+    switch (org.plan) {
+      case "starter":
+        return "Starter";
+      case "growth":
+        return "Growth";
+      case "scale":
+      case "enterprise":
+        return org.plan.charAt(0).toUpperCase() + org.plan.slice(1);
+      default:
+        return org.plan;
+    }
+  })();
+
+  return (
+    <section className="pp-section">
+      <div className="pp-section-head">
+        <div>
+          <div className="pp-section-title">Plan &amp; billing</div>
+          <div className="pp-section-sub">
+            {org.planRenewsAt
+              ? `Renews ${org.planRenewsAt.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}`
+              : "No renewal date on file"}
+          </div>
+        </div>
+        <button
+          className="v2-btn v2-btn-ghost v2-btn-sm"
+          disabled
+          title="Stripe billing portal comes in Phase 4"
+        >
+          Manage billing
+        </button>
+      </div>
+      <div className="ep-plan">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 20,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div className="ep-plan-tier">
+              {planLabel}
+              <em>.</em>
+            </div>
+            <div className="ep-plan-price">Stripe checkout arriving soon</div>
+          </div>
+          <button
+            className="v2-btn v2-btn-accent v2-btn-sm"
+            disabled
+            title="Coming soon"
+          >
+            Upgrade
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- verification section ---------- */
+
+function VerificationSection({ org }: { org: OrgRow }) {
+  return (
+    <section className="pp-section">
+      <div className="pp-section-head">
+        <div>
+          <div className="pp-section-title">Verification</div>
+          <div className="pp-section-sub">
+            {org.verified
+              ? `Verified${org.verifiedAt ? ` ${org.verifiedAt.toLocaleDateString()}` : ""}`
+              : "Proves you work at the company"}
+          </div>
+        </div>
+      </div>
+
+      <div className={`ep-verify-status ${org.verified ? "good" : ""}`}>
+        <div className="ep-verify-icon">
+          <Icon name={org.verified ? "check" : "shield"} size={24} />
+        </div>
+        <div>
+          <div className="ep-verify-title">
+            {org.verified ? "Verified" : "Pending verification"}
+          </div>
+          <div className="ep-verify-desc">
+            {org.verified
+              ? "Job posting and candidate messaging unlocked."
+              : "Head back to onboarding to finish verifying the domain."}
+          </div>
+        </div>
+        <span
+          className={`v2-chip ${
+            org.verified ? "v2-chip-accent" : "v2-chip-coral"
+          }`}
+        >
+          {org.verified ? "Active" : "Pending"}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- helpers ---------- */
+
+function computeCompleteness(org: OrgRow | null): number {
+  if (!org) return 0;
+  let score = 0;
+  const total = 7;
+  if (org.tagline) score += 1;
+  if (org.about) score += 1;
+  if (org.hq) score += 1;
+  if (org.primarySector) score += 1;
+  if (org.size) score += 1;
+  if (org.verified) score += 1;
+  if (org.focusRoles.length > 0) score += 1;
+  return Math.round((score / total) * 100);
+}

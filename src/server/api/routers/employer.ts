@@ -505,6 +505,46 @@ export const employerRouter = router({
       return { ok: true };
     }),
 
+  updateMemberRole: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        role: z.enum(orgRoleValues),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (input.role === "owner") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Owner transfer not supported here.",
+        });
+      }
+
+      const [target] = await ctx.db
+        .select()
+        .from(orgMembers)
+        .where(
+          and(eq(orgMembers.id, input.id), eq(orgMembers.orgId, orgId)),
+        )
+        .limit(1);
+      if (!target) throw new TRPCError({ code: "NOT_FOUND" });
+      if (target.role === "owner") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Owner role can't be reassigned.",
+        });
+      }
+
+      const [updated] = await ctx.db
+        .update(orgMembers)
+        .set({ role: input.role })
+        .where(eq(orgMembers.id, input.id))
+        .returning();
+      return updated;
+    }),
+
   markVerified: protectedProcedure.mutation(async ({ ctx }) => {
     const orgId = await findMyOrg(ctx);
     if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
