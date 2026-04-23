@@ -78,3 +78,41 @@ export async function uploadAvatar(userId: string, file: File) {
   );
   return { url };
 }
+
+export const COVER_MAX_BYTES = 5 * 1024 * 1024;
+export const COVER_ALLOWED_MIME = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+export function validateCoverFile(
+  file: File | null,
+): { ok: true; file: File } | ResumeValidationError {
+  if (!file) return { ok: false, reason: "missing_file" };
+  if (file.size > COVER_MAX_BYTES) {
+    return { ok: false, reason: "too_large", size: file.size };
+  }
+  if (
+    !COVER_ALLOWED_MIME.includes(
+      file.type as (typeof COVER_ALLOWED_MIME)[number],
+    )
+  ) {
+    return { ok: false, reason: "bad_mime", mime: file.type };
+  }
+  return { ok: true, file };
+}
+
+export async function uploadOrgCover(orgId: string, file: File) {
+  const sanitized = file.name.replace(/[^\w.\-]+/g, "_");
+  const { url } = await put(
+    `org-covers/${orgId}/${crypto.randomUUID()}-${sanitized}`,
+    file,
+    {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: file.type,
+    },
+  );
+  return { url };
+}

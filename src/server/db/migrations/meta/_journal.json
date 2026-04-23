@@ -50,6 +50,13 @@
       "when": 1776967809247,
       "tag": "0006_conscious_apocalypse",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776973514482,
+      "tag": "0007_jazzy_zaran",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,7 @@ export const employerOrgs = pgTable("employer_orgs", {
   about: text("about"),
   logoUrl: text("logo_url"),
   logoColor: text("logo_color").notNull().default("#FF7A59"),
+  coverUrl: text("cover_url"),
   size: companySizeEnum("size"),
   primarySector: sectorEnum("primary_sector"),
   subSectors: text("sub_sectors").array().notNull().default([]),

@@ -9,6 +9,7 @@ export const metadata = { title: "Your profile — Energized" };
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) redirect("/sign-in");
+  if (session.user.role === "employer") redirect("/employer/profile");
 
   await db
     .insert(profiles)

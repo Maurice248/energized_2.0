@@ -10,7 +10,6 @@ export const metadata = { title: "Company profile — Energized" };
 export default async function EmployerProfilePage() {
   const session = await getSession();
   if (!session) redirect("/sign-in");
-  if (session.user.role !== "employer") redirect("/");
 
   const [membership] = await db
     .select({ orgId: orgMembers.orgId })

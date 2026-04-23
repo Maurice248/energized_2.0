@@ -1,0 +1,1 @@
+ALTER TABLE "employer_orgs" ADD COLUMN "cover_url" text;

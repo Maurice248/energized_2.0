@@ -7,7 +7,6 @@ export const metadata = { title: "Employer onboarding — Energized" };
 export default async function EmployerOnboardingPage() {
   const session = await getSession();
   if (!session) redirect("/sign-in");
-  if (session.user.role !== "employer") redirect("/");
 
   return (
     <EmployerOnboardingClient

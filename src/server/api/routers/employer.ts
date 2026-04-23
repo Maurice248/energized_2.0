@@ -171,6 +171,11 @@ export const employerRouter = router({
         acceptedAt: new Date(),
       });
 
+      await ctx.db
+        .update(user)
+        .set({ role: "employer" })
+        .where(eq(user.id, ctx.session.user.id));
+
       return org;
     }),
 
@@ -542,6 +547,19 @@ export const employerRouter = router({
         .set({ role: input.role })
         .where(eq(orgMembers.id, input.id))
         .returning();
+      return updated;
+    }),
+
+  setCover: protectedProcedure
+    .input(z.object({ url: z.string().url().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+      const [updated] = await ctx.db
+        .update(employerOrgs)
+        .set({ coverUrl: input.url })
+        .where(eq(employerOrgs.id, orgId))
+        .returning({ coverUrl: employerOrgs.coverUrl });
       return updated;
     }),
 

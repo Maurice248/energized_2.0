@@ -1,7 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "@/server/api/trpc";
-import { profiles, user } from "@/server/db/schema";
+import { employerOrgs, orgMembers, profiles, user } from "@/server/db/schema";
 import {
+  companySizeLabelToEnum,
   onboardingDraftSchema,
   sectorLabelToEnum,
   levelLabelToYears,
@@ -21,19 +22,60 @@ export const onboardingRouter = router({
     .input(onboardingDraftSchema)
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const email = ctx.session.user.email.toLowerCase();
 
       await ctx.db
         .update(user)
         .set({ role: input.role, onboardedAt: new Date() })
         .where(eq(user.id, userId));
 
-      const sectorLabels =
-        input.role === "jobseeker"
-          ? input.sector
-            ? [input.sector]
-            : []
-          : input.hiringSectors;
+      if (input.role === "employer") {
+        const mappedSectors = Array.from(
+          new Set(
+            input.hiringSectors
+              .map(sectorLabelToEnum)
+              .filter((s): s is EnergySector => s !== null),
+          ),
+        );
 
+        const [existing] = await ctx.db
+          .select({ orgId: orgMembers.orgId })
+          .from(orgMembers)
+          .where(eq(orgMembers.userId, userId))
+          .limit(1);
+
+        if (existing) {
+          return { role: input.role, orgId: existing.orgId };
+        }
+
+        const companyName = input.company.trim() || "Untitled company";
+        const verificationToken = `energized-verify=${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+        const [org] = await ctx.db
+          .insert(employerOrgs)
+          .values({
+            name: companyName,
+            hq: input.location || null,
+            primarySector: mappedSectors[0] ?? null,
+            size: companySizeLabelToEnum(input.companySize),
+            plan: input.plan,
+            verificationToken,
+          })
+          .returning();
+
+        await ctx.db.insert(orgMembers).values({
+          orgId: org.id,
+          userId,
+          email,
+          role: "owner",
+          status: "active",
+          acceptedAt: new Date(),
+        });
+
+        return { role: input.role, orgId: org.id };
+      }
+
+      const sectorLabels = input.sector ? [input.sector] : [];
       const mappedSectors = Array.from(
         new Set(
           sectorLabels
@@ -41,13 +83,9 @@ export const onboardingRouter = router({
             .filter((s): s is EnergySector => s !== null),
         ),
       );
-
-      const yearsExperience =
-        input.role === "jobseeker" && input.level
-          ? levelLabelToYears(input.level)
-          : null;
-
-      const location = input.role === "employer" ? input.location || null : null;
+      const yearsExperience = input.level
+        ? levelLabelToYears(input.level)
+        : null;
 
       await ctx.db
         .insert(profiles)
@@ -55,14 +93,12 @@ export const onboardingRouter = router({
           userId,
           sectors: mappedSectors,
           yearsExperience: yearsExperience ?? undefined,
-          location: location ?? undefined,
         })
         .onConflictDoUpdate({
           target: profiles.userId,
           set: {
             sectors: sql`excluded.sectors`,
             yearsExperience: sql`excluded.years_experience`,
-            location: sql`excluded.location`,
             updatedAt: new Date(),
           },
         });

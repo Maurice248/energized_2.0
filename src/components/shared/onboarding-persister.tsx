@@ -65,9 +65,10 @@ export function OnboardingPersister() {
     complete.mutate(draft.data, {
       onSuccess: () => {
         localStorage.removeItem(ONBOARDING_DRAFT_KEY);
-        // The new /onboarding wizard reads via profile.get — invalidate so
-        // it refetches the freshly created profile instead of seeing null.
+        // Invalidate both views so whichever wizard mounted refetches its
+        // freshly-created source of truth.
         void utils.profile.get.invalidate();
+        void utils.employer.getMyOrg.invalidate();
       },
       onError: () => {
         attempted.current = false;

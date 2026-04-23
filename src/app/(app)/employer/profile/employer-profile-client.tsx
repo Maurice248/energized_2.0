@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuggestionCombobox } from "@/components/shared/suggestion-combobox";
@@ -122,6 +121,24 @@ const EDITABLE_ROLE_OPTIONS: { value: OrgRole; label: string }[] = (
   ["admin", "recruiter", "hiring_manager", "viewer"] as OrgRole[]
 ).map((v) => ({ value: v, label: ORG_ROLE_LABELS[v] }));
 
+const coverChipStyle: React.CSSProperties = {
+  padding: "8px 14px",
+  background: "rgba(255,255,255,0.12)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  border: "1px solid rgba(255,255,255,0.2)",
+  borderRadius: 999,
+  color: "white",
+  fontSize: 12,
+  fontFamily: "var(--v2-font-mono)",
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+};
+
 const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
   { id: "overview", label: "Overview", icon: "building" },
   { id: "about", label: "About & branding", icon: "sparkles" },
@@ -139,7 +156,6 @@ export function EmployerProfileClient({
 }: {
   email: string;
 }) {
-  const router = useRouter();
   const orgQuery = api.employer.getMyOrg.useQuery();
 
   const [active, setActive] = useState<string>("overview");
@@ -159,6 +175,46 @@ export function EmployerProfileClient({
   const updateMemberRole = api.employer.updateMemberRole.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
+  const setCover = api.employer.setCover.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+
+  const handleCoverFile = async (file: File) => {
+    setCoverError(null);
+    if (file.size > 5 * 1024 * 1024) {
+      setCoverError("Image must be under 5MB.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setCoverError("JPG, PNG, or WebP only.");
+      return;
+    }
+    setCoverBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/org-cover", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error ?? "Upload failed");
+      }
+      const { url } = (await res.json()) as { url: string };
+      await setCover.mutateAsync({ url });
+    } catch (e) {
+      setCoverError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setCoverBusy(false);
+    }
+  };
 
   const org = orgQuery.data?.org ?? null;
   const members = orgQuery.data?.members ?? [];
@@ -192,9 +248,10 @@ export function EmployerProfileClient({
           </div>
           <button
             className="v2-btn v2-btn-ghost v2-btn-sm"
-            onClick={() => router.push("/employer/onboarding")}
+            onClick={() => org && window.open(`/c/${org.id}`, "_blank")}
+            disabled={!org}
           >
-            <Icon name="sliders" size={14} /> Onboarding
+            <Icon name="eye" size={14} /> View public page
           </button>
         </div>
       </header>
@@ -236,13 +293,69 @@ export function EmployerProfileClient({
               )}
             </div>
             <div className="pp-name">{org?.name ?? "Untitled company"}</div>
-            <div className="pp-title">
+            {org?.tagline && (
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 13,
+                  color: "var(--v2-ink-600)",
+                  fontStyle: "italic",
+                  fontFamily: "var(--v2-font-serif)",
+                  lineHeight: 1.35,
+                }}
+              >
+                {org.tagline}
+              </div>
+            )}
+            <div className="pp-title" style={{ marginTop: 8 }}>
               {org?.primarySector ? SECTOR_LABELS[org.primarySector] : "Sector not set"}
               {org?.size ? ` · ${COMPANY_SIZE_LABELS[org.size]} employees` : ""}
             </div>
+            {org?.founded && (
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 12,
+                  color: "var(--v2-ink-500)",
+                  fontFamily: "var(--v2-font-mono)",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Founded {org.founded}
+              </div>
+            )}
             {org?.hq && (
               <div className="pp-location">
                 <Icon name="mapPin" size={11} /> {org.hq}
+              </div>
+            )}
+            {org?.domain && (
+              <div
+                className="pp-location"
+                style={{ marginTop: 4 }}
+              >
+                <Icon name="globe" size={11} /> {org.domain}
+              </div>
+            )}
+            {org?.website && (
+              <div
+                className="pp-location"
+                style={{ marginTop: 4 }}
+              >
+                <Icon name="arrowUpRight" size={11} />{" "}
+                <a
+                  href={org.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "inherit",
+                    textDecoration: "underline",
+                    textUnderlineOffset: 2,
+                  }}
+                >
+                  {org.website.replace(/^https?:\/\//, "")}
+                </a>
               </div>
             )}
             {org?.verified && (
@@ -343,81 +456,118 @@ export function EmployerProfileClient({
 
           {org && (
             <>
-              {/* Cover + identity */}
-              <div id="ep-overview" style={{ scrollMarginTop: 100 }} />
-              <div className="ep-profile-head">
-                <div className="ep-cover">
-                  <div className="ep-cover-pattern" />
-                </div>
-                <div className="ep-identity-row">
-                  <div
-                    className="ep-logo-big"
-                    style={{ background: org.logoColor }}
+              {/* Banner */}
+              <div
+                id="ep-overview"
+                style={{
+                  position: "relative",
+                  height: 160,
+                  borderRadius: "var(--v2-r-xl)",
+                  background: org.coverUrl
+                    ? `#1D212C`
+                    : "linear-gradient(135deg, var(--v2-ink-950) 0%, #1D212C 60%, #2A303F 100%)",
+                  overflow: "hidden",
+                  scrollMarginTop: 100,
+                }}
+              >
+                {org.coverUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={org.coverUrl}
+                    alt=""
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                )}
+                {!org.coverUrl && (
+                  <>
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background:
+                          "radial-gradient(500px circle at 80% 20%, rgba(199,249,86,0.18), transparent 55%), radial-gradient(400px circle at 15% 80%, rgba(124,199,255,0.1), transparent 55%)",
+                        pointerEvents: "none",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundImage:
+                          "repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 60px)",
+                        opacity: 0.6,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  </>
+                )}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleCoverFile(f);
+                    e.target.value = "";
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    display: "flex",
+                    gap: 8,
+                  }}
+                >
+                  {org.coverUrl && (
+                    <button
+                      type="button"
+                      title="Remove cover"
+                      onClick={() => setCover.mutate({ url: null })}
+                      disabled={coverBusy || setCover.isPending}
+                      style={coverChipStyle}
+                    >
+                      <Icon name="x" size={12} /> Remove
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={coverBusy}
+                    style={coverChipStyle}
                   >
-                    {org.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={org.logoUrl}
-                        alt={org.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          borderRadius: 20,
-                        }}
-                      />
-                    ) : (
-                      <span>{org.name.charAt(0).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <div className="ep-identity-text">
-                    <div className="ep-identity-name">
-                      {org.name}
-                      {org.verified && (
-                        <span className="ep-verified">
-                          <Icon name="shield" size={11} /> Verified
-                        </span>
-                      )}
-                    </div>
-                    {org.tagline && (
-                      <div
-                        style={{
-                          marginTop: 8,
-                          fontSize: 16,
-                          color: "var(--v2-ink-600)",
-                          fontFamily: "var(--v2-font-serif)",
-                          fontStyle: "italic",
-                        }}
-                      >
-                        {org.tagline}
-                      </div>
-                    )}
-                    <div className="ep-identity-meta">
-                      {org.hq && (
-                        <span>
-                          <Icon name="mapPin" size={14} /> {org.hq}
-                        </span>
-                      )}
-                      {org.size && (
-                        <span>
-                          <Icon name="users" size={14} />{" "}
-                          {COMPANY_SIZE_LABELS[org.size]} employees
-                        </span>
-                      )}
-                      {org.primarySector && (
-                        <span>
-                          <Icon name="building" size={14} />{" "}
-                          {SECTOR_LABELS[org.primarySector]}
-                        </span>
-                      )}
-                      {org.domain && (
-                        <span>
-                          <Icon name="globe" size={14} /> {org.domain}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    <Icon name="upload" size={12} />{" "}
+                    {coverBusy
+                      ? "Uploading…"
+                      : org.coverUrl
+                        ? "Replace cover"
+                        : "Edit cover"}
+                  </button>
                 </div>
+                {coverError && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 12,
+                      right: 16,
+                      padding: "6px 10px",
+                      background: "rgba(166,58,32,0.92)",
+                      color: "white",
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                  >
+                    {coverError}
+                  </div>
+                )}
               </div>
 
               {/* KPI strip */}
@@ -429,16 +579,16 @@ export function EmployerProfileClient({
               </div>
 
               {/* About */}
-              <div id="ep-about" style={{ scrollMarginTop: 100 }} />
               <AboutSection
+                id="ep-about"
                 initial={org}
                 saving={updateBasics.isPending}
                 onSave={(input) => updateBasics.mutate(input)}
               />
 
               {/* Team */}
-              <div id="ep-team" style={{ scrollMarginTop: 100 }} />
               <TeamSection
+                id="ep-team"
                 members={members}
                 meEmail={email.toLowerCase()}
                 orgDomain={org.domain ?? ""}
@@ -452,24 +602,21 @@ export function EmployerProfileClient({
               />
 
               {/* Jobs — placeholder until Phase 4 */}
-              <div id="ep-jobs" style={{ scrollMarginTop: 100 }} />
-              <JobsPlaceholder />
+              <JobsPlaceholder id="ep-jobs" />
 
               {/* Hiring prefs */}
-              <div id="ep-prefs" style={{ scrollMarginTop: 100 }} />
               <PrefsSection
+                id="ep-prefs"
                 initial={org}
                 saving={updatePrefs.isPending}
                 onSave={(input) => updatePrefs.mutate(input)}
               />
 
               {/* Plan & billing */}
-              <div id="ep-billing" style={{ scrollMarginTop: 100 }} />
-              <PlanSection org={org} />
+              <PlanSection id="ep-billing" org={org} />
 
               {/* Verification */}
-              <div id="ep-verify" style={{ scrollMarginTop: 100 }} />
-              <VerificationSection org={org} />
+              <VerificationSection id="ep-verify" org={org} />
             </>
           )}
         </main>
@@ -544,6 +691,7 @@ type OrgRow = {
   tagline: string | null;
   about: string | null;
   logoColor: string;
+  coverUrl: string | null;
   size: CompanySize | null;
   primarySector: SectorEnum | null;
   subSectors: string[];
@@ -560,17 +708,21 @@ type OrgRow = {
 };
 
 function AboutSection({
+  id,
   initial,
   saving,
   onSave,
 }: {
+  id?: string;
   initial: OrgRow;
   saving: boolean;
   onSave: (input: {
     name: string;
     tagline: string | null;
     website: string | null;
+    domain: string | null;
     hq: string | null;
+    founded: string | null;
     about: string | null;
     size: CompanySize | null;
     primarySector: SectorEnum | null;
@@ -580,7 +732,9 @@ function AboutSection({
   const [name, setName] = useState(initial.name);
   const [tagline, setTagline] = useState(initial.tagline ?? "");
   const [website, setWebsite] = useState(initial.website ?? "");
+  const [domain, setDomain] = useState(initial.domain ?? "");
   const [hq, setHq] = useState(initial.hq ?? "");
+  const [founded, setFounded] = useState(initial.founded ?? "");
   const [about, setAbout] = useState(initial.about ?? "");
   const [size, setSize] = useState<CompanySize | null>(initial.size);
   const [sector, setSector] = useState<SectorEnum | null>(initial.primarySector);
@@ -590,7 +744,9 @@ function AboutSection({
     name !== initial.name ||
     tagline !== (initial.tagline ?? "") ||
     website !== (initial.website ?? "") ||
+    domain !== (initial.domain ?? "") ||
     hq !== (initial.hq ?? "") ||
+    founded !== (initial.founded ?? "") ||
     about !== (initial.about ?? "") ||
     size !== initial.size ||
     sector !== initial.primarySector ||
@@ -606,7 +762,7 @@ function AboutSection({
     );
 
   return (
-    <section className="pp-section">
+    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">About &amp; branding</div>
@@ -622,7 +778,9 @@ function AboutSection({
               name: name.trim(),
               tagline: tagline.trim() || null,
               website: website.trim() || null,
+              domain: domain.trim() || null,
               hq: hq.trim() || null,
+              founded: founded.trim() || null,
               about: about.trim() || null,
               size,
               primarySector: sector,
@@ -653,12 +811,30 @@ function AboutSection({
           />
         </div>
         <div className="ob-field">
+          <label>Domain (for verification)</label>
+          <input
+            className="v2-input-block"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="company.ca"
+          />
+        </div>
+        <div className="ob-field">
           <label>Headquarters</label>
           <input
             className="v2-input-block"
             value={hq}
             onChange={(e) => setHq(e.target.value)}
             placeholder="Calgary, AB"
+          />
+        </div>
+        <div className="ob-field">
+          <label>Founded</label>
+          <input
+            className="v2-input-block"
+            value={founded}
+            onChange={(e) => setFounded(e.target.value)}
+            placeholder="2018"
           />
         </div>
         <SuggestionCombobox
@@ -771,6 +947,7 @@ function TeamSection({
   onChangeRole,
   inviteError,
   inviteBusy,
+  id,
 }: {
   members: MemberRow[];
   meEmail: string;
@@ -780,6 +957,7 @@ function TeamSection({
   onChangeRole: (id: string, role: OrgRole) => void;
   inviteError: string | null;
   inviteBusy: boolean;
+  id?: string;
 }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<OrgRole>("recruiter");
@@ -788,7 +966,7 @@ function TeamSection({
   const pending = members.filter((m) => m.status === "pending").length;
 
   return (
-    <section className="pp-section">
+    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">Team</div>
@@ -947,9 +1125,9 @@ function TeamSection({
 
 /* ---------- jobs placeholder ---------- */
 
-function JobsPlaceholder() {
+function JobsPlaceholder({ id }: { id?: string }) {
   return (
-    <section className="pp-section">
+    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">Open roles</div>
@@ -990,10 +1168,12 @@ function JobsPlaceholder() {
 /* ---------- hiring prefs ---------- */
 
 function PrefsSection({
+  id,
   initial,
   saving,
   onSave,
 }: {
+  id?: string;
   initial: OrgRow;
   saving: boolean;
   onSave: (input: {
@@ -1025,7 +1205,7 @@ function PrefsSection({
 
   if (!edit) {
     return (
-      <section className="pp-section">
+      <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
         <div className="pp-section-head">
           <div>
             <div className="pp-section-title">Hiring preferences</div>
@@ -1107,7 +1287,7 @@ function PrefsSection({
   }
 
   return (
-    <section className="pp-section">
+    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">Hiring preferences</div>
@@ -1251,7 +1431,7 @@ function PrefTile({
 
 /* ---------- plan section ---------- */
 
-function PlanSection({ org }: { org: OrgRow }) {
+function PlanSection({ id, org }: { id?: string; org: OrgRow }) {
   const planLabel = (() => {
     switch (org.plan) {
       case "starter":
@@ -1267,7 +1447,7 @@ function PlanSection({ org }: { org: OrgRow }) {
   })();
 
   return (
-    <section className="pp-section">
+    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">Plan &amp; billing</div>
@@ -1321,9 +1501,9 @@ function PlanSection({ org }: { org: OrgRow }) {
 
 /* ---------- verification section ---------- */
 
-function VerificationSection({ org }: { org: OrgRow }) {
+function VerificationSection({ id, org }: { id?: string; org: OrgRow }) {
   return (
-    <section className="pp-section">
+    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">Verification</div>
