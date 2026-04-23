@@ -1,0 +1,1 @@
+ALTER TYPE "public"."energy_sector" ADD VALUE 'other';

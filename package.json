@@ -3,10 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "db:generate": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs generate",
+    "db:migrate": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
+    "db:push": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs push",
+    "db:studio": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs studio",
+    "email:dev": "email dev --dir src/emails",
+    "trigger:dev": "trigger.dev dev"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
@@ -14,7 +24,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@stripe/stripe-js": "^9.2.0",
     "@tanstack/react-query": "^5.99.2",
-    "@trigger.dev/sdk": "^4.4.4",
+    "@trigger.dev/sdk": "4.4.4",
     "@trpc/client": "^11.16.0",
     "@trpc/next": "^11.16.0",
     "@trpc/react-query": "^11.16.0",
@@ -48,7 +58,7 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@trigger.dev/build": "^4.4.4",
+    "@trigger.dev/build": "4.4.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -63,5 +73,6 @@
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.5"
-  }
+  },
+  "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }
