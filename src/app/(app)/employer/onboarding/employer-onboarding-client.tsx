@@ -144,6 +144,7 @@ export function EmployerOnboardingClient({
   const markVerified = api.employer.markVerified.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
+  const sendDomainVerifyEmail = api.employer.sendDomainVerifyEmail.useMutation();
 
   const [current, setCurrent] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
@@ -253,6 +254,16 @@ export function EmployerOnboardingClient({
                 <VerifyStep
                   org={org ?? null}
                   onMarkVerified={() => markVerified.mutate()}
+                  onSendEmail={(emailTo) =>
+                    sendDomainVerifyEmail.mutateAsync({ email: emailTo })
+                  }
+                  sendError={sendDomainVerifyEmail.error?.message ?? null}
+                  sendPending={sendDomainVerifyEmail.isPending}
+                  sentTo={
+                    sendDomainVerifyEmail.isSuccess
+                      ? sendDomainVerifyEmail.variables?.email ?? null
+                      : null
+                  }
                 />
               )}
               {stepId === "team" && (
@@ -713,12 +724,23 @@ function CompanyStep({
 function VerifyStep({
   org,
   onMarkVerified,
+  onSendEmail,
+  sendError,
+  sendPending,
+  sentTo,
 }: {
   org: (OrgRow & { verified: boolean; verificationToken: string | null }) | null;
   onMarkVerified: () => void;
+  onSendEmail: (email: string) => Promise<unknown>;
+  sendError: string | null;
+  sendPending: boolean;
+  sentTo: string | null;
 }) {
   const domain = org?.domain ?? "your-company.ca";
   const token = org?.verificationToken ?? "energized-verify=pending";
+  const [verifyEmail, setVerifyEmail] = useState(
+    org?.domain ? `hr@${org.domain}` : "",
+  );
 
   if (!org) {
     return (
@@ -846,18 +868,49 @@ function VerifyStep({
                 <label>Send to</label>
                 <input
                   className="v2-input-block"
-                  defaultValue={`hr@${domain}`}
+                  value={verifyEmail}
+                  onChange={(e) => setVerifyEmail(e.target.value)}
+                  type="email"
+                  placeholder={`hr@${domain}`}
                 />
               </div>
               <button
                 type="button"
-                className="v2-btn v2-btn-ghost v2-btn-sm"
+                className="v2-btn v2-btn-primary v2-btn-sm"
                 style={{ marginTop: 14 }}
-                disabled
-                title="Email verification coming soon"
+                onClick={() => onSendEmail(verifyEmail.trim().toLowerCase())}
+                disabled={!verifyEmail.trim() || sendPending}
               >
-                Send verification email
+                {sendPending ? "Sending…" : "Send verification email"}
               </button>
+              {sentTo && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "10px 12px",
+                    background: "var(--v2-accent-soft, #E7FBD0)",
+                    color: "var(--v2-ink-900)",
+                    borderRadius: 10,
+                    fontSize: 13,
+                  }}
+                >
+                  Sent. Check <strong>{sentTo}</strong> for the link.
+                </div>
+              )}
+              {sendError && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "10px 12px",
+                    background: "var(--v2-coral-soft, #FBEBE4)",
+                    color: "#A63A20",
+                    borderRadius: 10,
+                    fontSize: 13,
+                  }}
+                >
+                  {sendError}
+                </div>
+              )}
             </div>
           </div>
 

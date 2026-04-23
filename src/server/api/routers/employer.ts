@@ -1,8 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, router } from "@/server/api/trpc";
-import { employerOrgs, orgMembers } from "@/server/db/schema";
+import { protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
+import { employerOrgs, orgMembers, user } from "@/server/db/schema";
+import { resend } from "@/lib/resend";
+import { env } from "@/env";
+import TeamInviteEmail from "@/emails/team-invite";
+import EmployerVerifyDomainEmail from "@/emails/employer-verify-domain";
 
 const sectorValues = [
   "oil_gas",
@@ -76,6 +80,21 @@ const inviteSchema = z.object({
 
 function makeVerificationToken() {
   return `energized-verify=${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+}
+
+function labelForOrgRole(role: (typeof orgRoleValues)[number]): string {
+  switch (role) {
+    case "owner":
+      return "Owner";
+    case "admin":
+      return "Admin";
+    case "recruiter":
+      return "Recruiter";
+    case "hiring_manager":
+      return "Hiring manager";
+    case "viewer":
+      return "Viewer";
+  }
 }
 
 async function findMyOrg(
@@ -206,25 +225,259 @@ export const employerRouter = router({
         });
       }
 
+      const [org] = await ctx.db
+        .select()
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, orgId))
+        .limit(1);
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
       const email = input.email.toLowerCase();
+      const inviteToken = crypto.randomUUID().replace(/-/g, "");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
       const [existing] = await ctx.db
         .select()
         .from(orgMembers)
         .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.email, email)))
         .limit(1);
 
-      if (existing) return existing;
+      let row;
+      if (existing) {
+        if (existing.status === "active") return existing;
+        [row] = await ctx.db
+          .update(orgMembers)
+          .set({
+            role: input.role,
+            status: "pending",
+            inviteToken,
+            inviteExpiresAt: expiresAt,
+            invitedByUserId: ctx.session.user.id,
+            invitedAt: new Date(),
+          })
+          .where(eq(orgMembers.id, existing.id))
+          .returning();
+      } else {
+        [row] = await ctx.db
+          .insert(orgMembers)
+          .values({
+            orgId,
+            email,
+            role: input.role,
+            status: "pending",
+            inviteToken,
+            inviteExpiresAt: expiresAt,
+            invitedByUserId: ctx.session.user.id,
+          })
+          .returning();
+      }
 
-      const [row] = await ctx.db
-        .insert(orgMembers)
-        .values({
-          orgId,
-          email,
-          role: input.role,
-          status: "pending",
-        })
-        .returning();
+      const inviterName = ctx.session.user.name ?? ctx.session.user.email;
+      const acceptUrl = `${env.NEXT_PUBLIC_APP_URL}/accept-invite?token=${inviteToken}`;
+      const roleLabel = labelForOrgRole(input.role);
+
+      const result = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: email,
+        subject: `${inviterName} invited you to ${org.name} on Energized`,
+        react: TeamInviteEmail({
+          inviterName,
+          companyName: org.name,
+          roleLabel,
+          acceptUrl,
+        }),
+      });
+      if (result.error) {
+        console.error("[employer.inviteMember] resend rejected", result.error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Couldn't send invite email: ${result.error.message}`,
+        });
+      }
+
       return row;
+    }),
+
+  acceptInvite: protectedProcedure
+    .input(z.object({ token: z.string().min(16).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      const [member] = await ctx.db
+        .select()
+        .from(orgMembers)
+        .where(eq(orgMembers.inviteToken, input.token))
+        .limit(1);
+
+      if (!member) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Invite not found or already used.",
+        });
+      }
+      if (member.inviteExpiresAt && member.inviteExpiresAt < new Date()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invite expired. Ask for a new one.",
+        });
+      }
+
+      const sessionEmail = ctx.session.user.email.toLowerCase();
+      if (member.email.toLowerCase() !== sessionEmail) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `This invite was sent to ${member.email}. Sign in with that address to accept.`,
+        });
+      }
+
+      await ctx.db
+        .update(user)
+        .set({ role: "employer" })
+        .where(eq(user.id, ctx.session.user.id));
+
+      const [updated] = await ctx.db
+        .update(orgMembers)
+        .set({
+          userId: ctx.session.user.id,
+          status: "active",
+          acceptedAt: new Date(),
+          inviteToken: null,
+          inviteExpiresAt: null,
+        })
+        .where(eq(orgMembers.id, member.id))
+        .returning();
+
+      return updated;
+    }),
+
+  getInviteSummary: publicProcedure
+    .input(z.object({ token: z.string().min(16).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const [member] = await ctx.db
+        .select({
+          email: orgMembers.email,
+          role: orgMembers.role,
+          status: orgMembers.status,
+          expiresAt: orgMembers.inviteExpiresAt,
+          orgId: orgMembers.orgId,
+        })
+        .from(orgMembers)
+        .where(eq(orgMembers.inviteToken, input.token))
+        .limit(1);
+      if (!member) return null;
+
+      const [org] = await ctx.db
+        .select({ name: employerOrgs.name, logoColor: employerOrgs.logoColor })
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, member.orgId))
+        .limit(1);
+
+      return {
+        email: member.email,
+        role: member.role,
+        status: member.status,
+        expiresAt: member.expiresAt,
+        companyName: org?.name ?? "a company",
+        companyLogoColor: org?.logoColor ?? "#FF7A59",
+      };
+    }),
+
+  sendDomainVerifyEmail: protectedProcedure
+    .input(z.object({ email: z.string().email().max(240) }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [org] = await ctx.db
+        .select()
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, orgId))
+        .limit(1);
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+      if (org.verified) return { ok: true };
+
+      const toEmail = input.email.toLowerCase();
+      if (org.domain) {
+        const hostMatch = toEmail.split("@")[1];
+        if (!hostMatch || !hostMatch.endsWith(org.domain.toLowerCase())) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Email must be at @${org.domain}.`,
+          });
+        }
+      }
+
+      const token = crypto.randomUUID().replace(/-/g, "");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      await ctx.db
+        .update(employerOrgs)
+        .set({
+          domainVerifyEmailToken: token,
+          domainVerifyEmailTo: toEmail,
+          domainVerifyEmailSentAt: new Date(),
+          domainVerifyExpiresAt: expiresAt,
+        })
+        .where(eq(employerOrgs.id, orgId));
+
+      const verifyUrl = `${env.NEXT_PUBLIC_APP_URL}/employer/verify-domain?token=${token}`;
+      const result = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: toEmail,
+        subject: `Confirm ${org.name} on Energized`,
+        react: EmployerVerifyDomainEmail({
+          companyName: org.name,
+          verifyUrl,
+        }),
+      });
+      if (result.error) {
+        console.error(
+          "[employer.sendDomainVerifyEmail] resend rejected",
+          result.error,
+        );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Couldn't send verification email: ${result.error.message}`,
+        });
+      }
+
+      return { ok: true };
+    }),
+
+  verifyDomainByToken: publicProcedure
+    .input(z.object({ token: z.string().min(16).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      const [org] = await ctx.db
+        .select()
+        .from(employerOrgs)
+        .where(eq(employerOrgs.domainVerifyEmailToken, input.token))
+        .limit(1);
+      if (!org) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "This verification link is invalid or already used.",
+        });
+      }
+      if (
+        org.domainVerifyExpiresAt &&
+        org.domainVerifyExpiresAt < new Date()
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This verification link has expired.",
+        });
+      }
+
+      const [updated] = await ctx.db
+        .update(employerOrgs)
+        .set({
+          verified: true,
+          verifiedAt: new Date(),
+          domainVerifyEmailToken: null,
+          domainVerifyExpiresAt: null,
+        })
+        .where(eq(employerOrgs.id, org.id))
+        .returning({ id: employerOrgs.id, name: employerOrgs.name });
+
+      return updated;
     }),
 
   removeMember: protectedProcedure

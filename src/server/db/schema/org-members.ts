@@ -22,6 +22,11 @@ export const orgMembers = pgTable(
     email: text("email").notNull(),
     role: orgRoleEnum("role").notNull().default("recruiter"),
     status: orgMemberStatusEnum("status").notNull().default("pending"),
+    inviteToken: text("invite_token").unique(),
+    inviteExpiresAt: timestamp("invite_expires_at"),
+    invitedByUserId: text("invited_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     invitedAt: timestamp("invited_at").notNull().defaultNow(),
     acceptedAt: timestamp("accepted_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
