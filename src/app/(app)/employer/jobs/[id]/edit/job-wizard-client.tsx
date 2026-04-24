@@ -111,7 +111,9 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
         salaryCurrency: draft.salaryCurrency,
         salaryPeriod: draft.salaryPeriod as "year" | "hour" | "day",
         requiredCertifications: draft.requiredCertifications,
-        screeningQuestions: draft.screeningQuestions,
+        screeningQuestions: draft.screeningQuestions.filter(
+          (row) => row.q.trim().length > 0,
+        ),
         summary: draft.summary || null,
         description: draft.description || null,
       },
