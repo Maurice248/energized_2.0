@@ -168,6 +168,7 @@ export function EmployerProfileClient({
   const router = useRouter();
   const orgQuery = api.employer.getMyOrg.useQuery();
   const jobsQuery = api.jobs.listForOrg.useQuery();
+  const applicantCounts = api.applications.countsForOrg.useQuery();
 
   const [active, setActive] = useState<string>("overview");
 
@@ -628,9 +629,13 @@ export function EmployerProfileClient({
               <JobsSection
                 id="ep-jobs"
                 jobs={jobsQuery.data ?? []}
+                counts={applicantCounts.data ?? {}}
                 onNew={() => router.push("/employer/jobs/new")}
                 onEdit={(id) => router.push(`/employer/jobs/${id}/edit?step=1`)}
                 onPreview={(id) => router.push(`/employer/jobs/${id}/preview`)}
+                onApplicants={(id) =>
+                  router.push(`/employer/jobs/${id}/applicants`)
+                }
                 onCloseJob={(id) => closeJob.mutate({ id })}
                 onReopen={(id) => reopenJob.mutate({ id })}
                 onDelete={(id) => deleteDraft.mutate({ id })}
@@ -1167,9 +1172,11 @@ function TeamSection({
 function JobsSection({
   id,
   jobs,
+  counts,
   onNew,
   onEdit,
   onPreview,
+  onApplicants,
   onCloseJob,
   onReopen,
   onDelete,
@@ -1178,9 +1185,11 @@ function JobsSection({
 }: {
   id?: string;
   jobs: JobRow[];
+  counts: Record<string, number>;
   onNew: () => void;
   onEdit: (id: string) => void;
   onPreview: (id: string) => void;
+  onApplicants: (id: string) => void;
   onCloseJob: (id: string) => void;
   onReopen: (id: string) => void;
   onDelete: (id: string) => void;
@@ -1317,6 +1326,29 @@ function JobsSection({
                     </span>
                   </div>
                 </div>
+                {j.status !== "draft" &&
+                  (() => {
+                    const count = counts[j.id] ?? 0;
+                    return (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          fontFamily: "var(--v2-font-mono)",
+                          fontSize: 11,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color:
+                            count > 0
+                              ? "var(--v2-ink-700)"
+                              : "var(--v2-ink-500)",
+                        }}
+                      >
+                        {count === 0
+                          ? "No applicants yet"
+                          : `${count} applicant${count === 1 ? "" : "s"}`}
+                      </div>
+                    );
+                  })()}
                 <div
                   style={{
                     marginTop: 14,
@@ -1351,6 +1383,13 @@ function JobsSection({
                   ) : j.status === "published" ? (
                     <>
                       <button
+                        className="v2-btn v2-btn-primary v2-btn-sm"
+                        onClick={() => onApplicants(j.id)}
+                      >
+                        Applicants ({counts[j.id] ?? 0}){" "}
+                        <Icon name="arrowUpRight" size={13} />
+                      </button>
+                      <button
                         className="v2-btn v2-btn-ghost v2-btn-sm"
                         onClick={() => onPreview(j.id)}
                       >
@@ -1373,6 +1412,13 @@ function JobsSection({
                     </>
                   ) : (
                     <>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onApplicants(j.id)}
+                      >
+                        Applicants ({counts[j.id] ?? 0}){" "}
+                        <Icon name="arrowUpRight" size={13} />
+                      </button>
                       <button
                         className="v2-btn v2-btn-ghost v2-btn-sm"
                         onClick={() => onPreview(j.id)}
