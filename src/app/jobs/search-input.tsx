@@ -77,9 +77,11 @@ export function JobsSearchInput({
               border: "none",
               background: "transparent",
               cursor: "pointer",
-              color: "var(--v2-ink-400)",
+              color: "var(--v2-ink-600)",
               display: "inline-flex",
               alignItems: "center",
+              padding: 4,
+              borderRadius: 6,
             }}
           >
             <Icon name="x" size={14} />
@@ -128,9 +130,11 @@ export function JobsSearchInput({
               border: "none",
               background: "transparent",
               cursor: "pointer",
-              color: "var(--v2-ink-400)",
+              color: "var(--v2-ink-600)",
               display: "inline-flex",
               alignItems: "center",
+              padding: 4,
+              borderRadius: 6,
             }}
           >
             <Icon name="x" size={14} />

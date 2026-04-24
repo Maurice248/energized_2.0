@@ -51,11 +51,11 @@ export function SalarySlider({
           justifyContent: "space-between",
           fontFamily: "var(--v2-font-mono)",
           fontSize: 11,
-          color: "var(--v2-ink-400)",
+          color: "var(--v2-ink-600)",
           marginTop: 6,
         }}
       >
-        <span style={{ color: "var(--v2-ink-700)", fontWeight: 700 }}>
+        <span style={{ color: "var(--v2-ink-900)", fontWeight: 700 }}>
           {display}
         </span>
         <span>
