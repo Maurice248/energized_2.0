@@ -2,10 +2,19 @@
 
 import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import type { inferRouterOutputs } from "@trpc/server";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuggestionCombobox } from "@/components/shared/suggestion-combobox";
 import { api } from "@/lib/trpc/client";
+import type { AppRouter } from "@/server/api/root";
+import {
+  SECTOR_LABELS as JOB_SECTOR_LABELS,
+  WORK_SETUP_LABELS as JOB_WORK_SETUP_LABELS,
+} from "@/lib/jobs-options";
+
+type JobRow = inferRouterOutputs<AppRouter>["jobs"]["listForOrg"][number];
 
 /* ---------- types + constants ---------- */
 
@@ -156,9 +165,24 @@ export function EmployerProfileClient({
 }: {
   email: string;
 }) {
+  const router = useRouter();
   const orgQuery = api.employer.getMyOrg.useQuery();
+  const jobsQuery = api.jobs.listForOrg.useQuery();
 
   const [active, setActive] = useState<string>("overview");
+
+  const closeJob = api.jobs.close.useMutation({
+    onSuccess: () => void jobsQuery.refetch(),
+  });
+  const reopenJob = api.jobs.reopen.useMutation({
+    onSuccess: () => void jobsQuery.refetch(),
+  });
+  const deleteDraft = api.jobs.deleteDraft.useMutation({
+    onSuccess: () => void jobsQuery.refetch(),
+  });
+  const duplicateJob = api.jobs.duplicate.useMutation({
+    onSuccess: (row) => router.push(`/employer/jobs/${row.id}/edit?step=1`),
+  });
 
   const updateBasics = api.employer.updateBasics.useMutation({
     onSuccess: () => void orgQuery.refetch(),
@@ -443,8 +467,7 @@ export function EmployerProfileClient({
             <button
               className="v2-btn v2-btn-accent v2-btn-sm"
               style={{ marginTop: 16 }}
-              disabled
-              title="Coming in Phase 4"
+              onClick={() => router.push("/employer/jobs/new")}
             >
               New job <Icon name="plus" size={14} />
             </button>
@@ -601,8 +624,24 @@ export function EmployerProfileClient({
                 inviteBusy={invite.isPending}
               />
 
-              {/* Jobs — placeholder until Phase 4 */}
-              <JobsPlaceholder id="ep-jobs" />
+              {/* Jobs */}
+              <JobsSection
+                id="ep-jobs"
+                jobs={jobsQuery.data ?? []}
+                onNew={() => router.push("/employer/jobs/new")}
+                onEdit={(id) => router.push(`/employer/jobs/${id}/edit?step=1`)}
+                onPreview={(id) => router.push(`/employer/jobs/${id}/preview`)}
+                onCloseJob={(id) => closeJob.mutate({ id })}
+                onReopen={(id) => reopenJob.mutate({ id })}
+                onDelete={(id) => deleteDraft.mutate({ id })}
+                onDuplicate={(id) => duplicateJob.mutate({ id })}
+                busy={
+                  closeJob.isPending ||
+                  reopenJob.isPending ||
+                  deleteDraft.isPending ||
+                  duplicateJob.isPending
+                }
+              />
 
               {/* Hiring prefs */}
               <PrefsSection
@@ -1123,44 +1162,245 @@ function TeamSection({
   );
 }
 
-/* ---------- jobs placeholder ---------- */
+/* ---------- jobs section ---------- */
 
-function JobsPlaceholder({ id }: { id?: string }) {
+function JobsSection({
+  id,
+  jobs,
+  onNew,
+  onEdit,
+  onPreview,
+  onCloseJob,
+  onReopen,
+  onDelete,
+  onDuplicate,
+  busy,
+}: {
+  id?: string;
+  jobs: JobRow[];
+  onNew: () => void;
+  onEdit: (id: string) => void;
+  onPreview: (id: string) => void;
+  onCloseJob: (id: string) => void;
+  onReopen: (id: string) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  busy: boolean;
+}) {
+  const published = jobs.filter((j) => j.status === "published").length;
+  const drafts = jobs.filter((j) => j.status === "draft").length;
+
   return (
     <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
       <div className="pp-section-head">
         <div>
           <div className="pp-section-title">Open roles</div>
           <div className="pp-section-sub">
-            Job posting is landing in the next phase
+            {published} published · {drafts} draft
           </div>
         </div>
+        <button className="v2-btn v2-btn-primary v2-btn-sm" onClick={onNew}>
+          <Icon name="plus" size={14} /> New job
+        </button>
       </div>
-      <div
-        style={{
-          padding: 32,
-          border: "1px dashed var(--v2-ink-200)",
-          borderRadius: "var(--v2-r-lg)",
-          textAlign: "center",
-          color: "var(--v2-ink-500)",
-        }}
-      >
-        <Icon name="briefcase" size={24} />
+
+      {jobs.length === 0 ? (
         <div
           style={{
-            marginTop: 10,
-            fontFamily: "var(--v2-font-serif)",
-            fontSize: 20,
-            color: "var(--v2-ink-900)",
-            fontWeight: 400,
+            padding: 32,
+            border: "1px dashed var(--v2-ink-200)",
+            borderRadius: "var(--v2-r-lg)",
+            textAlign: "center",
+            color: "var(--v2-ink-500)",
           }}
         >
-          No jobs posted yet
+          <Icon name="briefcase" size={24} />
+          <div
+            style={{
+              marginTop: 10,
+              fontFamily: "var(--v2-font-serif)",
+              fontSize: 20,
+              color: "var(--v2-ink-900)",
+              fontWeight: 400,
+            }}
+          >
+            No roles yet
+          </div>
+          <div style={{ marginTop: 4, fontSize: 14 }}>
+            Post your first role and Ember will start surfacing matches.
+          </div>
+          <button
+            className="v2-btn v2-btn-accent v2-btn-sm"
+            style={{ marginTop: 16 }}
+            onClick={onNew}
+          >
+            New job <Icon name="plus" size={14} />
+          </button>
         </div>
-        <div style={{ marginTop: 4, fontSize: 14 }}>
-          Job posting, applicants, and match funnel will live here.
+      ) : (
+        <div style={{ display: "grid", gap: 12 }}>
+          {jobs.map((j) => {
+            const posted = j.publishedAt ?? j.createdAt;
+            const postedLabel = new Date(posted).toLocaleDateString("en-CA", {
+              month: "short",
+              day: "numeric",
+            });
+            return (
+              <div
+                key={j.id}
+                style={{
+                  padding: 18,
+                  border: "1px solid var(--v2-ink-200)",
+                  borderRadius: "var(--v2-r-lg)",
+                  background: "white",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 17,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {j.title || "Untitled role"}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "var(--v2-font-mono)",
+                        fontSize: 11,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "var(--v2-ink-500)",
+                      }}
+                    >
+                      {j.location || "Location TBD"}
+                      {j.workSetup && ` · ${JOB_WORK_SETUP_LABELS[j.workSetup]}`}
+                      {` · ${
+                        j.status === "draft"
+                          ? "Created"
+                          : j.status === "published"
+                            ? "Posted"
+                            : "Closed"
+                      } ${postedLabel}`}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {j.sector && (
+                      <span className="v2-chip">
+                        {JOB_SECTOR_LABELS[j.sector]}
+                      </span>
+                    )}
+                    <span
+                      className={`v2-chip ${
+                        j.status === "published"
+                          ? "v2-chip-accent"
+                          : j.status === "closed"
+                            ? "v2-chip-coral"
+                            : "v2-chip-outline"
+                      }`}
+                    >
+                      {j.status === "published"
+                        ? "Published"
+                        : j.status === "closed"
+                          ? "Closed"
+                          : "Draft"}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {j.status === "draft" ? (
+                    <>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onEdit(j.id)}
+                      >
+                        Resume editing
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onDuplicate(j.id)}
+                        disabled={busy}
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onDelete(j.id)}
+                        disabled={busy}
+                      >
+                        Delete draft
+                      </button>
+                    </>
+                  ) : j.status === "published" ? (
+                    <>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onPreview(j.id)}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onCloseJob(j.id)}
+                        disabled={busy}
+                      >
+                        Close
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onDuplicate(j.id)}
+                        disabled={busy}
+                      >
+                        Duplicate
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onPreview(j.id)}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-primary v2-btn-sm"
+                        onClick={() => onReopen(j.id)}
+                        disabled={busy}
+                      >
+                        Reopen
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onDuplicate(j.id)}
+                        disabled={busy}
+                      >
+                        Duplicate
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </section>
   );
 }
