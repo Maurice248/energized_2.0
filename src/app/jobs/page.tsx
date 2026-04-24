@@ -1,12 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { Icon } from "@/components/shared/icon";
 import {
+  CERTIFICATION_OPTIONS,
   EXPERIENCE_LEVEL_LABELS,
   SECTOR_LABELS,
   WORK_SETUP_LABELS,
@@ -16,6 +17,7 @@ import {
   type JobWorkSetup,
 } from "@/lib/jobs-options";
 import { JobsSearchInput } from "./search-input";
+import { SalarySlider } from "./salary-slider";
 
 const PAGE_SIZE = 12;
 
@@ -44,11 +46,33 @@ const LEVEL_VALUES: JobExperienceLevel[] = [
 const SORT_VALUES = ["newest", "salary"] as const;
 type SortValue = (typeof SORT_VALUES)[number];
 
+const POSTED_VALUES = ["24h", "3d", "7d", "30d"] as const;
+type PostedValue = (typeof POSTED_VALUES)[number];
+const POSTED_LABELS: Record<PostedValue, string> = {
+  "24h": "Last 24h",
+  "3d": "Last 3 days",
+  "7d": "Last 7 days",
+  "30d": "Last 30 days",
+};
+const POSTED_DAYS: Record<PostedValue, number> = {
+  "24h": 1,
+  "3d": 3,
+  "7d": 7,
+  "30d": 30,
+};
+
+const MIN_SALARY_FLOOR = 40000;
+const MIN_SALARY_CEIL = 250000;
+
 type Filters = {
   q: string | null;
   sector: JobSector | null;
   setup: JobWorkSetup | null;
   level: JobExperienceLevel | null;
+  certs: string[];
+  posted: PostedValue | null;
+  loc: string | null;
+  minSalary: number | null;
   sort: SortValue;
   page: number;
 };
@@ -77,6 +101,30 @@ function parseFilters(
     ? (rawLevel as JobExperienceLevel)
     : null;
 
+  const rawCerts = first(searchParams.certs);
+  const certs = rawCerts
+    ? rawCerts
+        .split(",")
+        .map((c) => c.trim())
+        .filter((c) => CERTIFICATION_OPTIONS.includes(c))
+        .slice(0, 10)
+    : [];
+
+  const rawPosted = first(searchParams.posted);
+  const posted: PostedValue | null = POSTED_VALUES.includes(
+    rawPosted as PostedValue,
+  )
+    ? (rawPosted as PostedValue)
+    : null;
+
+  const rawLoc = first(searchParams.loc);
+  const loc = rawLoc ? rawLoc.trim().slice(0, 120) : null;
+
+  const rawMinSalary = parseInt(first(searchParams.minSalary) ?? "", 10);
+  const minSalary = Number.isFinite(rawMinSalary)
+    ? Math.min(MIN_SALARY_CEIL, Math.max(MIN_SALARY_FLOOR, rawMinSalary))
+    : null;
+
   const rawSort = first(searchParams.sort);
   const sort: SortValue = SORT_VALUES.includes(rawSort as SortValue)
     ? (rawSort as SortValue)
@@ -87,7 +135,18 @@ function parseFilters(
     ? Math.min(500, Math.max(1, rawPage))
     : 1;
 
-  return { q, sector, setup, level, sort, page };
+  return {
+    q,
+    sector,
+    setup,
+    level,
+    certs,
+    posted,
+    loc,
+    minSalary,
+    sort,
+    page,
+  };
 }
 
 function hrefWith(filters: Filters, overrides: Partial<Filters>): string {
@@ -97,6 +156,11 @@ function hrefWith(filters: Filters, overrides: Partial<Filters>): string {
   if (merged.sector) params.set("sector", merged.sector);
   if (merged.setup) params.set("setup", merged.setup);
   if (merged.level) params.set("level", merged.level);
+  if (merged.certs.length > 0) params.set("certs", merged.certs.join(","));
+  if (merged.posted) params.set("posted", merged.posted);
+  if (merged.loc) params.set("loc", merged.loc);
+  if (merged.minSalary != null)
+    params.set("minSalary", String(merged.minSalary));
   if (merged.sort !== "newest") params.set("sort", merged.sort);
   if (merged.page > 1) params.set("page", String(merged.page));
   const qs = params.toString();
@@ -104,7 +168,22 @@ function hrefWith(filters: Filters, overrides: Partial<Filters>): string {
 }
 
 function hasAnyFilter(f: Filters): boolean {
-  return Boolean(f.q || f.sector || f.setup || f.level);
+  return Boolean(
+    f.q ||
+      f.sector ||
+      f.setup ||
+      f.level ||
+      f.certs.length > 0 ||
+      f.posted ||
+      f.loc ||
+      f.minSalary != null,
+  );
+}
+
+function toggleCert(current: string[], cert: string): string[] {
+  return current.includes(cert)
+    ? current.filter((c) => c !== cert)
+    : [...current, cert];
 }
 
 export async function generateMetadata({
@@ -148,6 +227,33 @@ export default async function JobsBrowsePage({
         ilike(jobListings.title, needle),
         ilike(jobListings.description, needle),
         ilike(employerOrgs.name, needle),
+      )!,
+    );
+  }
+  if (filters.loc) {
+    const needle = `%${filters.loc.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+    conditions.push(ilike(jobListings.location, needle));
+  }
+  if (filters.certs.length > 0) {
+    conditions.push(
+      arrayOverlaps(jobListings.requiredCertifications, filters.certs),
+    );
+  }
+  if (filters.posted) {
+    // Server component: reading the wall clock per request is the point.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now();
+    const cutoff = new Date(
+      now - POSTED_DAYS[filters.posted] * 24 * 60 * 60 * 1000,
+    );
+    conditions.push(gte(jobListings.publishedAt, cutoff));
+  }
+  if (filters.minSalary != null) {
+    // A role matches if EITHER salaryMax or salaryMin clears the floor.
+    conditions.push(
+      or(
+        gte(jobListings.salaryMax, filters.minSalary),
+        gte(jobListings.salaryMin, filters.minSalary),
       )!,
     );
   }
@@ -286,7 +392,10 @@ export default async function JobsBrowsePage({
             Find work that{" "}
             <em style={{ color: "var(--v2-accent-deep)" }}>actually</em> fits.
           </h1>
-          <JobsSearchInput initialQ={filters.q ?? ""} />
+          <JobsSearchInput
+            initialQ={filters.q ?? ""}
+            initialLoc={filters.loc ?? ""}
+          />
         </div>
 
         <div
@@ -357,6 +466,55 @@ export default async function JobsBrowsePage({
                   active={filters.setup === s}
                 >
                   {WORK_SETUP_LABELS[s]}
+                </ChipLink>
+              ))}
+            </FilterGroup>
+
+            <FilterGroup
+              title={`Min salary${
+                filters.minSalary != null
+                  ? ` · $${(filters.minSalary / 1000).toFixed(0)}k+`
+                  : ""
+              }`}
+            >
+              <div style={{ width: "100%" }}>
+                <SalarySlider
+                  initialValue={filters.minSalary}
+                  floor={MIN_SALARY_FLOOR}
+                  ceil={MIN_SALARY_CEIL}
+                />
+              </div>
+            </FilterGroup>
+
+            <FilterGroup title="Required tickets">
+              {CERTIFICATION_OPTIONS.map((c) => (
+                <ChipLink
+                  key={c}
+                  href={hrefWith(filters, {
+                    certs: toggleCert(filters.certs, c),
+                    page: 1,
+                  })}
+                  active={filters.certs.includes(c)}
+                >
+                  {c}
+                </ChipLink>
+              ))}
+            </FilterGroup>
+
+            <FilterGroup title="Posted within">
+              <ChipLink
+                href={hrefWith(filters, { posted: null, page: 1 })}
+                active={!filters.posted}
+              >
+                Any
+              </ChipLink>
+              {POSTED_VALUES.map((p) => (
+                <ChipLink
+                  key={p}
+                  href={hrefWith(filters, { posted: p, page: 1 })}
+                  active={filters.posted === p}
+                >
+                  {POSTED_LABELS[p]}
                 </ChipLink>
               ))}
             </FilterGroup>
