@@ -61,7 +61,7 @@ async function orgMemberFor(
 }
 
 export const applicationsRouter = router({
-  apply: protectedProcedure
+  submit: protectedProcedure
     .input(applySchema)
     .mutation(async ({ ctx, input }) => {
       if (ctx.session.user.role === "employer") {

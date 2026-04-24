@@ -51,7 +51,7 @@ export function ApplyButtonAndModal({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apply = api.applications.apply.useMutation({
+  const apply = api.applications.submit.useMutation({
     onSuccess: () => setSuccess(true),
     onError: (e) => setError(e.message),
   });
