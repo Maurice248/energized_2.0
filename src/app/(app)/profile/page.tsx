@@ -18,6 +18,7 @@ export default async function ProfilePage() {
 
   return (
     <ProfileClient
+      userId={session.user.id}
       name={session.user.name ?? ""}
       email={session.user.email}
       initialImage={session.user.image ?? null}

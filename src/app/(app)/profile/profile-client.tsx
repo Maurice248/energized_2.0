@@ -13,6 +13,10 @@ import {
   AddCertDialog,
   type CertDialogInitial,
 } from "@/components/shared/add-cert-dialog";
+import {
+  AddEducationDialog,
+  type EducationDialogInitial,
+} from "@/components/shared/add-education-dialog";
 import { SkillsPicker } from "@/components/shared/skills-picker";
 import {
   SuggestionCombobox,
@@ -25,6 +29,7 @@ const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: "user" as IconName },
   { id: "resume", label: "Resume", icon: "fileText" as IconName },
   { id: "work", label: "Work history", icon: "briefcase" as IconName },
+  { id: "education", label: "Education", icon: "graduationCap" as IconName },
   { id: "certs", label: "Certifications", icon: "shield" as IconName },
   { id: "skills", label: "Skills", icon: "sparkles" as IconName },
   { id: "preferences", label: "Preferences", icon: "sliders" as IconName },
@@ -74,6 +79,7 @@ const AVAILABILITY_OPTIONS: { value: AvailabilityEnum; label: string }[] = [
 ];
 
 export function ProfileClient({
+  userId,
   name,
   email,
   initialImage,
@@ -81,6 +87,7 @@ export function ProfileClient({
   emailVerified,
   joinedAt,
 }: {
+  userId: string;
   name: string;
   email: string;
   initialImage: string | null;
@@ -102,12 +109,19 @@ export function ProfileClient({
   const removeWork = api.profile.removeWorkHistory.useMutation({
     onSuccess: () => void profileQuery.refetch(),
   });
+  const removeEdu = api.profile.removeEducation.useMutation({
+    onSuccess: () => void profileQuery.refetch(),
+  });
 
   const [active, setActive] = useState<string>("overview");
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleDialogInitial | null>(null);
   const [certDialogOpen, setCertDialogOpen] = useState(false);
   const [editingCert, setEditingCert] = useState<CertDialogInitial | null>(null);
+  const [eduDialogOpen, setEduDialogOpen] = useState(false);
+  const [editingEdu, setEditingEdu] = useState<EducationDialogInitial | null>(
+    null,
+  );
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialImage);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -173,7 +187,7 @@ export function ProfileClient({
           </div>
           <button
             className="v2-btn v2-btn-ghost v2-btn-sm"
-            onClick={() => router.push("/profile")}
+            onClick={() => window.open(`/p/${userId}`, "_blank")}
           >
             <Icon name="eye" size={14} /> Preview public profile
           </button>
@@ -485,6 +499,105 @@ export function ProfileClient({
             ))}
           </section>
 
+          {/* Education */}
+          <section
+            id="pp-education"
+            className="pp-section"
+            style={{ scrollMarginTop: 100 }}
+          >
+            <div className="pp-section-head">
+              <div>
+                <div className="pp-section-title">Education</div>
+                <div className="pp-section-sub">
+                  {(data?.education.length ?? 0)} school
+                  {(data?.education.length ?? 0) === 1 ? "" : "s"} on file
+                </div>
+              </div>
+              <button
+                className="ob-add-btn"
+                onClick={() => {
+                  setEditingEdu(null);
+                  setEduDialogOpen(true);
+                }}
+              >
+                <Icon name="plus" size={14} /> Add education
+              </button>
+            </div>
+            {(data?.education ?? []).length === 0 && (
+              <p style={{ color: "var(--v2-ink-500)", fontSize: 14 }}>
+                No education on file yet.
+              </p>
+            )}
+            {(data?.education ?? []).map((e) => (
+              <div key={e.id} className="ob-card">
+                <div className="ob-card-head">
+                  <div
+                    className="ob-card-logo"
+                    style={{ background: "var(--v2-ink-700)" }}
+                  >
+                    <Icon name="graduationCap" size={20} />
+                  </div>
+                  <div>
+                    <div className="ob-card-role">
+                      {e.degree || "Unnamed degree"}
+                    </div>
+                    <div className="ob-card-company">
+                      <strong
+                        style={{
+                          color: "var(--v2-ink-900)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {e.school}
+                      </strong>
+                      <span className="sep">·</span>
+                      <span>
+                        {formatEduYears(e.startedYear, e.endedYear)}
+                      </span>
+                      {!e.endedYear && (
+                        <span
+                          className="v2-chip v2-chip-accent"
+                          style={{ padding: "2px 8px", fontSize: 11 }}
+                        >
+                          Current
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {e.details && (
+                  <div className="ob-card-body">{e.details}</div>
+                )}
+                <div className="ob-card-actions">
+                  <button
+                    className="ob-icon-btn"
+                    onClick={() => {
+                      setEditingEdu({
+                        id: e.id,
+                        school: e.school,
+                        degree: e.degree,
+                        startedYear: e.startedYear,
+                        endedYear: e.endedYear,
+                        details: e.details,
+                      });
+                      setEduDialogOpen(true);
+                    }}
+                    title="Edit"
+                  >
+                    <Icon name="settings" size={14} />
+                  </button>
+                  <button
+                    className="ob-icon-btn danger"
+                    onClick={() => removeEdu.mutate({ id: e.id })}
+                    title="Remove"
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </section>
+
           {/* Certifications */}
           <section
             id="pp-certs"
@@ -687,8 +800,28 @@ export function ProfileClient({
         onCreated={() => void profileQuery.refetch()}
         initial={editingCert ?? undefined}
       />
+      <AddEducationDialog
+        key={`edu-${editingEdu?.id ?? "new"}`}
+        open={eduDialogOpen}
+        onOpenChange={(v) => {
+          setEduDialogOpen(v);
+          if (!v) setEditingEdu(null);
+        }}
+        onCreated={() => void profileQuery.refetch()}
+        initial={editingEdu ?? undefined}
+      />
     </div>
   );
+}
+
+function formatEduYears(
+  startedYear: string | null,
+  endedYear: string | null,
+): string {
+  if (startedYear && endedYear) return `${startedYear} — ${endedYear}`;
+  if (startedYear && !endedYear) return `${startedYear} — Present`;
+  if (!startedYear && endedYear) return `Graduated ${endedYear}`;
+  return "Dates not set";
 }
 
 /* ---------- subcomponents ---------- */

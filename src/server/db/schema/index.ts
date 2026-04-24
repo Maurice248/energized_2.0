@@ -5,3 +5,4 @@ export * from "./certifications";
 export * from "./work-history";
 export * from "./employer-orgs";
 export * from "./org-members";
+export * from "./education";

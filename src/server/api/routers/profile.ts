@@ -4,6 +4,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "@/server/api/trpc";
 import {
   certifications,
+  education,
   profiles,
   user,
   workHistory,
@@ -99,6 +100,22 @@ const resumeInputSchema = z.object({
   filename: z.string().min(1).max(240),
 });
 
+const educationInputSchema = z.object({
+  school: z.string().min(1).max(160),
+  degree: z.string().max(160).optional().nullable(),
+  startedYear: z
+    .string()
+    .regex(/^\d{4}$/, "Year must be four digits")
+    .optional()
+    .nullable(),
+  endedYear: z
+    .string()
+    .regex(/^\d{4}$/, "Year must be four digits")
+    .optional()
+    .nullable(),
+  details: z.string().max(500).optional().nullable(),
+});
+
 async function requireProfile(
   ctx: { db: typeof import("@/server/db").db; session: { user: { id: string } } },
 ) {
@@ -127,7 +144,7 @@ export const profileRouter = router({
 
     if (!profile) return null;
 
-    const [certs, history] = await Promise.all([
+    const [certs, history, edu] = await Promise.all([
       ctx.db
         .select()
         .from(certifications)
@@ -136,9 +153,18 @@ export const profileRouter = router({
         .select()
         .from(workHistory)
         .where(eq(workHistory.profileId, profile.id)),
+      ctx.db
+        .select()
+        .from(education)
+        .where(eq(education.profileId, profile.id)),
     ]);
 
-    return { profile, certifications: certs, workHistory: history };
+    return {
+      profile,
+      certifications: certs,
+      workHistory: history,
+      education: edu,
+    };
   }),
 
   update: protectedProcedure
@@ -276,6 +302,57 @@ export const profileRouter = router({
       if (!deleted) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      return deleted;
+    }),
+
+  addEducation: protectedProcedure
+    .input(educationInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const profile = await requireProfile(ctx);
+      const [row] = await ctx.db
+        .insert(education)
+        .values({ ...input, profileId: profile.id })
+        .returning();
+      return row;
+    }),
+
+  updateEducation: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        patch: educationInputSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const profile = await requireProfile(ctx);
+      const [row] = await ctx.db
+        .update(education)
+        .set(input.patch)
+        .where(
+          and(
+            eq(education.id, input.id),
+            eq(education.profileId, profile.id),
+          ),
+        )
+        .returning();
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      return row;
+    }),
+
+  removeEducation: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await requireProfile(ctx);
+      const [deleted] = await ctx.db
+        .delete(education)
+        .where(
+          and(
+            eq(education.id, input.id),
+            eq(education.profileId, profile.id),
+          ),
+        )
+        .returning({ id: education.id });
+      if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       return deleted;
     }),
 
