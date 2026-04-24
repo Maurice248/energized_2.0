@@ -80,3 +80,17 @@ export const workSetupEnum = pgEnum("work_setup", [
   "remote_ok",
   "flexible",
 ]);
+
+export const jobStatusEnum = pgEnum("job_status", [
+  "draft",
+  "published",
+  "closed",
+]);
+
+export const experienceLevelEnum = pgEnum("experience_level", [
+  "entry",
+  "intermediate",
+  "senior",
+  "lead",
+  "executive",
+]);
