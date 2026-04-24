@@ -14,6 +14,7 @@ import {
   StoryStep,
   type WizardDraft,
 } from "./wizard-steps";
+import { JobPreviewCard } from "@/components/jobs/job-preview-card";
 
 type JobRow = inferRouterOutputs<AppRouter>["jobs"]["getById"];
 
@@ -286,7 +287,27 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
             <PayStep draft={draft} setDraft={setDraft} missing={missingFields} />
           )}
           {step === 4 && (
-            <StoryStep draft={draft} setDraft={setDraft} missing={missingFields} />
+            <div style={{ display: "grid", gap: 28 }}>
+              <StoryStep draft={draft} setDraft={setDraft} missing={missingFields} />
+              <div className="v2-eyebrow">Live preview</div>
+              <JobPreviewCard
+                job={{
+                  title: draft.title || null,
+                  sector: draft.sector,
+                  experienceLevel: draft.experienceLevel,
+                  location: draft.location || null,
+                  workSetup: draft.workSetup,
+                  rotationSchedule: draft.rotationSchedule,
+                  salaryMin: draft.salaryMin,
+                  salaryMax: draft.salaryMax,
+                  salaryCurrency: draft.salaryCurrency,
+                  salaryPeriod: draft.salaryPeriod,
+                  requiredCertifications: draft.requiredCertifications,
+                  summary: draft.summary || null,
+                  description: draft.description || null,
+                }}
+              />
+            </div>
           )}
 
           {publishError && (
