@@ -2,6 +2,7 @@ import { createCallerFactory, router } from "@/server/api/trpc";
 import { accountRouter } from "@/server/api/routers/account";
 import { employerRouter } from "@/server/api/routers/employer";
 import { healthRouter } from "@/server/api/routers/health";
+import { jobsRouter } from "@/server/api/routers/jobs";
 import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { profileRouter } from "@/server/api/routers/profile";
 
@@ -9,6 +10,7 @@ export const appRouter = router({
   account: accountRouter,
   employer: employerRouter,
   health: healthRouter,
+  jobs: jobsRouter,
   onboarding: onboardingRouter,
   profile: profileRouter,
 });
