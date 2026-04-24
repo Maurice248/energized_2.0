@@ -9,6 +9,7 @@ const schema = z.object({
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url(),
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(1),
+  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 export const env = schema.parse({
@@ -20,4 +21,5 @@ export const env = schema.parse({
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 });

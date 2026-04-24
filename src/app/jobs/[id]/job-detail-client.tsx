@@ -13,6 +13,7 @@ import {
   type ApplyViewerState,
 } from "./apply-modal";
 import { SaveButton, type SaveViewer } from "./save-button";
+import { EmberCard } from "./ember-card";
 
 type ScreeningQuestion = { q: string; required: boolean };
 
@@ -552,6 +553,12 @@ export function JobDetailClient({
       </div>
 
       <aside style={{ display: "grid", gap: 16 }}>
+        <EmberCard
+          jobId={job.id}
+          showForViewer={
+            viewer.kind === "eligible" || viewer.kind === "applied"
+          }
+        />
         <div
           style={{
             background: "white",
