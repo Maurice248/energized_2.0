@@ -12,6 +12,7 @@ import {
   ApplyButtonAndModal,
   type ApplyViewerState,
 } from "./apply-modal";
+import { SaveButton, type SaveViewer } from "./save-button";
 
 type ScreeningQuestion = { q: string; required: boolean };
 
@@ -84,6 +85,7 @@ type Props = {
   ) => string;
   viewer: ApplyViewerState;
   signInHref: string;
+  saveViewer: SaveViewer;
 };
 
 const COMPANY_SIZE_LABELS: Record<string, string> = {
@@ -104,6 +106,7 @@ export function JobDetailClient({
   salaryFormatter,
   viewer,
   signInHref,
+  saveViewer,
 }: Props) {
   const [tab, setTab] = useState<"overview" | "company">("overview");
 
@@ -292,13 +295,7 @@ export function JobDetailClient({
               viewer={viewer}
               signInHref={signInHref}
             />
-            <button
-              className="v2-btn v2-btn-ghost"
-              disabled
-              title="Saved roles coming soon"
-            >
-              <Icon name="bookmark" size={14} /> Save
-            </button>
+            <SaveButton jobId={job.id} viewer={saveViewer} />
           </div>
         </div>
 

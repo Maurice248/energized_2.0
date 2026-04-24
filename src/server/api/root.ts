@@ -6,6 +6,7 @@ import { healthRouter } from "@/server/api/routers/health";
 import { jobsRouter } from "@/server/api/routers/jobs";
 import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { profileRouter } from "@/server/api/routers/profile";
+import { savedJobsRouter } from "@/server/api/routers/saved-jobs";
 
 export const appRouter = router({
   account: accountRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   jobs: jobsRouter,
   onboarding: onboardingRouter,
   profile: profileRouter,
+  savedJobs: savedJobsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -78,6 +78,13 @@
       "when": 1777051520437,
       "tag": "0010_bouncy_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777053207307,
+      "tag": "0011_clumsy_lila_cheney",
+      "breakpoints": true
     }
   ]
 }

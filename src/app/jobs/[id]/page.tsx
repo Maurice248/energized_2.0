@@ -10,10 +10,12 @@ import {
   jobListings,
   orgMembers,
   profiles,
+  savedJobs,
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import type { ApplyViewerState } from "./apply-modal";
+import type { SaveViewer } from "./save-button";
 import { Icon } from "@/components/shared/icon";
 import {
   EXPERIENCE_LEVEL_LABELS,
@@ -181,6 +183,31 @@ export default async function PublicJobDetailPage({
     }
   }
 
+  let saveViewer: SaveViewer;
+  if (!session) {
+    saveViewer = {
+      kind: "anonymous",
+      signInHref: `/sign-in?redirect=/jobs/${job.id}`,
+    };
+  } else if (
+    session.user.role === "employer" ||
+    viewer.kind === "employer"
+  ) {
+    saveViewer = { kind: "employer" };
+  } else {
+    const [savedHit] = await db
+      .select({ id: savedJobs.id })
+      .from(savedJobs)
+      .where(
+        and(
+          eq(savedJobs.jobId, job.id),
+          eq(savedJobs.userId, session.user.id),
+        ),
+      )
+      .limit(1);
+    saveViewer = { kind: "jobseeker", initiallySaved: Boolean(savedHit) };
+  }
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
@@ -269,9 +296,23 @@ export default async function PublicJobDetailPage({
             Jobs
           </Link>
           {viewerIsAuthed ? (
-            <Link href="/dashboard" className="v2-btn v2-btn-primary v2-btn-sm">
-              Dashboard →
-            </Link>
+            <>
+              <Link href="/saved" style={{ color: "var(--v2-ink-700)" }}>
+                Saved
+              </Link>
+              <Link
+                href="/applications"
+                style={{ color: "var(--v2-ink-700)" }}
+              >
+                Applications
+              </Link>
+              <Link
+                href="/dashboard"
+                className="v2-btn v2-btn-primary v2-btn-sm"
+              >
+                Dashboard →
+              </Link>
+            </>
           ) : (
             <>
               <Link href="/sign-in" style={{ color: "var(--v2-ink-700)" }}>
@@ -369,6 +410,7 @@ export default async function PublicJobDetailPage({
           salaryFormatter={formatSalary}
           viewer={viewer}
           signInHref={`/sign-in?redirect=/jobs/${job.id}`}
+          saveViewer={saveViewer}
         />
       </div>
     </div>

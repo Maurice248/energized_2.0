@@ -356,9 +356,26 @@ export default async function JobsBrowsePage({
             Jobs
           </Link>
           {viewerIsAuthed ? (
-            <Link href="/dashboard" className="v2-btn v2-btn-primary v2-btn-sm">
-              Dashboard →
-            </Link>
+            <>
+              <Link
+                href="/saved"
+                style={{ color: "var(--v2-ink-700)" }}
+              >
+                Saved
+              </Link>
+              <Link
+                href="/applications"
+                style={{ color: "var(--v2-ink-700)" }}
+              >
+                Applications
+              </Link>
+              <Link
+                href="/dashboard"
+                className="v2-btn v2-btn-primary v2-btn-sm"
+              >
+                Dashboard →
+              </Link>
+            </>
           ) : (
             <>
               <Link href="/sign-in" style={{ color: "var(--v2-ink-700)" }}>

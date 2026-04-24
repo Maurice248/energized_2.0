@@ -8,3 +8,4 @@ export * from "./org-members";
 export * from "./education";
 export * from "./job-listings";
 export * from "./applications";
+export * from "./saved-jobs";

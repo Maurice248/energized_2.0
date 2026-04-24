@@ -4,40 +4,49 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import {
-  applications,
-  employerOrgs,
-  jobListings,
-} from "@/server/db/schema";
+import { employerOrgs, jobListings, savedJobs } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { Icon } from "@/components/shared/icon";
+import {
+  SECTOR_LABELS,
+  WORK_SETUP_LABELS,
+  formatSalary,
+  type JobSector,
+  type JobWorkSetup,
+} from "@/lib/jobs-options";
 
 export const metadata: Metadata = {
-  title: "My applications — Energized",
+  title: "Saved roles — Energized",
 };
 
-export default async function MyApplicationsPage() {
+export default async function SavedJobsPage() {
   const session = await getSession();
-  if (!session) redirect("/sign-in?redirect=/applications");
+  if (!session) redirect("/sign-in?redirect=/saved");
 
   const rows = await db
     .select({
-      id: applications.id,
-      status: applications.status,
-      createdAt: applications.createdAt,
-      jobId: applications.jobId,
+      id: savedJobs.id,
+      createdAt: savedJobs.createdAt,
+      jobId: jobListings.id,
       jobTitle: jobListings.title,
       jobLocation: jobListings.location,
+      jobStatus: jobListings.status,
+      workSetup: jobListings.workSetup,
+      sector: jobListings.sector,
+      salaryMin: jobListings.salaryMin,
+      salaryMax: jobListings.salaryMax,
+      salaryCurrency: jobListings.salaryCurrency,
+      salaryPeriod: jobListings.salaryPeriod,
       orgId: employerOrgs.id,
       orgName: employerOrgs.name,
       orgLogoUrl: employerOrgs.logoUrl,
       orgLogoColor: employerOrgs.logoColor,
     })
-    .from(applications)
-    .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+    .from(savedJobs)
+    .innerJoin(jobListings, eq(jobListings.id, savedJobs.jobId))
     .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
-    .where(eq(applications.candidateId, session.user.id))
-    .orderBy(desc(applications.createdAt));
+    .where(eq(savedJobs.userId, session.user.id))
+    .orderBy(desc(savedJobs.createdAt));
 
   return (
     <div
@@ -80,14 +89,14 @@ export default async function MyApplicationsPage() {
           <Link href="/jobs" style={{ color: "var(--v2-ink-700)" }}>
             Jobs
           </Link>
-          <Link href="/saved" style={{ color: "var(--v2-ink-700)" }}>
-            Saved
+          <Link href="/applications" style={{ color: "var(--v2-ink-700)" }}>
+            Applications
           </Link>
           <Link
-            href="/applications"
+            href="/saved"
             style={{ color: "var(--v2-ink-900)", fontWeight: 700 }}
           >
-            Applications
+            Saved
           </Link>
         </nav>
       </header>
@@ -97,7 +106,7 @@ export default async function MyApplicationsPage() {
         style={{ paddingTop: 48, paddingBottom: 80, maxWidth: 820 }}
       >
         <div className="v2-eyebrow">
-          {rows.length} {rows.length === 1 ? "application" : "applications"}
+          {rows.length} {rows.length === 1 ? "saved role" : "saved roles"}
         </div>
         <h1
           className="v2-h2"
@@ -108,7 +117,7 @@ export default async function MyApplicationsPage() {
             marginBottom: 24,
           }}
         >
-          Your applications.
+          Your saved roles.
         </h1>
 
         {rows.length === 0 ? (
@@ -130,10 +139,10 @@ export default async function MyApplicationsPage() {
                 marginBottom: 10,
               }}
             >
-              You haven&apos;t applied yet.
+              No saved roles yet.
             </div>
             <p style={{ color: "var(--v2-ink-500)", marginBottom: 20 }}>
-              Browse open roles — there are real jobs waiting.
+              Bookmark a role from any job page — it lands here.
             </p>
             <Link href="/jobs" className="v2-btn v2-btn-primary v2-btn-sm">
               Browse jobs
@@ -148,7 +157,7 @@ export default async function MyApplicationsPage() {
                 style={{
                   display: "flex",
                   gap: 14,
-                  alignItems: "center",
+                  alignItems: "flex-start",
                   padding: 18,
                   background: "white",
                   border: "1px solid var(--v2-ink-200)",
@@ -191,25 +200,56 @@ export default async function MyApplicationsPage() {
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>
-                    {r.jobTitle ?? "Untitled role"}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      marginBottom: 4,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>
+                      {r.jobTitle ?? "Untitled role"}
+                    </div>
+                    {r.sector && (
+                      <span className="v2-chip v2-chip-accent">
+                        {SECTOR_LABELS[r.sector as JobSector]}
+                      </span>
+                    )}
+                    {r.jobStatus !== "published" && (
+                      <span className="v2-chip v2-chip-coral">
+                        {r.jobStatus === "closed" ? "Closed" : "Not public"}
+                      </span>
+                    )}
                   </div>
                   <div
                     style={{
                       fontSize: 13,
                       color: "var(--v2-ink-500)",
-                      marginTop: 2,
+                      marginBottom: 8,
                     }}
                   >
                     {r.orgName}
                     {r.jobLocation && ` · ${r.jobLocation}`}
-                    {` · Applied ${new Date(r.createdAt).toLocaleDateString(
-                      "en-CA",
-                      { month: "short", day: "numeric" },
-                    )}`}
+                    {r.workSetup &&
+                      ` · ${WORK_SETUP_LABELS[r.workSetup as JobWorkSetup]}`}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--v2-font-mono)",
+                      fontSize: 12,
+                      color: "var(--v2-ink-600)",
+                    }}
+                  >
+                    {formatSalary(
+                      r.salaryMin,
+                      r.salaryMax,
+                      r.salaryCurrency,
+                      r.salaryPeriod,
+                    )}
                   </div>
                 </div>
-                <span className="v2-chip v2-chip-accent">Submitted</span>
                 <Icon name="arrowUpRight" size={14} />
               </Link>
             ))}
