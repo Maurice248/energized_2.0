@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, router } from "@/server/api/trpc";
+import { protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
 import { employerOrgs, jobListings, orgMembers } from "@/server/db/schema";
 import type { ScreeningQuestion } from "@/server/db/schema/job-listings";
 
@@ -281,6 +281,70 @@ export const jobsRouter = router({
         .set({ status: "published", closedAt: null })
         .where(eq(jobListings.id, input.id))
         .returning();
+      return row;
+    }),
+
+  deleteDraft: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const { orgId } = await requireOrgRole(ctx, EDIT_ROLES);
+      const existing = await getJobForOrg(ctx, input.id, orgId);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (existing.status !== "draft") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only drafts can be deleted. Close the role instead.",
+        });
+      }
+      await ctx.db.delete(jobListings).where(eq(jobListings.id, input.id));
+      return { ok: true };
+    }),
+
+  duplicate: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const { orgId } = await requireOrgRole(ctx, EDIT_ROLES);
+      const source = await getJobForOrg(ctx, input.id, orgId);
+      if (!source) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [row] = await ctx.db
+        .insert(jobListings)
+        .values({
+          orgId,
+          createdByUserId: ctx.session.user.id,
+          title: source.title ? `${source.title} (copy)` : null,
+          sector: source.sector,
+          subSectors: source.subSectors,
+          experienceLevel: source.experienceLevel,
+          location: source.location,
+          workSetup: source.workSetup,
+          rotationSchedule: source.rotationSchedule,
+          hoursPerWeek: source.hoursPerWeek,
+          salaryMin: source.salaryMin,
+          salaryMax: source.salaryMax,
+          salaryCurrency: source.salaryCurrency,
+          salaryPeriod: source.salaryPeriod,
+          requiredCertifications: source.requiredCertifications,
+          screeningQuestions: source.screeningQuestions,
+          summary: source.summary,
+          description: source.description,
+          status: "draft",
+        })
+        .returning({ id: jobListings.id });
+      return row;
+    }),
+
+  getPublic: publicProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select()
+        .from(jobListings)
+        .where(
+          and(eq(jobListings.id, input.id), eq(jobListings.status, "published")),
+        )
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       return row;
     }),
 });
