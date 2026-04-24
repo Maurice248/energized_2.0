@@ -214,30 +214,55 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
 
       <div className="ob-body">
         <aside className="ob-rail">
-          <div className="ob-rail-head">
-            <div className="v2-eyebrow">Post a role</div>
-            <div className="ob-completion">
-              <div className="ob-completion-bar">
-                <div
-                  className="ob-completion-bar-fill"
-                  style={{ width: `${((step - 1) / 3) * 100}%` }}
-                />
-              </div>
-              <div className="ob-completion-pct">{step} of {STEPS.length}</div>
+          <div className="ob-rail-title">
+            Post a <em>new role</em>
+          </div>
+          <div className="ob-rail-sub">
+            Four steps. Autosaved as you go.
+          </div>
+
+          <div className="ob-steps">
+            {STEPS.map((s, i) => {
+              const stateCls =
+                step - 1 > i ? "done" : step - 1 === i ? "active" : "";
+              return (
+                <button
+                  key={s.id}
+                  className={`ob-step-row ${stateCls}`}
+                  onClick={() => void goStep(s.id)}
+                >
+                  <div className="ob-step-pip">
+                    {step - 1 > i ? (
+                      <Icon name="check" size={14} />
+                    ) : (
+                      String(s.id).padStart(2, "0")
+                    )}
+                  </div>
+                  <div>
+                    <div className="ob-step-label">{s.title}</div>
+                    <div className="ob-step-hint">{s.hint}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="ob-rail-completion">
+            <div className="ob-completion-label">
+              <span>Progress</span>
+              <span className="ob-completion-pct">
+                {Math.round(((step - 1) / (STEPS.length - 1)) * 100)}%
+              </span>
+            </div>
+            <div className="ob-completion-bar">
+              <div
+                className="ob-completion-bar-fill"
+                style={{
+                  width: `${Math.round(((step - 1) / (STEPS.length - 1)) * 100)}%`,
+                }}
+              />
             </div>
           </div>
-          <nav className="ob-steps">
-            {STEPS.map((s) => (
-              <button
-                key={s.id}
-                className={`ob-step ${step === s.id ? "active" : ""} ${step > s.id ? "done" : ""}`}
-                onClick={() => void goStep(s.id)}
-              >
-                <span className="ob-step-n">{String(s.id).padStart(2, "0")}</span>
-                <span className="ob-step-title">{s.title}</span>
-              </button>
-            ))}
-          </nav>
         </aside>
 
         <main className="ob-main">
