@@ -94,3 +94,11 @@ export const experienceLevelEnum = pgEnum("experience_level", [
   "lead",
   "executive",
 ]);
+
+export const applicationStatusEnum = pgEnum("application_status", [
+  "submitted",
+  "reviewed",
+  "interview",
+  "offer",
+  "rejected",
+]);
