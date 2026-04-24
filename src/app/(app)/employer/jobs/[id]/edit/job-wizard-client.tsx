@@ -82,6 +82,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
   const [publishError, setPublishError] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
 
+  const utils = api.useUtils();
   const updateDraft = api.jobs.updateDraft.useMutation();
   const publish = api.jobs.publish.useMutation();
 
@@ -145,8 +146,17 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
     setPublishError(null);
     setMissingFields([]);
     try {
-      await flushSave();
+      // Don't block publish on an autosave failure — the server-side
+      // publish validator will report any actual missing fields. If the
+      // save succeeds, great; if it doesn't, keep going.
+      try {
+        await flushSave();
+      } catch {
+        // swallow — publish is the source of truth for validation
+      }
       await publish.mutateAsync({ id: initial.id });
+      await utils.jobs.listForOrg.invalidate();
+      await utils.jobs.getById.invalidate({ id: initial.id });
       router.push(`/employer/profile#ep-jobs`);
     } catch (e) {
       if (e instanceof Error) {
