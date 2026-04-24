@@ -13,6 +13,14 @@ export const EVENT_AUTH_SIGN_OUT_COMPLETED = "auth.sign_out.completed";
 export const EVENT_JOB_POSTED = "job.posted";
 export const EVENT_JOB_VIEWED = "job.viewed";
 
+// Job lifecycle (employer wizard)
+export const EVENT_JOB_DRAFT_CREATED = "job.draft.created";
+export const EVENT_JOB_DRAFT_UPDATED = "job.draft.updated";
+export const EVENT_JOB_PUBLISHED = "job.published";
+export const EVENT_JOB_CLOSED = "job.closed";
+export const EVENT_JOB_REOPENED = "job.reopened";
+export const EVENT_JOB_WIZARD_STEP_VIEWED = "job.wizard.step_viewed";
+
 // Applications
 export const EVENT_APPLICATION_SUBMITTED = "application.submitted";
 
