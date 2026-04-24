@@ -8,6 +8,10 @@ import type {
   JobSector,
   JobWorkSetup,
 } from "@/lib/jobs-options";
+import {
+  ApplyButtonAndModal,
+  type ApplyViewerState,
+} from "./apply-modal";
 
 type ScreeningQuestion = { q: string; required: boolean };
 
@@ -78,6 +82,8 @@ type Props = {
     currency: string | null,
     period: string | null,
   ) => string;
+  viewer: ApplyViewerState;
+  signInHref: string;
 };
 
 const COMPANY_SIZE_LABELS: Record<string, string> = {
@@ -96,6 +102,8 @@ export function JobDetailClient({
   similar,
   labels,
   salaryFormatter,
+  viewer,
+  signInHref,
 }: Props) {
   const [tab, setTab] = useState<"overview" | "company">("overview");
 
@@ -268,14 +276,22 @@ export function JobDetailClient({
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              className="v2-btn v2-btn-primary"
-              disabled
-              title="Apply flow coming soon"
-            >
-              Apply now <Icon name="arrowUpRight" size={14} />
-            </button>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <ApplyButtonAndModal
+              jobId={job.id}
+              jobTitle={job.title ?? "Untitled role"}
+              companyName={org.name}
+              screeningQuestions={job.screeningQuestions}
+              viewer={viewer}
+              signInHref={signInHref}
+            />
             <button
               className="v2-btn v2-btn-ghost"
               disabled
@@ -283,17 +299,6 @@ export function JobDetailClient({
             >
               <Icon name="bookmark" size={14} /> Save
             </button>
-          </div>
-          <div
-            style={{
-              marginTop: 10,
-              fontSize: 12,
-              color: "var(--v2-ink-500)",
-              fontStyle: "italic",
-            }}
-          >
-            Apply flow coming soon — share this link with the hiring team in the
-            meantime.
           </div>
         </div>
 

@@ -4,8 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/server/db";
-import { employerOrgs, jobListings } from "@/server/db/schema";
+import {
+  applications,
+  employerOrgs,
+  jobListings,
+  orgMembers,
+  profiles,
+  workHistory,
+} from "@/server/db/schema";
 import { getSession } from "@/server/auth";
+import type { ApplyViewerState } from "./apply-modal";
 import { Icon } from "@/components/shared/icon";
 import {
   EXPERIENCE_LEVEL_LABELS,
@@ -114,6 +122,64 @@ export default async function PublicJobDetailPage({
 
   const session = await getSession();
   const viewerIsAuthed = Boolean(session);
+
+  let viewer: ApplyViewerState;
+  if (!session) {
+    viewer = { kind: "anonymous" };
+  } else if (session.user.role === "employer") {
+    viewer = { kind: "employer" };
+  } else {
+    const [member] = await db
+      .select({ id: orgMembers.id })
+      .from(orgMembers)
+      .where(eq(orgMembers.userId, session.user.id))
+      .limit(1);
+    if (member) {
+      viewer = { kind: "employer" };
+    } else {
+      const [applied] = await db
+        .select({ id: applications.id })
+        .from(applications)
+        .where(
+          and(
+            eq(applications.jobId, job.id),
+            eq(applications.candidateId, session.user.id),
+          ),
+        )
+        .limit(1);
+      if (applied) {
+        viewer = { kind: "applied" };
+      } else {
+        const [p] = await db
+          .select()
+          .from(profiles)
+          .where(eq(profiles.userId, session.user.id))
+          .limit(1);
+        if (!p || !p.headline || !p.headline.trim()) {
+          viewer = { kind: "incomplete" };
+        } else {
+          const hasSectors =
+            Array.isArray(p.sectors) && p.sectors.length > 0;
+          const [wh] = await db
+            .select({ id: workHistory.id })
+            .from(workHistory)
+            .where(eq(workHistory.profileId, p.id))
+            .limit(1);
+          if (!hasSectors && !wh) {
+            viewer = { kind: "incomplete" };
+          } else {
+            viewer = {
+              kind: "eligible",
+              candidateName: session.user.name ?? session.user.email,
+              candidateHeadline: p.headline,
+              candidateLocation: p.location,
+              candidateResumeName: p.resumeFilename,
+            };
+          }
+        }
+      }
+    }
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -301,6 +367,8 @@ export default async function PublicJobDetailPage({
             experienceLevel: EXPERIENCE_LEVEL_LABELS,
           }}
           salaryFormatter={formatSalary}
+          viewer={viewer}
+          signInHref={`/sign-in?redirect=/jobs/${job.id}`}
         />
       </div>
     </div>
