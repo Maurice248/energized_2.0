@@ -12,6 +12,8 @@ export const EVENT_AUTH_SIGN_OUT_COMPLETED = "auth.sign_out.completed";
 // Jobs
 export const EVENT_JOB_POSTED = "job.posted";
 export const EVENT_JOB_VIEWED = "job.viewed";
+export const EVENT_JOB_SAVED = "job.saved";
+export const EVENT_JOB_UNSAVED = "job.unsaved";
 
 // Job lifecycle (employer wizard)
 export const EVENT_JOB_DRAFT_CREATED = "job.draft.created";
@@ -23,6 +25,7 @@ export const EVENT_JOB_WIZARD_STEP_VIEWED = "job.wizard.step_viewed";
 
 // Applications
 export const EVENT_APPLICATION_SUBMITTED = "application.submitted";
+export const EVENT_APPLICATION_STATUS_CHANGED = "application.status_changed";
 
 // Billing
 export const EVENT_BILLING_SUBSCRIPTION_STARTED = "billing.subscription.started";
