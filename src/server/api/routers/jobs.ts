@@ -4,6 +4,13 @@ import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
 import { employerOrgs, jobListings, orgMembers } from "@/server/db/schema";
 import type { ScreeningQuestion } from "@/server/db/schema/job-listings";
+import { safeCapture } from "@/lib/posthog";
+import {
+  EVENT_JOB_CLOSED,
+  EVENT_JOB_DRAFT_CREATED,
+  EVENT_JOB_PUBLISHED,
+  EVENT_JOB_REOPENED,
+} from "@/lib/analytics-events";
 
 const sectorValues = [
   "oil_gas",
@@ -166,6 +173,11 @@ export const jobsRouter = router({
       .insert(jobListings)
       .values({ orgId, createdByUserId: ctx.session.user.id })
       .returning({ id: jobListings.id });
+    await safeCapture({
+      distinctId: ctx.session.user.id,
+      event: EVENT_JOB_DRAFT_CREATED,
+      properties: { orgId, jobId: row.id },
+    });
     return row;
   }),
 
@@ -241,6 +253,18 @@ export const jobsRouter = router({
         .set({ status: "published", publishedAt: new Date() })
         .where(eq(jobListings.id, input.id))
         .returning();
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_JOB_PUBLISHED,
+        properties: {
+          orgId,
+          jobId: row.id,
+          sector: row.sector,
+          experienceLevel: row.experienceLevel,
+          salaryMin: row.salaryMin,
+          salaryMax: row.salaryMax,
+        },
+      });
       return row;
     }),
 
@@ -261,6 +285,20 @@ export const jobsRouter = router({
         .set({ status: "closed", closedAt: new Date() })
         .where(eq(jobListings.id, input.id))
         .returning();
+      const daysOpen = existing.publishedAt
+        ? Math.max(
+            0,
+            Math.floor(
+              (Date.now() - new Date(existing.publishedAt).getTime()) /
+                (24 * 60 * 60 * 1000),
+            ),
+          )
+        : null;
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_JOB_CLOSED,
+        properties: { orgId, jobId: row.id, daysOpen },
+      });
       return row;
     }),
 
@@ -281,6 +319,11 @@ export const jobsRouter = router({
         .set({ status: "published", closedAt: null })
         .where(eq(jobListings.id, input.id))
         .returning();
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_JOB_REOPENED,
+        properties: { orgId, jobId: row.id },
+      });
       return row;
     }),
 
