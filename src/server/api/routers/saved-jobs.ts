@@ -7,6 +7,8 @@ import {
   jobListings,
   savedJobs,
 } from "@/server/db/schema";
+import { safeCapture } from "@/lib/posthog";
+import { EVENT_JOB_SAVED, EVENT_JOB_UNSAVED } from "@/lib/analytics-events";
 
 export const savedJobsRouter = router({
   toggle: protectedProcedure
@@ -30,6 +32,11 @@ export const savedJobsRouter = router({
         .limit(1);
       if (existing) {
         await ctx.db.delete(savedJobs).where(eq(savedJobs.id, existing.id));
+        await safeCapture({
+          distinctId: ctx.session.user.id,
+          event: EVENT_JOB_UNSAVED,
+          properties: { jobId: input.jobId },
+        });
         return { saved: false };
       }
       const [job] = await ctx.db
@@ -41,6 +48,11 @@ export const savedJobsRouter = router({
       await ctx.db
         .insert(savedJobs)
         .values({ jobId: input.jobId, userId: ctx.session.user.id });
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_JOB_SAVED,
+        properties: { jobId: input.jobId },
+      });
       return { saved: true };
     }),
 

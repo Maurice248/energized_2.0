@@ -13,6 +13,11 @@ import {
   workHistory,
 } from "@/server/db/schema";
 import type { sendApplicationEmailTask } from "../../../../code/trigger/send-application-email";
+import { safeCapture } from "@/lib/posthog";
+import {
+  EVENT_APPLICATION_STATUS_CHANGED,
+  EVENT_APPLICATION_SUBMITTED,
+} from "@/lib/analytics-events";
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -156,6 +161,17 @@ export const applicationsRouter = router({
           { applicationId: row.id },
         );
 
+        await safeCapture({
+          distinctId: ctx.session.user.id,
+          event: EVENT_APPLICATION_SUBMITTED,
+          properties: {
+            orgId: job.orgId,
+            jobId: input.jobId,
+            hasCoverNote: Boolean(input.coverNote?.trim()),
+            screeningAnswerCount: input.screeningAnswers.length,
+          },
+        });
+
         return row;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -263,6 +279,8 @@ export const applicationsRouter = router({
         .select({
           id: applications.id,
           orgId: jobListings.orgId,
+          jobId: jobListings.id,
+          fromStatus: applications.status,
         })
         .from(applications)
         .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
@@ -287,6 +305,19 @@ export const applicationsRouter = router({
         .update(applications)
         .set({ status: input.status })
         .where(eq(applications.id, input.id));
+
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_APPLICATION_STATUS_CHANGED,
+        properties: {
+          orgId: hit.orgId,
+          jobId: hit.jobId,
+          applicationId: input.id,
+          fromStatus: hit.fromStatus,
+          toStatus: input.status,
+        },
+      });
+
       return { id: input.id, status: input.status };
     }),
 
