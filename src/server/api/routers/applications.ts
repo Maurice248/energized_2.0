@@ -30,6 +30,21 @@ const applySchema = z.object({
 
 type OrgRole = "owner" | "admin" | "recruiter" | "hiring_manager" | "viewer";
 
+const EDIT_ROLES: OrgRole[] = [
+  "owner",
+  "admin",
+  "recruiter",
+  "hiring_manager",
+];
+
+const applicationStatusZ = z.enum([
+  "submitted",
+  "reviewed",
+  "interview",
+  "offer",
+  "rejected",
+]);
+
 async function orgMemberFor(
   ctx: {
     db: typeof import("@/server/db").db;
@@ -234,6 +249,45 @@ export const applicationsRouter = router({
         .orderBy(desc(applications.createdAt));
 
       return { job, role, applicants: rows };
+    }),
+
+  updateStatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: applicationStatusZ,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [hit] = await ctx.db
+        .select({
+          id: applications.id,
+          orgId: jobListings.orgId,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(eq(applications.id, input.id))
+        .limit(1);
+      if (!hit) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const role = await orgMemberFor(ctx, hit.orgId);
+      if (!role)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not a member of the hiring org.",
+        });
+      if (!EDIT_ROLES.includes(role)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Viewers can't move applicants.",
+        });
+      }
+
+      await ctx.db
+        .update(applications)
+        .set({ status: input.status })
+        .where(eq(applications.id, input.id));
+      return { id: input.id, status: input.status };
     }),
 
   countForJob: protectedProcedure
