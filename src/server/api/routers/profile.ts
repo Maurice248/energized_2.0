@@ -9,7 +9,7 @@ import {
   user,
   workHistory,
 } from "@/server/db/schema";
-import { getPostHogClient } from "@/lib/posthog";
+import { safeCapture } from "@/lib/posthog";
 import {
   EVENT_PROFILE_UPDATED,
   EVENT_RESUME_UPLOADED,
@@ -183,7 +183,7 @@ export const profileRouter = router({
         });
       }
 
-      getPostHogClient().capture({
+      await safeCapture({
         distinctId: ctx.session.user.id,
         event: EVENT_PROFILE_UPDATED,
         properties: {
@@ -376,7 +376,7 @@ export const profileRouter = router({
         });
       }
 
-      getPostHogClient().capture({
+      await safeCapture({
         distinctId: ctx.session.user.id,
         event: EVENT_RESUME_UPLOADED,
         properties: { filename: input.filename },

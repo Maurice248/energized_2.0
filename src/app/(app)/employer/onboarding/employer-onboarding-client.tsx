@@ -1030,7 +1030,7 @@ function TeamStep({
             textTransform: "uppercase",
           }}
         >
-          Invites are stored now · emails go out in Phase 2
+          Invites send an email immediately · revoke or resend anytime
         </div>
       </div>
 

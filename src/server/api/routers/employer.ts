@@ -1,8 +1,14 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
-import { employerOrgs, orgMembers, user } from "@/server/db/schema";
+import {
+  applications,
+  employerOrgs,
+  jobListings,
+  orgMembers,
+  user,
+} from "@/server/db/schema";
 import { resend } from "@/lib/resend";
 import { env } from "@/env";
 import TeamInviteEmail from "@/emails/team-invite";
@@ -139,6 +145,46 @@ export const employerRouter = router({
       .where(eq(orgMembers.orgId, org.id));
 
     return { org, members };
+  }),
+
+  getKpis: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await findMyOrg(ctx);
+    if (!orgId) return null;
+
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [openRoles] = await ctx.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(jobListings)
+      .where(
+        and(
+          eq(jobListings.orgId, orgId),
+          eq(jobListings.status, "published"),
+        ),
+      );
+
+    const [applicants30d] = await ctx.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(applications)
+      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+      .where(
+        and(
+          eq(jobListings.orgId, orgId),
+          gte(applications.createdAt, cutoff),
+        ),
+      );
+
+    const [applicantsTotal] = await ctx.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(applications)
+      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+      .where(eq(jobListings.orgId, orgId));
+
+    return {
+      openRoles: openRoles?.count ?? 0,
+      applicants30d: applicants30d?.count ?? 0,
+      applicantsTotal: applicantsTotal?.count ?? 0,
+    };
   }),
 
   ensureOrg: protectedProcedure

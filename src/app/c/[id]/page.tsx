@@ -1,10 +1,17 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { employerOrgs } from "@/server/db/schema";
+import { employerOrgs, jobListings } from "@/server/db/schema";
 import { Icon } from "@/components/shared/icon";
+import {
+  SECTOR_LABELS as JOB_SECTOR_LABELS,
+  WORK_SETUP_LABELS,
+  formatSalary,
+  type JobSector,
+  type JobWorkSetup,
+} from "@/lib/jobs-options";
 
 export const metadata = { title: "Company — Energized" };
 
@@ -57,6 +64,28 @@ export default async function PublicCompanyPage({
     .limit(1);
 
   if (!org) notFound();
+
+  const orgJobs = await db
+    .select({
+      id: jobListings.id,
+      title: jobListings.title,
+      sector: jobListings.sector,
+      location: jobListings.location,
+      workSetup: jobListings.workSetup,
+      salaryMin: jobListings.salaryMin,
+      salaryMax: jobListings.salaryMax,
+      salaryCurrency: jobListings.salaryCurrency,
+      salaryPeriod: jobListings.salaryPeriod,
+      publishedAt: jobListings.publishedAt,
+    })
+    .from(jobListings)
+    .where(
+      and(
+        eq(jobListings.orgId, org.id),
+        eq(jobListings.status, "published"),
+      ),
+    )
+    .orderBy(desc(jobListings.publishedAt));
 
   return (
     <div
@@ -315,41 +344,102 @@ export default async function PublicCompanyPage({
           </section>
         )}
 
-        {/* Jobs placeholder */}
+        {/* Open roles */}
         <section className="pp-section">
           <div className="pp-section-head">
             <div>
               <div className="pp-section-title">Open roles</div>
               <div className="pp-section-sub">
-                Job board coming soon — bookmark this page.
+                {orgJobs.length === 0
+                  ? "No published roles right now."
+                  : `${orgJobs.length} open ${orgJobs.length === 1 ? "role" : "roles"} at ${org.name}`}
               </div>
             </div>
           </div>
-          <div
-            style={{
-              padding: 32,
-              border: "1px dashed var(--v2-ink-200)",
-              borderRadius: "var(--v2-r-lg)",
-              textAlign: "center",
-              color: "var(--v2-ink-500)",
-            }}
-          >
-            <Icon name="briefcase" size={24} />
+          {orgJobs.length === 0 ? (
             <div
               style={{
-                marginTop: 10,
-                fontFamily: "var(--v2-font-serif)",
-                fontSize: 20,
-                color: "var(--v2-ink-900)",
-                fontWeight: 400,
+                padding: 32,
+                border: "1px dashed var(--v2-ink-200)",
+                borderRadius: "var(--v2-r-lg)",
+                textAlign: "center",
+                color: "var(--v2-ink-500)",
               }}
             >
-              No public roles yet
+              <Icon name="briefcase" size={24} />
+              <div
+                style={{
+                  marginTop: 10,
+                  fontFamily: "var(--v2-font-serif)",
+                  fontSize: 20,
+                  color: "var(--v2-ink-900)",
+                  fontWeight: 400,
+                }}
+              >
+                No public roles yet
+              </div>
+              <div style={{ marginTop: 4, fontSize: 14 }}>
+                Bookmark this page — new roles appear here as soon as
+                {" "}{org.name} posts them.
+              </div>
             </div>
-            <div style={{ marginTop: 4, fontSize: 14 }}>
-              Follow {org.name} to get an alert when they post.
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              {orgJobs.map((j) => {
+                const postedLabel = j.publishedAt
+                  ? new Date(j.publishedAt).toLocaleDateString("en-CA", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : null;
+                return (
+                  <Link
+                    key={j.id}
+                    href={`/jobs/${j.id}`}
+                    style={{
+                      display: "block",
+                      padding: 18,
+                      border: "1px solid var(--v2-ink-200)",
+                      borderRadius: "var(--v2-r-lg)",
+                      background: "white",
+                      color: "inherit",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: 16 }}>
+                        {j.title ?? "Untitled role"}
+                      </div>
+                      {j.sector && (
+                        <span className="v2-chip v2-chip-accent">
+                          {JOB_SECTOR_LABELS[j.sector as JobSector]}
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--v2-ink-600)",
+                      }}
+                    >
+                      {j.location ?? "Location TBD"}
+                      {j.workSetup &&
+                        ` · ${WORK_SETUP_LABELS[j.workSetup as JobWorkSetup]}`}
+                      {` · ${formatSalary(j.salaryMin, j.salaryMax, j.salaryCurrency, j.salaryPeriod)}`}
+                      {postedLabel && ` · Posted ${postedLabel}`}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-          </div>
+          )}
         </section>
       </main>
     </div>

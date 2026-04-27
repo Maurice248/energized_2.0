@@ -301,7 +301,7 @@ export function PublicProfileClient({
                 type="button"
                 className="pub-cta-primary"
                 disabled
-                title="Intro requests ship in Phase 4"
+                title="Intro requests are coming soon."
               >
                 Request intro <Icon name="arrowRight" size={14} />
               </button>
@@ -309,7 +309,7 @@ export function PublicProfileClient({
                 type="button"
                 className="pub-cta-secondary"
                 disabled
-                title="Shortlists ship in Phase 4"
+                title="Shortlists are coming soon."
               >
                 <Icon name="bookmark" size={13} /> Save to shortlist
               </button>

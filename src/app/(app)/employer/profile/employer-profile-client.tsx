@@ -170,6 +170,7 @@ export function EmployerProfileClient({
   const orgQuery = api.employer.getMyOrg.useQuery();
   const jobsQuery = api.jobs.listForOrg.useQuery();
   const applicantCounts = api.applications.countsForOrg.useQuery();
+  const kpisQuery = api.employer.getKpis.useQuery();
 
   const [active, setActive] = useState<string>("overview");
 
@@ -597,10 +598,38 @@ export function EmployerProfileClient({
 
               {/* KPI strip */}
               <div className="ep-kpis">
-                <KpiCard label="Profile views · 30d" value="—" trend="Coming soon" />
-                <KpiCard label="Applicants · 30d" value="—" trend="Coming soon" />
-                <KpiCard label="Hires · 30d" value="—" trend="Coming soon" />
-                <KpiCard label="Avg match rate" value="—" trend="Coming soon" />
+                <KpiCard
+                  label="Open roles"
+                  value={
+                    kpisQuery.data
+                      ? String(kpisQuery.data.openRoles)
+                      : "—"
+                  }
+                  trend="published right now"
+                />
+                <KpiCard
+                  label="Applicants · 30d"
+                  value={
+                    kpisQuery.data
+                      ? String(kpisQuery.data.applicants30d)
+                      : "—"
+                  }
+                  trend="across all your roles"
+                />
+                <KpiCard
+                  label="Applicants · all time"
+                  value={
+                    kpisQuery.data
+                      ? String(kpisQuery.data.applicantsTotal)
+                      : "—"
+                  }
+                  trend="since you launched"
+                />
+                <KpiCard
+                  label="Profile views · 30d"
+                  value="—"
+                  trend="tracking soon"
+                />
               </div>
 
               {/* About */}
