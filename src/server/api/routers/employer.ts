@@ -11,6 +11,7 @@ import {
 } from "@/server/db/schema";
 import { resend } from "@/lib/resend";
 import { env } from "@/env";
+import { countEmployerOrgViews30d } from "@/server/services/profile-views";
 import TeamInviteEmail from "@/emails/team-invite";
 import EmployerVerifyDomainEmail from "@/emails/employer-verify-domain";
 
@@ -180,10 +181,13 @@ export const employerRouter = router({
       .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
       .where(eq(jobListings.orgId, orgId));
 
+    const profileViews30d = await countEmployerOrgViews30d(orgId);
+
     return {
       openRoles: openRoles?.count ?? 0,
       applicants30d: applicants30d?.count ?? 0,
       applicantsTotal: applicantsTotal?.count ?? 0,
+      profileViews30d,
     };
   }),
 

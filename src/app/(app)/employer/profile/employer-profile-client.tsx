@@ -627,8 +627,12 @@ export function EmployerProfileClient({
                 />
                 <KpiCard
                   label="Profile views · 30d"
-                  value="—"
-                  trend="tracking soon"
+                  value={
+                    kpisQuery.data
+                      ? String(kpisQuery.data.profileViews30d)
+                      : "—"
+                  }
+                  trend="visits to your public page"
                 />
               </div>
 

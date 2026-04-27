@@ -13,6 +13,7 @@ import {
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
+import { countJobseekerProfileViews30d } from "@/server/services/profile-views";
 import { Icon } from "@/components/shared/icon";
 import {
   SECTOR_LABELS,
@@ -122,6 +123,8 @@ export default async function DashboardPage() {
     .from(savedJobs)
     .where(eq(savedJobs.userId, userId));
   const savedCount = savedCountRow?.count ?? 0;
+
+  const profileViews30d = await countJobseekerProfileViews30d(userId);
 
   const appliedIdsRows = await db
     .select({ id: applications.jobId })
@@ -251,7 +254,11 @@ export default async function DashboardPage() {
         >
           <KpiTile label="Applications" value={String(appsCount)} sub="total" />
           <KpiTile label="Saved roles" value={String(savedCount)} sub="now" />
-          <KpiTile label="Profile views" value="—" sub="tracking soon" />
+          <KpiTile
+            label="Profile views"
+            value={String(profileViews30d)}
+            sub="last 30 days"
+          />
           <KpiTile
             label="Profile"
             value={`${completeness}%`}

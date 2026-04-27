@@ -9,6 +9,7 @@ import {
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
+import { recordJobseekerProfileView } from "@/server/services/profile-views";
 import { PublicProfileClient } from "./public-profile-client";
 
 export const metadata = { title: "Profile — Energized" };
@@ -68,6 +69,11 @@ export default async function PublicJobseekerProfilePage({
   const session = await getSession();
   const viewerIsSelf = session?.user.id === u.id;
   const viewerIsAuthed = Boolean(session);
+
+  await recordJobseekerProfileView({
+    subjectUserId: u.id,
+    viewerUserId: session?.user.id ?? null,
+  });
 
   return (
     <PublicProfileClient

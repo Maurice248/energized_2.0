@@ -4,6 +4,8 @@ import Image from "next/image";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings } from "@/server/db/schema";
+import { getSession } from "@/server/auth";
+import { recordEmployerOrgView } from "@/server/services/profile-views";
 import { Icon } from "@/components/shared/icon";
 import {
   SECTOR_LABELS as JOB_SECTOR_LABELS,
@@ -64,6 +66,12 @@ export default async function PublicCompanyPage({
     .limit(1);
 
   if (!org) notFound();
+
+  const session = await getSession();
+  await recordEmployerOrgView({
+    orgId: org.id,
+    viewerUserId: session?.user.id ?? null,
+  });
 
   const orgJobs = await db
     .select({
