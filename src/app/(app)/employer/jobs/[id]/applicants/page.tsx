@@ -12,6 +12,18 @@ import {
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { Icon } from "@/components/shared/icon";
+import { ApplicantsBoard } from "./applicants-board";
+import type {
+  ApplicantRow,
+  ApplicationStatus,
+} from "./applicant-card";
+
+const EDITOR_ROLES = new Set([
+  "owner",
+  "admin",
+  "recruiter",
+  "hiring_manager",
+]);
 
 export const metadata: Metadata = { title: "Applicants — Energized" };
 
@@ -37,7 +49,7 @@ export default async function JobApplicantsPage({
   if (!job) notFound();
 
   const [member] = await db
-    .select({ id: orgMembers.id })
+    .select({ id: orgMembers.id, role: orgMembers.role })
     .from(orgMembers)
     .where(
       and(
@@ -48,11 +60,14 @@ export default async function JobApplicantsPage({
     .limit(1);
   if (!member) notFound();
 
+  const canEdit = EDITOR_ROLES.has(member.role);
+
   const rows = await db
     .select({
       id: applications.id,
       coverNote: applications.coverNote,
       screeningAnswers: applications.screeningAnswers,
+      status: applications.status,
       createdAt: applications.createdAt,
       candidateId: user.id,
       candidateName: user.name,
@@ -60,13 +75,26 @@ export default async function JobApplicantsPage({
       headline: profiles.headline,
       location: profiles.location,
       yearsExperience: profiles.yearsExperience,
-      sectors: profiles.sectors,
     })
     .from(applications)
     .innerJoin(user, eq(user.id, applications.candidateId))
     .leftJoin(profiles, eq(profiles.userId, user.id))
     .where(eq(applications.jobId, job.id))
     .orderBy(desc(applications.createdAt));
+
+  const applicants: ApplicantRow[] = rows.map((r) => ({
+    id: r.id,
+    coverNote: r.coverNote,
+    screeningAnswers: r.screeningAnswers,
+    status: r.status as ApplicationStatus,
+    createdAt: r.createdAt,
+    candidateId: r.candidateId,
+    candidateName: r.candidateName,
+    candidateImage: r.candidateImage,
+    headline: r.headline,
+    location: r.location,
+    yearsExperience: r.yearsExperience,
+  }));
 
   return (
     <div
@@ -75,7 +103,7 @@ export default async function JobApplicantsPage({
     >
       <div
         className="v2-container"
-        style={{ paddingTop: 32, paddingBottom: 64, maxWidth: 960 }}
+        style={{ paddingTop: 32, paddingBottom: 64, maxWidth: 1440 }}
       >
         <Link
           href="/employer/profile#ep-jobs"
@@ -99,7 +127,7 @@ export default async function JobApplicantsPage({
           Back to company profile
         </Link>
 
-        <div className="v2-eyebrow">Applicants · {rows.length}</div>
+        <div className="v2-eyebrow">Applicants · {applicants.length}</div>
         <h1
           className="v2-h2"
           style={{
@@ -112,10 +140,12 @@ export default async function JobApplicantsPage({
           {job.title ?? "Untitled role"}
         </h1>
         <p style={{ color: "var(--v2-ink-500)", marginBottom: 24 }}>
-          Newest first.
+          {canEdit
+            ? "Move applicants through the pipeline as you triage."
+            : "Read-only view — only editors can move applicants."}
         </p>
 
-        {rows.length === 0 ? (
+        {applicants.length === 0 ? (
           <div
             style={{
               padding: 48,
@@ -154,178 +184,7 @@ export default async function JobApplicantsPage({
             </div>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 14 }}>
-            {rows.map((r) => {
-              const initials = (r.candidateName ?? "?")
-                .split(" ")
-                .map((p) => p[0])
-                .slice(0, 2)
-                .join("")
-                .toUpperCase();
-              const appliedLabel = new Date(r.createdAt).toLocaleDateString(
-                "en-CA",
-                { month: "short", day: "numeric" },
-              );
-              return (
-                <div
-                  key={r.id}
-                  style={{
-                    padding: 22,
-                    background: "white",
-                    border: "1px solid var(--v2-ink-200)",
-                    borderRadius: "var(--v2-r-xl)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 16,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 14,
-                        background: "var(--v2-ink-900)",
-                        color: "var(--v2-accent)",
-                        display: "grid",
-                        placeItems: "center",
-                        fontFamily: "var(--v2-font-serif)",
-                        fontSize: 18,
-                        fontWeight: 900,
-                        overflow: "hidden",
-                        position: "relative",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {r.candidateImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={r.candidateImage}
-                          alt={r.candidateName ?? ""}
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        initials
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                          marginBottom: 4,
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, fontSize: 17 }}>
-                          {r.candidateName ?? "Anonymous"}
-                        </div>
-                        <span className="v2-chip v2-chip-accent">Submitted</span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: "var(--v2-ink-600)",
-                          marginBottom: 10,
-                        }}
-                      >
-                        {r.headline ?? "—"}
-                        {r.location && ` · ${r.location}`}
-                        {r.yearsExperience != null &&
-                          ` · ${r.yearsExperience}y exp.`}
-                      </div>
-                      {r.coverNote && (
-                        <div
-                          style={{
-                            padding: "10px 14px",
-                            background: "var(--v2-ink-50)",
-                            borderRadius: 10,
-                            fontSize: 14,
-                            color: "var(--v2-ink-800)",
-                            marginBottom: 10,
-                            whiteSpace: "pre-wrap",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {r.coverNote}
-                        </div>
-                      )}
-                      {r.screeningAnswers.length > 0 && (
-                        <details style={{ marginBottom: 10 }}>
-                          <summary
-                            style={{
-                              cursor: "pointer",
-                              fontSize: 12,
-                              fontFamily: "var(--v2-font-mono)",
-                              letterSpacing: "0.08em",
-                              textTransform: "uppercase",
-                              color: "var(--v2-ink-500)",
-                            }}
-                          >
-                            Answers · {r.screeningAnswers.length}
-                          </summary>
-                          <ol
-                            style={{
-                              paddingLeft: 20,
-                              marginTop: 8,
-                              display: "grid",
-                              gap: 6,
-                              fontSize: 13,
-                              color: "var(--v2-ink-700)",
-                            }}
-                          >
-                            {r.screeningAnswers.map((a, i) => (
-                              <li key={i}>
-                                <strong>{a.q}</strong>
-                                <div>{a.a || <em>No answer</em>}</div>
-                              </li>
-                            ))}
-                          </ol>
-                        </details>
-                      )}
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <Link
-                          href={`/p/${r.candidateId}`}
-                          className="v2-btn v2-btn-ghost v2-btn-sm"
-                        >
-                          View full profile{" "}
-                          <Icon name="arrowUpRight" size={13} />
-                        </Link>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            color: "var(--v2-ink-500)",
-                            fontFamily: "var(--v2-font-mono)",
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Applied {appliedLabel}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ApplicantsBoard initialApplicants={applicants} canEdit={canEdit} />
         )}
       </div>
     </div>
