@@ -13,6 +13,7 @@ import {
   SECTOR_LABELS as JOB_SECTOR_LABELS,
   WORK_SETUP_LABELS as JOB_WORK_SETUP_LABELS,
 } from "@/lib/jobs-options";
+import { BillingSection } from "./billing-section";
 
 type JobRow = inferRouterOutputs<AppRouter>["jobs"]["listForOrg"][number];
 
@@ -657,7 +658,7 @@ export function EmployerProfileClient({
               />
 
               {/* Plan & billing */}
-              <PlanSection id="ep-billing" org={org} />
+              <BillingSection id="ep-billing" />
 
               {/* Verification */}
               <VerificationSection id="ep-verify" org={org} />
@@ -1717,73 +1718,7 @@ function PrefTile({
 
 /* ---------- plan section ---------- */
 
-function PlanSection({ id, org }: { id?: string; org: OrgRow }) {
-  const planLabel = (() => {
-    switch (org.plan) {
-      case "starter":
-        return "Starter";
-      case "growth":
-        return "Growth";
-      case "scale":
-      case "enterprise":
-        return org.plan.charAt(0).toUpperCase() + org.plan.slice(1);
-      default:
-        return org.plan;
-    }
-  })();
-
-  return (
-    <section id={id} className="pp-section" style={{ scrollMarginTop: 100 }}>
-      <div className="pp-section-head">
-        <div>
-          <div className="pp-section-title">Plan &amp; billing</div>
-          <div className="pp-section-sub">
-            {org.planRenewsAt
-              ? `Renews ${org.planRenewsAt.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}`
-              : "No renewal date on file"}
-          </div>
-        </div>
-        <button
-          className="v2-btn v2-btn-ghost v2-btn-sm"
-          disabled
-          title="Stripe billing portal comes in Phase 4"
-        >
-          Manage billing
-        </button>
-      </div>
-      <div className="ep-plan">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 20,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div className="ep-plan-tier">
-              {planLabel}
-              <em>.</em>
-            </div>
-            <div className="ep-plan-price">Stripe checkout arriving soon</div>
-          </div>
-          <button
-            className="v2-btn v2-btn-accent v2-btn-sm"
-            disabled
-            title="Coming soon"
-          >
-            Upgrade
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
+/* PlanSection removed — replaced by BillingSection (live Stripe-backed). */
 
 /* ---------- verification section ---------- */
 
