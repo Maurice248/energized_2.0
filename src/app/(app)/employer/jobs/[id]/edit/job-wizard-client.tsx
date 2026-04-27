@@ -213,6 +213,14 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
             <span className="dot" />
             <span>{saving ? "Saving…" : "All changes saved"}</span>
           </div>
+          {status !== "draft" && (
+            <button
+              className="v2-btn v2-btn-ghost v2-btn-sm"
+              onClick={() => router.push(`/employer/jobs/${initial.id}/applicants`)}
+            >
+              Applicants →
+            </button>
+          )}
           <button
             className="v2-btn v2-btn-link"
             onClick={async () => {

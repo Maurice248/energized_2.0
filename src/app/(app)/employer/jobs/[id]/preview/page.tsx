@@ -33,13 +33,33 @@ export default async function JobPreviewPage({
           maxWidth: 820,
         }}
       >
-        <Link
-          href={`/employer/jobs/${id}/edit?step=1`}
-          className="v2-btn v2-btn-ghost v2-btn-sm"
-          style={{ marginBottom: 24, display: "inline-flex" }}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 24,
+            flexWrap: "wrap",
+          }}
         >
-          <Icon name="arrowUpRight" size={14} /> Back to editor
-        </Link>
+          <Link
+            href={`/employer/jobs/${id}/edit?step=1`}
+            className="v2-btn v2-btn-ghost v2-btn-sm"
+            style={{ display: "inline-flex" }}
+          >
+            <Icon name="arrowUpRight" size={14} /> Back to editor
+          </Link>
+          {job.status !== "draft" && (
+            <Link
+              href={`/employer/jobs/${id}/applicants`}
+              className="v2-btn v2-btn-primary v2-btn-sm"
+              style={{ display: "inline-flex" }}
+            >
+              View applicants <Icon name="arrowUpRight" size={14} />
+            </Link>
+          )}
+        </div>
         <JobPreviewCard job={job} />
       </div>
     </div>
