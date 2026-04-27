@@ -102,3 +102,14 @@ export const applicationStatusEnum = pgEnum("application_status", [
   "offer",
   "rejected",
 ]);
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "none",
+  "active",
+  "trialing",
+  "past_due",
+  "canceled",
+  "incomplete",
+  "incomplete_expired",
+  "unpaid",
+]);

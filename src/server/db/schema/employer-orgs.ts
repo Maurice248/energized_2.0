@@ -10,6 +10,7 @@ import {
   companySizeEnum,
   hiringPaceEnum,
   sectorEnum,
+  subscriptionStatusEnum,
   workSetupEnum,
 } from "./enums";
 import { orgMembers } from "./org-members";
@@ -36,8 +37,18 @@ export const employerOrgs = pgTable("employer_orgs", {
   domainVerifyEmailTo: text("domain_verify_email_to"),
   domainVerifyEmailSentAt: timestamp("domain_verify_email_sent_at"),
   domainVerifyExpiresAt: timestamp("domain_verify_expires_at"),
-  plan: text("plan").notNull().default("starter"),
+  // plan repurposed: "none" | "package_a" | "package_b" | "package_c"
+  plan: text("plan").notNull().default("none"),
+  // planRenewsAt repurposed as Stripe current_period_end
   planRenewsAt: timestamp("plan_renews_at"),
+  stripeCustomerId: text("stripe_customer_id").unique(),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status")
+    .notNull()
+    .default("none"),
+  currentPeriodStart: timestamp("current_period_start"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  cancellationDisposition: text("cancellation_disposition"),
   defaultWorkSetup: workSetupEnum("default_work_setup"),
   hiringPace: hiringPaceEnum("hiring_pace"),
   focusRoles: text("focus_roles").array().notNull().default([]),

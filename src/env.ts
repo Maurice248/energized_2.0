@@ -10,6 +10,11 @@ const schema = z.object({
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(1),
   ANTHROPIC_API_KEY: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_PACKAGE_A: z.string().optional(),
+  STRIPE_PRICE_PACKAGE_B: z.string().optional(),
+  STRIPE_PRICE_PACKAGE_C: z.string().optional(),
 });
 
 export const env = schema.parse({
@@ -22,4 +27,9 @@ export const env = schema.parse({
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRICE_PACKAGE_A: process.env.STRIPE_PRICE_PACKAGE_A,
+  STRIPE_PRICE_PACKAGE_B: process.env.STRIPE_PRICE_PACKAGE_B,
+  STRIPE_PRICE_PACKAGE_C: process.env.STRIPE_PRICE_PACKAGE_C,
 });
