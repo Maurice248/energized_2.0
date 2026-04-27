@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
@@ -11,6 +11,7 @@ import {
   EVENT_JOB_PUBLISHED,
   EVENT_JOB_REOPENED,
 } from "@/lib/analytics-events";
+import { TIERS, isPlanTier } from "@/lib/billing-tiers";
 
 const sectorValues = [
   "oil_gas",
@@ -226,6 +227,39 @@ export const jobsRouter = router({
           code: "FORBIDDEN",
           message: "Verify your company's domain before publishing a role.",
         });
+      }
+
+      // Billing gate: must have an active subscription, and must be under
+      // the tier's per-cycle quota. Errors use prefixes so the client can
+      // route them to the upgrade modal (the global errorFormatter only
+      // propagates zodError, not custom cause).
+      if (!isPlanTier(org.plan) || org.subscriptionStatus !== "active") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "BILLING_REQUIRED",
+        });
+      }
+      const tier = org.plan;
+      const quota = TIERS[tier].jobsPerCycle;
+      if (org.currentPeriodStart && org.planRenewsAt) {
+        const [row] = await ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(jobListings)
+          .where(
+            and(
+              eq(jobListings.orgId, orgId),
+              eq(jobListings.status, "published"),
+              gte(jobListings.publishedAt, org.currentPeriodStart),
+              lt(jobListings.publishedAt, org.planRenewsAt),
+            ),
+          );
+        const used = row?.count ?? 0;
+        if (used >= quota) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `QUOTA_EXCEEDED:${used}/${quota}`,
+          });
+        }
       }
 
       const existing = await getJobForOrg(ctx, input.id, orgId);
