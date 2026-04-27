@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Lato } from "next/font/google";
 import { TRPCProvider } from "@/lib/trpc/provider";
 import { OnboardingPersister } from "@/components/shared/onboarding-persister";
+import { PostHogProvider } from "@/components/posthog-provider";
 import "./globals.css";
 import "./v2.css";
 
@@ -30,8 +32,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <TRPCProvider>
-          <OnboardingPersister />
-          {children}
+          <Suspense fallback={null}>
+            <PostHogProvider>
+              <OnboardingPersister />
+              {children}
+            </PostHogProvider>
+          </Suspense>
         </TRPCProvider>
       </body>
     </html>
