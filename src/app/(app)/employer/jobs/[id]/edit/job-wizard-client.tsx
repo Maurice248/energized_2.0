@@ -160,9 +160,10 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
       router.push(`/employer/profile#ep-jobs`);
     } catch (e) {
       if (e instanceof Error) {
-        const match = e.message.match(/^MISSING_FIELDS:(.+)$/);
-        if (match) {
-          const fields = match[1].split(",").filter(Boolean);
+        const missingMatch = e.message.match(/^MISSING_FIELDS:(.+)$/);
+        const quotaMatch = e.message.match(/^QUOTA_EXCEEDED:(\d+)\/(\d+)$/);
+        if (missingMatch) {
+          const fields = missingMatch[1].split(",").filter(Boolean);
           setMissingFields(fields);
           setPublishError(
             `Some required fields are missing: ${fields.join(", ")}. They're highlighted below.`,
@@ -172,6 +173,16 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
             setStep(firstStep);
             router.replace(`/employer/jobs/${initial.id}/edit?step=${firstStep}`);
           }
+        } else if (e.message === "BILLING_REQUIRED") {
+          setPublishError(
+            "Subscribe to a plan to publish your first role. Manage billing in the company profile.",
+          );
+        } else if (quotaMatch) {
+          const used = quotaMatch[1];
+          const quota = quotaMatch[2];
+          setPublishError(
+            `You've used ${used} of ${quota} job slots this billing cycle. Upgrade to a higher tier in your company profile to publish more.`,
+          );
         } else {
           setPublishError(e.message);
         }
@@ -340,9 +351,24 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
                 color: "#A63A20",
                 borderRadius: 10,
                 fontSize: 13,
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
               }}
             >
-              {publishError}
+              <span>{publishError}</span>
+              {(publishError.includes("Subscribe") ||
+                publishError.includes("Upgrade")) && (
+                <a
+                  href="/employer/profile#ep-billing"
+                  className="v2-btn v2-btn-primary v2-btn-sm"
+                  style={{ flexShrink: 0 }}
+                >
+                  Go to billing →
+                </a>
+              )}
             </div>
           )}
 
