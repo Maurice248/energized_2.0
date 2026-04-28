@@ -61,7 +61,9 @@
 .v2-mono  { font-family: var(--v2-font-mono); }
 .v2-display {
   font-family: var(--v2-font-serif);
-  font-weight: 900;
+  /* Lato has 100/300/400/700/900 — 700 (Bold) is the next step down from
+     900 (Black). User preference: less heavy than Black. */
+  font-weight: 700;
   font-size: clamp(44px, 6vw, 88px);
   line-height: 1.0;
   letter-spacing: -0.03em;

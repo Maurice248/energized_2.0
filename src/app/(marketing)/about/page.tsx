@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
@@ -210,11 +211,39 @@ function Hero({
               <span className="pill">energy</span> transition.
             </h1>
           </div>
-          <p className="v2-about-lede">
-            We&rsquo;re a Canadian team building the modern hiring layer for
-            everything that powers the country — from reservoirs to
-            renewables, from junior techs to senior P.Engs.
-          </p>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 28,
+              alignSelf: "stretch",
+            }}
+          >
+            <p className="v2-about-lede" style={{ marginLeft: 0 }}>
+              We&rsquo;re a Canadian team building the modern hiring layer for
+              everything that powers the country — from reservoirs to
+              renewables, from junior techs to senior P.Engs.
+            </p>
+            <div
+              style={{
+                position: "relative",
+                borderRadius: "var(--v2-r-xl)",
+                overflow: "hidden",
+                border: "1px solid var(--v2-ink-200)",
+                background: "var(--v2-ink-950)",
+                aspectRatio: "1 / 1",
+                marginTop: "auto",
+              }}
+            >
+              <Image
+                src="/hero-energy-mix.svg"
+                alt="Canadian energy mix — wind, transmission, oil and solar under a starlit sky"
+                fill
+                style={{ objectFit: "cover" }}
+                priority
+              />
+            </div>
+          </div>
         </div>
         <div className="v2-about-stats">
           {stats.map((s, i) => (

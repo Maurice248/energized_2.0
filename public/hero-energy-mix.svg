@@ -1,0 +1,117 @@
+<svg viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canadian energy mix — wind, power lines, oil derrick under a starlit sky">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B0D12"/>
+      <stop offset="55%" stop-color="#0F2545"/>
+      <stop offset="100%" stop-color="#004984"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.7" cy="0.3" r="0.6">
+      <stop offset="0%" stop-color="#1CAAE2" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1CAAE2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#070910"/>
+      <stop offset="100%" stop-color="#0B0D12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="800" height="800" fill="url(#sky)"/>
+  <rect width="800" height="800" fill="url(#glow)"/>
+
+  <!-- Constellation: scattered dots representing matched roles -->
+  <g fill="#FFFFFF">
+    <circle cx="80"  cy="90"  r="1.6" opacity="0.55"/>
+    <circle cx="170" cy="140" r="1.2" opacity="0.4"/>
+    <circle cx="240" cy="60"  r="2"   opacity="0.7"/>
+    <circle cx="330" cy="120" r="1.4" opacity="0.45"/>
+    <circle cx="410" cy="70"  r="1.8" opacity="0.55"/>
+    <circle cx="490" cy="160" r="1.2" opacity="0.4"/>
+    <circle cx="560" cy="100" r="2.4" opacity="0.8"/>
+    <circle cx="640" cy="180" r="1.4" opacity="0.45"/>
+    <circle cx="720" cy="120" r="1.6" opacity="0.55"/>
+    <circle cx="120" cy="220" r="1.2" opacity="0.35"/>
+    <circle cx="370" cy="240" r="1.4" opacity="0.4"/>
+    <circle cx="600" cy="260" r="1.2" opacity="0.35"/>
+  </g>
+  <g stroke="#1CAAE2" stroke-width="0.6" fill="none" opacity="0.35">
+    <path d="M 240 60 L 410 70 L 560 100"/>
+    <path d="M 80 90 L 240 60"/>
+    <path d="M 560 100 L 720 120"/>
+    <path d="M 410 70 L 370 240"/>
+    <path d="M 560 100 L 600 260"/>
+  </g>
+
+  <!-- Aurora soft band -->
+  <path d="M 0 280 Q 200 240 400 280 T 800 270 L 800 320 Q 600 330 400 310 T 0 320 Z"
+        fill="#1CAAE2" opacity="0.06"/>
+
+  <!-- Ground -->
+  <rect x="0" y="640" width="800" height="160" fill="url(#ground)"/>
+
+  <!-- Distant ridgeline -->
+  <path d="M 0 640 L 80 600 L 160 620 L 240 580 L 320 610 L 420 570 L 520 600 L 620 565 L 720 595 L 800 580 L 800 640 Z"
+        fill="#0B0D12" opacity="0.85"/>
+
+  <!-- Power transmission tower (left) -->
+  <g stroke="#1CAAE2" stroke-width="2" fill="none" opacity="0.85">
+    <path d="M 90 640 L 110 380 L 130 640"/>
+    <path d="M 96 580 L 124 580 M 92 540 L 128 540 M 88 500 L 132 500 M 84 460 L 136 460 M 80 420 L 140 420"/>
+    <path d="M 70 410 L 110 380 L 150 410"/>
+    <path d="M 50 400 L 110 370 L 170 400"/>
+  </g>
+  <!-- Power lines drooping right -->
+  <g stroke="#1CAAE2" stroke-width="1" fill="none" opacity="0.5">
+    <path d="M 50 400 Q 200 480 350 410"/>
+    <path d="M 110 370 Q 230 460 350 380"/>
+    <path d="M 170 400 Q 260 470 350 410"/>
+  </g>
+
+  <!-- Wind turbine 1 (center-left) -->
+  <g>
+    <rect x="278" y="430" width="4" height="210" fill="#1CAAE2" opacity="0.9"/>
+    <circle cx="280" cy="430" r="6" fill="#1CAAE2"/>
+    <g stroke="#1CAAE2" stroke-width="3" fill="none" stroke-linecap="round">
+      <line x1="280" y1="430" x2="280" y2="370"/>
+      <line x1="280" y1="430" x2="332" y2="460"/>
+      <line x1="280" y1="430" x2="228" y2="460"/>
+    </g>
+  </g>
+
+  <!-- Wind turbine 2 (further right, smaller) -->
+  <g opacity="0.9">
+    <rect x="402" y="470" width="3" height="170" fill="#1CAAE2" opacity="0.85"/>
+    <circle cx="403.5" cy="470" r="4" fill="#1CAAE2"/>
+    <g stroke="#1CAAE2" stroke-width="2" fill="none" stroke-linecap="round">
+      <line x1="403.5" y1="470" x2="403.5" y2="425"/>
+      <line x1="403.5" y1="470" x2="442" y2="492"/>
+      <line x1="403.5" y1="470" x2="365" y2="492"/>
+    </g>
+  </g>
+
+  <!-- Oil derrick (right) -->
+  <g stroke="#FFFFFF" stroke-width="1.6" fill="none" opacity="0.85">
+    <path d="M 580 640 L 600 400 L 620 640"/>
+    <line x1="589" y1="520" x2="611" y2="520"/>
+    <line x1="585" y1="470" x2="615" y2="470"/>
+    <line x1="582" y1="430" x2="618" y2="430"/>
+    <!-- Cross braces -->
+    <path d="M 587 520 L 611 470 M 611 520 L 589 470"/>
+    <path d="M 585 470 L 615 430 M 615 470 L 585 430"/>
+    <!-- Pulley arm -->
+    <path d="M 600 400 L 640 380 L 600 410"/>
+  </g>
+
+  <!-- Solar panel array (foreground right) -->
+  <g fill="#1CAAE2" opacity="0.7">
+    <rect x="690" y="610" width="60" height="20" transform="skewX(-15)"/>
+    <rect x="700" y="600" width="60" height="20" transform="skewX(-15)"/>
+  </g>
+  <g stroke="#0B0D12" stroke-width="0.5" opacity="0.4">
+    <line x1="688" y1="620" x2="715" y2="620"/>
+    <line x1="700" y1="610" x2="727" y2="610"/>
+  </g>
+
+  <!-- Foreground horizon shadow -->
+  <rect x="0" y="640" width="800" height="2" fill="#1CAAE2" opacity="0.4"/>
+</svg>

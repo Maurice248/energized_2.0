@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
@@ -108,39 +109,25 @@ function Hero({ liveRoles }: { liveRoles: number }) {
           </div>
         </div>
 
-        <div className="v2-orbit">
-          <div className="v2-orbit-ring"></div>
-          <div className="v2-orbit-ring v2-orbit-ring-2"></div>
-          <div className="v2-orbit-center">
-            <div className="v2-orbit-center-inner">
-              <span className="v2-orbit-center-num">96%</span>
-              match
-            </div>
-          </div>
-          <div className="v2-orbit-chip v2-orbit-chip-1">
-            <span className="dot" style={{ background: "#0F2545" }}>
-              AE
-            </span>
-            Controls Engineer
-          </div>
-          <div className="v2-orbit-chip v2-orbit-chip-2">
-            <span className="dot" style={{ background: "#1CAAE2" }}>
-              NS
-            </span>
-            Wind Technician
-          </div>
-          <div className="v2-orbit-chip v2-orbit-chip-3">
-            <span className="dot" style={{ background: "#004984" }}>
-              AW
-            </span>
-            Project Manager
-          </div>
-          <div className="v2-orbit-chip v2-orbit-chip-4">
-            <span className="dot" style={{ background: "#FF7A59" }}>
-              HS
-            </span>
-            Solar PM
-          </div>
+        <div
+          style={{
+            position: "relative",
+            borderRadius: "var(--v2-r-xl)",
+            overflow: "hidden",
+            border: "1px solid var(--v2-ink-200)",
+            background: "var(--v2-ink-950)",
+            alignSelf: "stretch",
+            minHeight: 560,
+            width: "100%",
+          }}
+        >
+          <Image
+            src="/hero-energy-mix.svg"
+            alt="Canadian energy mix — wind, transmission, oil and solar under a starlit sky"
+            fill
+            style={{ objectFit: "cover", objectPosition: "center bottom" }}
+            priority
+          />
         </div>
       </div>
     </section>
