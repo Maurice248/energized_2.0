@@ -42,3 +42,8 @@ next-env.d.ts
 
 .trigger
 .env.local
+
+# Playwright — keep e2e/*-snapshots/ baselines committed; ignore artifacts.
+/test-results/
+/playwright-report/
+/playwright/.cache/

@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:update": "playwright test --update-snapshots",
+    "e2e:install": "playwright install --with-deps chromium",
     "db:generate": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs generate",
     "db:migrate": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs migrate",
     "db:push": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs push",
