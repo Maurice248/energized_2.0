@@ -7,9 +7,11 @@ import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
 
 export const metadata: Metadata = {
-  title: "Energized — jobs in Canadian energy",
+  // Override the title template since the landing IS "Energized — …".
+  title: { absolute: "Energized — jobs in Canadian energy" },
   description:
-    "The AI-first job network for Canada's energy sector — oil & gas, renewables, nuclear, utilities, hydrogen, power.",
+    "The specialized job network for Canada's energy sector — oil & gas, renewables, nuclear, utilities, hydrogen, power.",
+  alternates: { canonical: "/" },
 };
 
 export default async function LandingPage() {

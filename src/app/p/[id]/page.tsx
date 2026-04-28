@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
@@ -13,7 +14,54 @@ import { recordJobseekerProfileView } from "@/server/services/profile-views";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { PublicProfileClient } from "./public-profile-client";
 
-export const metadata = { title: "Profile — Energized" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const [u] = await db
+    .select({
+      name: user.id,
+      displayName: user.name,
+      role: user.role,
+    })
+    .from(user)
+    .where(eq(user.id, id))
+    .limit(1);
+
+  if (!u || u.role === "employer") return { title: "Profile not found" };
+
+  const [p] = await db
+    .select({ headline: profiles.headline, location: profiles.location })
+    .from(profiles)
+    .where(eq(profiles.userId, u.name))
+    .limit(1);
+
+  if (!p) return { title: "Profile not found" };
+
+  const title = u.displayName || "Energy professional";
+  const descParts = [
+    p.headline ?? "Energy professional on Energized",
+    p.location ?? null,
+  ].filter(Boolean) as string[];
+
+  return {
+    title,
+    description: descParts.join(" · "),
+    openGraph: {
+      title,
+      description: descParts.join(" · "),
+      type: "profile",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description: descParts.join(" · "),
+    },
+    alternates: { canonical: `/p/${id}` },
+  };
+}
 
 export default async function PublicJobseekerProfilePage({
   params,

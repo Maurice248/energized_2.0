@@ -196,13 +196,17 @@ export async function generateMetadata({
   if (f.sector) parts.push(SECTOR_LABELS[f.sector]);
   else parts.push("Energy");
   const base = parts.join(" ");
-  const title = hasAnyFilter(f)
-    ? `${base} roles on Energized`
-    : "Energy jobs across Canada — Energized";
+  const title = hasAnyFilter(f) ? `${base} roles` : "Browse all roles";
   const description = hasAnyFilter(f)
     ? `Browse ${base.toLowerCase()} roles posted on Energized.`
     : "Find energy-sector roles across oil & gas, renewables, nuclear, utilities, hydrogen and power on Energized.";
-  return { title, description };
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+    alternates: { canonical: "/jobs" },
+  };
 }
 
 export default async function JobsBrowsePage({

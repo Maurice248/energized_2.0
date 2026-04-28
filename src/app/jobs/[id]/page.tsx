@@ -48,9 +48,9 @@ export async function generateMetadata({
     .where(and(eq(jobListings.id, id), eq(jobListings.status, "published")))
     .limit(1);
 
-  if (!row) return { title: "Role not found — Energized" };
+  if (!row) return { title: "Role not found" };
 
-  const title = `${row.title ?? "Untitled role"} — ${row.orgName} | Energized`;
+  const title = `${row.title ?? "Untitled role"} — ${row.orgName}`;
   const description =
     row.summary ??
     (row.description
@@ -71,6 +71,7 @@ export async function generateMetadata({
       title,
       description,
     },
+    alternates: { canonical: `/jobs/${id}` },
   };
 }
 

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings } from "@/server/db/schema";
@@ -15,7 +16,49 @@ import {
   type JobWorkSetup,
 } from "@/lib/jobs-options";
 
-export const metadata = { title: "Company — Energized" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const [org] = await db
+    .select({
+      name: employerOrgs.name,
+      tagline: employerOrgs.tagline,
+      about: employerOrgs.about,
+      coverUrl: employerOrgs.coverUrl,
+    })
+    .from(employerOrgs)
+    .where(eq(employerOrgs.id, id))
+    .limit(1);
+
+  if (!org) return { title: "Company not found" };
+
+  const title = org.name;
+  const description =
+    org.tagline ??
+    (org.about
+      ? org.about.slice(0, 160)
+      : `${org.name} is hiring on Energized — Canada's specialized energy job network.`);
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: org.coverUrl ? [{ url: org.coverUrl }] : undefined,
+      type: "website",
+    },
+    twitter: {
+      card: org.coverUrl ? "summary_large_image" : "summary",
+      title,
+      description,
+    },
+    alternates: { canonical: `/c/${id}` },
+  };
+}
 
 const COMPANY_SIZE_LABELS: Record<string, string> = {
   "1_10": "1–10",

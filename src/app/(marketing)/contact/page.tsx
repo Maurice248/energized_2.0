@@ -4,16 +4,17 @@ import { ContactForm } from "./contact-form";
 import { ContactFaq } from "./contact-faq";
 
 export const metadata: Metadata = {
-  title: "Contact — Energized",
+  title: "Contact",
   description:
     "Get in touch with the Energized team — we read every message and reply within one business day.",
+  alternates: { canonical: "/contact" },
 };
 
 const HERO_STATS = [
   { k: "Reply time", v: <><em>&lt; 1</em> business day</> },
   { k: "Read by", v: <em>Humans</em> },
   { k: "Languages", v: <>EN</> },
-  { k: "Inbox", v: <>hello@energized.biz</> },
+  { k: "Inbox", v: <>dev@energized.biz</> },
 ];
 
 export default function ContactPage() {

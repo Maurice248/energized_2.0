@@ -80,7 +80,7 @@ export async function sendContactMessage(
   try {
     await resend.emails.send({
       from: env.EMAIL_FROM,
-      to: "hello@energized.biz",
+      to: "dev@energized.biz",
       replyTo: data.email,
       subject: `[${TOPIC_LABEL[data.topic]}] ${data.subject} (${ref})`,
       text: lines.join("\n"),
@@ -91,7 +91,7 @@ export async function sendContactMessage(
     return {
       ok: false,
       error:
-        "Couldn't send right now — please email hello@energized.biz directly.",
+        "Couldn't send right now — please email dev@energized.biz directly.",
     };
   }
 }

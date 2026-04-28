@@ -86,7 +86,7 @@ export function SiteFooter() {
             <h5>Company</h5>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
-            <a href="mailto:hello@energized.biz">hello@energized.biz</a>
+            <a href="mailto:dev@energized.biz">dev@energized.biz</a>
           </div>
         </div>
 

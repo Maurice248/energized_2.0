@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Icon, type IconName } from "@/components/shared/icon";
@@ -257,32 +256,6 @@ export function EmployerProfileClient({
 
   return (
     <div className="pp-shell v2">
-      <header className="pp-top">
-        <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
-          <Brand />
-          <div className="pp-crumbs">
-            <span>App</span>
-            <span className="sep">/</span>
-            <span>Employer</span>
-            <span className="sep">/</span>
-            <span className="current">Company profile</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div className="ob-save-state">
-            <span className="dot" />
-            <span>{saving ? "Saving…" : "All changes saved"}</span>
-          </div>
-          <button
-            className="v2-btn v2-btn-ghost v2-btn-sm"
-            onClick={() => org && window.open(`/c/${org.id}`, "_blank")}
-            disabled={!org}
-          >
-            <Icon name="eye" size={14} /> View public page
-          </button>
-        </div>
-      </header>
-
       <div className="pp-body">
         <aside className="pp-side">
           <div className="pp-identity">
@@ -478,6 +451,39 @@ export function EmployerProfileClient({
         </aside>
 
         <main className="pp-main">
+          {/* Editor toolbar — save state + preview public page */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 18,
+              flexWrap: "wrap",
+            }}
+          >
+            <div className="pp-crumbs">
+              <span>App</span>
+              <span className="sep">/</span>
+              <span>Employer</span>
+              <span className="sep">/</span>
+              <span className="current">Company profile</span>
+            </div>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div className="ob-save-state">
+                <span className="dot" />
+                <span>{saving ? "Saving…" : "All changes saved"}</span>
+              </div>
+              <button
+                className="v2-btn v2-btn-ghost v2-btn-sm"
+                onClick={() => org && window.open(`/c/${org.id}`, "_blank")}
+                disabled={!org}
+              >
+                <Icon name="eye" size={14} /> View public page
+              </button>
+            </div>
+          </div>
+
           {orgQuery.isLoading && !org && <ProfileSkeleton />}
 
           {org && (
@@ -704,19 +710,6 @@ export function EmployerProfileClient({
 }
 
 /* ---------- shell pieces ---------- */
-
-function Brand() {
-  return (
-    <Image
-      src="/energized-logo.svg"
-      alt="Energized"
-      width={144}
-      height={80}
-      priority
-      style={{ height: 40, width: "auto" }}
-    />
-  );
-}
 
 function KpiCard({
   label,

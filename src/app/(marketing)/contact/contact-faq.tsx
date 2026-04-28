@@ -96,7 +96,7 @@ const FAQ_DATA: FaqEntry[] = [
     q: "Where is my data stored?",
     a: [
       "Candidate and customer data lives in Neon Postgres (US region) and Vercel Blob for file uploads. Application traffic runs through Vercel's Canadian edge regions wherever possible.",
-      "Right-to-be-forgotten requests are honored — email hello@energized.biz with the subject 'Data deletion' and we'll process within seven days.",
+      "Right-to-be-forgotten requests are honored — email dev@energized.biz with the subject 'Data deletion' and we'll process within seven days.",
     ],
   },
   {
@@ -113,7 +113,7 @@ const FAQ_DATA: FaqEntry[] = [
     tag: "General",
     q: "How do I contact support?",
     a: [
-      "Email hello@energized.biz, or use the form above. We read every message and reply within one business day.",
+      "Email dev@energized.biz, or use the form above. We read every message and reply within one business day.",
     ],
   },
 ];

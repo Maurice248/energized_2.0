@@ -12,9 +12,10 @@ import { Icon } from "@/components/shared/icon";
 import { PricingSection } from "./pricing-section";
 
 export const metadata: Metadata = {
-  title: "About — Energized",
+  title: "About",
   description:
     "The job network for Canada's energy transition — from reservoirs to renewables, from junior techs to senior P.Engs.",
+  alternates: { canonical: "/about" },
 };
 
 const SEEKER_OFFERS = [
