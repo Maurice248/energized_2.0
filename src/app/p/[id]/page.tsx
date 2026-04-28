@@ -10,6 +10,7 @@ import {
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { recordJobseekerProfileView } from "@/server/services/profile-views";
+import { SiteHeader } from "@/components/marketing/site-header";
 import { PublicProfileClient } from "./public-profile-client";
 
 export const metadata = { title: "Profile — Energized" };
@@ -76,6 +77,8 @@ export default async function PublicJobseekerProfilePage({
   });
 
   return (
+    <>
+    <SiteHeader />
     <PublicProfileClient
       user={{
         name: u.name,
@@ -125,5 +128,6 @@ export default async function PublicJobseekerProfilePage({
       viewerIsSelf={viewerIsSelf}
       viewerIsAuthed={viewerIsAuthed}
     />
+    </>
   );
 }

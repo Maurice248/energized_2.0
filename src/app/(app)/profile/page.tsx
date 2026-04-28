@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { profiles } from "@/server/db/schema";
+import { SiteHeader } from "@/components/marketing/site-header";
 import { ProfileClient } from "./profile-client";
 
 export const metadata = { title: "Your profile — Energized" };
@@ -17,16 +18,19 @@ export default async function ProfilePage() {
     .onConflictDoNothing({ target: profiles.userId });
 
   return (
-    <ProfileClient
-      userId={session.user.id}
-      name={session.user.name ?? ""}
-      email={session.user.email}
-      initialImage={session.user.image ?? null}
-      role={(session.user as { role?: string }).role ?? "jobseeker"}
-      emailVerified={Boolean(
-        (session.user as { emailVerified?: boolean }).emailVerified,
-      )}
-      joinedAt={(session.user as { createdAt?: Date | string }).createdAt ?? null}
-    />
+    <>
+      <SiteHeader active="profile" />
+      <ProfileClient
+        userId={session.user.id}
+        name={session.user.name ?? ""}
+        email={session.user.email}
+        initialImage={session.user.image ?? null}
+        role={(session.user as { role?: string }).role ?? "jobseeker"}
+        emailVerified={Boolean(
+          (session.user as { emailVerified?: boolean }).emailVerified,
+        )}
+        joinedAt={(session.user as { createdAt?: Date | string }).createdAt ?? null}
+      />
+    </>
   );
 }

@@ -1,11 +1,10 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { and, arrayOverlaps, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings } from "@/server/db/schema";
-import { getSession } from "@/server/auth";
 import { Icon } from "@/components/shared/icon";
+import { SiteHeader } from "@/components/marketing/site-header";
 import {
   CERTIFICATION_OPTIONS,
   EXPERIENCE_LEVEL_LABELS,
@@ -212,8 +211,6 @@ export default async function JobsBrowsePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseFilters(await searchParams);
-  const session = await getSession();
-  const viewerIsAuthed = Boolean(session);
 
   const conditions = [eq(jobListings.status, "published")];
   if (filters.sector) conditions.push(eq(jobListings.sector, filters.sector));
@@ -316,78 +313,7 @@ export default async function JobsBrowsePage({
       className="v2"
       style={{ minHeight: "100vh", background: "var(--v2-ink-50)" }}
     >
-      <header
-        style={{
-          padding: "20px 32px",
-          background: "rgba(249,250,252,0.85)",
-          backdropFilter: "saturate(180%) blur(14px)",
-          WebkitBackdropFilter: "saturate(180%) blur(14px)",
-          borderBottom: "1px solid var(--v2-ink-200)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 30,
-        }}
-      >
-        <Link href="/" style={{ display: "flex", alignItems: "center" }}>
-          <Image
-            src="/energized-logo.svg"
-            alt="Energized"
-            width={144}
-            height={80}
-            priority
-            style={{ height: 36, width: "auto" }}
-          />
-        </Link>
-        <nav
-          style={{
-            display: "flex",
-            gap: 20,
-            alignItems: "center",
-            fontSize: 14,
-          }}
-        >
-          <Link
-            href="/jobs"
-            style={{ color: "var(--v2-ink-900)", fontWeight: 700 }}
-          >
-            Jobs
-          </Link>
-          {viewerIsAuthed ? (
-            <>
-              <Link
-                href="/saved"
-                style={{ color: "var(--v2-ink-700)" }}
-              >
-                Saved
-              </Link>
-              <Link
-                href="/applications"
-                style={{ color: "var(--v2-ink-700)" }}
-              >
-                Applications
-              </Link>
-              <Link
-                href="/dashboard"
-                className="v2-btn v2-btn-primary v2-btn-sm"
-              >
-                Dashboard →
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link href="/sign-in" style={{ color: "var(--v2-ink-700)" }}>
-                Sign in
-              </Link>
-              <Link href="/sign-up" className="v2-btn v2-btn-primary v2-btn-sm">
-                Sign up
-              </Link>
-            </>
-          )}
-        </nav>
-      </header>
+      <SiteHeader active="jobs" />
 
       <div
         className="v2-container"

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "@/server/db";
@@ -15,30 +14,59 @@ import {
 import { getSession } from "@/server/auth";
 import { countJobseekerProfileViews30d } from "@/server/services/profile-views";
 import { Icon } from "@/components/shared/icon";
+import { SiteHeader } from "@/components/marketing/site-header";
 import {
-  SECTOR_LABELS,
-  WORK_SETUP_LABELS,
   formatSalary,
   type JobSector,
-  type JobWorkSetup,
 } from "@/lib/jobs-options";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
-const STATUS_CHIP: Record<string, string> = {
-  submitted: "v2-chip-outline",
-  reviewed: "v2-chip-outline",
-  interview: "v2-chip-outline",
-  offer: "v2-chip-accent",
-  rejected: "v2-chip-coral",
+/* ---------- status helpers ---------- */
+
+// DB statuses → reference design buckets
+type DbStatus = "submitted" | "reviewed" | "interview" | "offer" | "rejected";
+type StageKey = "applied" | "review" | "interview" | "offer" | "rejected";
+
+const STAGE_FROM_DB: Record<DbStatus, StageKey> = {
+  submitted: "applied",
+  reviewed: "review",
+  interview: "interview",
+  offer: "offer",
+  rejected: "rejected",
 };
-const STATUS_LABEL: Record<string, string> = {
-  submitted: "Submitted",
-  reviewed: "Reviewed",
+
+const STAGE_LABEL: Record<StageKey, string> = {
+  applied: "Applied",
+  review: "Under review",
   interview: "Interview",
-  offer: "Offer",
-  rejected: "Rejected",
+  offer: "Offer received",
+  rejected: "Not selected",
 };
+
+const STAGE_STEP: Record<StageKey, number> = {
+  applied: 1,
+  review: 2,
+  interview: 3,
+  offer: 5,
+  rejected: 2,
+};
+const STAGE_TOTAL = 5;
+
+function timeAgo(d: Date): string {
+  const ms = Date.now() - new Date(d).getTime();
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.floor(h / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
+/* ---------- page ---------- */
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -47,11 +75,13 @@ export default async function DashboardPage() {
 
   const userId = session.user.id;
 
+  // --- profile + completeness ----------
   const [p] = await db
     .select()
     .from(profiles)
     .where(eq(profiles.userId, userId))
     .limit(1);
+
   const wh = p
     ? await db
         .select({ id: workHistory.id })
@@ -60,24 +90,30 @@ export default async function DashboardPage() {
         .limit(1)
     : [];
 
-  const completeness = (() => {
-    if (!p) return 0;
-    let score = 0;
-    if (p.headline?.trim()) score++;
-    if (p.sectors.length > 0) score++;
-    if (wh.length > 0) score++;
-    if (p.resumeUrl) score++;
-    if (p.skills.length > 0) score++;
-    return Math.round((score / 5) * 100);
-  })();
+  const profileChecks = [
+    { label: "Headline & summary", done: Boolean(p?.headline?.trim()) },
+    { label: "Sectors picked", done: (p?.sectors.length ?? 0) > 0 },
+    { label: "Work history (1+ role)", done: wh.length > 0 },
+    { label: "Skills tagged", done: (p?.skills.length ?? 0) > 0 },
+    { label: "Resume uploaded", done: Boolean(p?.resumeUrl) },
+    { label: "Location & relocation prefs", done: Boolean(p?.location) },
+  ];
+  const doneCount = profileChecks.filter((c) => c.done).length;
+  const completeness = Math.round((doneCount / profileChecks.length) * 100);
 
-  const recentApplications = await db
+  // --- applications (full list, with org join) ----------
+  const allApps = await db
     .select({
       id: applications.id,
       status: applications.status,
       createdAt: applications.createdAt,
       jobId: applications.jobId,
       jobTitle: jobListings.title,
+      jobLocation: jobListings.location,
+      salaryMin: jobListings.salaryMin,
+      salaryMax: jobListings.salaryMax,
+      salaryCurrency: jobListings.salaryCurrency,
+      salaryPeriod: jobListings.salaryPeriod,
       orgName: employerOrgs.name,
       orgLogoColor: employerOrgs.logoColor,
       orgLogoUrl: employerOrgs.logoUrl,
@@ -86,15 +122,24 @@ export default async function DashboardPage() {
     .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
     .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
     .where(eq(applications.candidateId, userId))
-    .orderBy(desc(applications.createdAt))
-    .limit(3);
+    .orderBy(desc(applications.createdAt));
 
-  const [appsCountRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(applications)
-    .where(eq(applications.candidateId, userId));
-  const appsCount = appsCountRow?.count ?? 0;
+  const stagedApps = allApps.map((a) => ({
+    ...a,
+    stage: STAGE_FROM_DB[a.status as DbStatus] ?? "applied",
+  }));
 
+  const activeStages: StageKey[] = ["applied", "review", "interview"];
+  const activeApps = stagedApps.filter((a) => activeStages.includes(a.stage));
+  const offerApps = stagedApps.filter((a) => a.stage === "offer");
+  const rejectedApps = stagedApps.filter((a) => a.stage === "rejected");
+
+  const appsCount = stagedApps.length;
+  const activeCount = activeApps.length;
+  const offerCount = offerApps.length;
+  const inProgressApps = activeApps.slice(0, 5);
+
+  // --- saved ----------
   const recentSaved = await db
     .select({
       id: savedJobs.id,
@@ -102,7 +147,6 @@ export default async function DashboardPage() {
       jobTitle: jobListings.title,
       jobLocation: jobListings.location,
       sector: jobListings.sector,
-      workSetup: jobListings.workSetup,
       salaryMin: jobListings.salaryMin,
       salaryMax: jobListings.salaryMax,
       salaryCurrency: jobListings.salaryCurrency,
@@ -124,8 +168,10 @@ export default async function DashboardPage() {
     .where(eq(savedJobs.userId, userId));
   const savedCount = savedCountRow?.count ?? 0;
 
+  // --- profile views ----------
   const profileViews30d = await countJobseekerProfileViews30d(userId);
 
+  // --- recommended ----------
   const appliedIdsRows = await db
     .select({ id: applications.jobId })
     .from(applications)
@@ -150,15 +196,14 @@ export default async function DashboardPage() {
   const recommended = await db
     .select({
       id: jobListings.id,
-      jobId: jobListings.id,
       jobTitle: jobListings.title,
       jobLocation: jobListings.location,
       sector: jobListings.sector,
-      workSetup: jobListings.workSetup,
       salaryMin: jobListings.salaryMin,
       salaryMax: jobListings.salaryMax,
       salaryCurrency: jobListings.salaryCurrency,
       salaryPeriod: jobListings.salaryPeriod,
+      publishedAt: jobListings.publishedAt,
       orgName: employerOrgs.name,
       orgLogoColor: employerOrgs.logoColor,
       orgLogoUrl: employerOrgs.logoUrl,
@@ -169,498 +214,759 @@ export default async function DashboardPage() {
     .orderBy(desc(jobListings.publishedAt))
     .limit(4);
 
+  // --- focus card derivation ----------
+  // priority: latest offer > latest interview > "browse roles"
+  const focusOffer = offerApps[0] ?? null;
+  const focusInterview = stagedApps.find((a) => a.stage === "interview") ?? null;
+
   const firstName = session.user.name?.split(" ")[0] ?? "there";
+  const today = new Date().toLocaleDateString("en-CA", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  // status copy line under greeting
+  const statusBits: string[] = [];
+  if (offerCount > 0) {
+    statusBits.push(
+      `${offerCount} offer${offerCount === 1 ? "" : "s"} to review`,
+    );
+  }
+  if (activeCount > 0) {
+    statusBits.push(
+      `${activeCount} application${activeCount === 1 ? "" : "s"} in flight`,
+    );
+  }
+  if (recommended.length > 0) {
+    statusBits.push(
+      `${recommended.length} fresh role${recommended.length === 1 ? "" : "s"} for you`,
+    );
+  }
+  const statusLine =
+    statusBits.length > 0
+      ? statusBits.join(" · ")
+      : "No applications yet — let's find your first match.";
 
   return (
-    <div
-      className="v2"
-      style={{ minHeight: "100vh", background: "var(--v2-ink-50)" }}
-    >
-      <header
-        style={{
-          padding: "20px 32px",
-          background: "rgba(249,250,252,0.85)",
-          backdropFilter: "saturate(180%) blur(14px)",
-          WebkitBackdropFilter: "saturate(180%) blur(14px)",
-          borderBottom: "1px solid var(--v2-ink-200)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 30,
-        }}
-      >
-        <Link href="/" style={{ display: "flex", alignItems: "center" }}>
-          <Image
-            src="/energized-logo.svg"
-            alt="Energized"
-            width={144}
-            height={80}
-            priority
-            style={{ height: 36, width: "auto" }}
-          />
-        </Link>
-        <nav
-          style={{
-            display: "flex",
-            gap: 20,
-            alignItems: "center",
-            fontSize: 14,
-          }}
-        >
-          <Link href="/jobs" style={{ color: "var(--v2-ink-700)" }}>
-            Jobs
-          </Link>
-          <Link href="/saved" style={{ color: "var(--v2-ink-700)" }}>
-            Saved
-          </Link>
-          <Link href="/applications" style={{ color: "var(--v2-ink-700)" }}>
-            Applications
-          </Link>
-          <Link
-            href="/dashboard"
-            style={{ color: "var(--v2-ink-900)", fontWeight: 700 }}
-          >
-            Dashboard
-          </Link>
-        </nav>
-      </header>
-
-      <div
-        className="v2-container"
-        style={{ paddingTop: 48, paddingBottom: 80, maxWidth: 960 }}
-      >
-        <div className="v2-eyebrow">Welcome back</div>
-        <h1
-          className="v2-h2"
-          style={{
-            fontStyle: "italic",
-            fontWeight: 900,
-            marginTop: 14,
-            marginBottom: 28,
-          }}
-        >
-          Hey, {firstName}.
-        </h1>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 12,
-            marginBottom: 32,
-          }}
-        >
-          <KpiTile label="Applications" value={String(appsCount)} sub="total" />
-          <KpiTile label="Saved roles" value={String(savedCount)} sub="now" />
-          <KpiTile
-            label="Profile views"
-            value={String(profileViews30d)}
-            sub="last 30 days"
-          />
-          <KpiTile
-            label="Profile"
-            value={`${completeness}%`}
-            sub={completeness === 100 ? "complete" : "finish →"}
-            href="/profile"
-          />
-        </div>
-
-        <Section
-          title="Recent applications"
-          seeAllHref="/applications"
-          empty={
-            recentApplications.length === 0
-              ? {
-                  title: "No applications yet.",
-                  body: "Browse roles and apply.",
-                  cta: { label: "Browse jobs", href: "/jobs" },
-                }
-              : null
-          }
-        >
-          <div style={{ display: "grid", gap: 10 }}>
-            {recentApplications.map((a) => (
-              <Link
-                key={a.id}
-                href={`/jobs/${a.jobId}`}
-                style={listRowStyle}
-              >
-                <Avatar
-                  text={a.orgName.charAt(0).toUpperCase()}
-                  imageUrl={a.orgLogoUrl}
-                  bg={a.orgLogoColor}
-                  size={36}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>
-                    {a.jobTitle ?? "Untitled role"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--v2-ink-500)" }}>
-                    {a.orgName} · Applied{" "}
-                    {new Date(a.createdAt).toLocaleDateString("en-CA", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </div>
-                </div>
-                <span className={`v2-chip ${STATUS_CHIP[a.status] ?? ""}`}>
-                  {STATUS_LABEL[a.status] ?? a.status}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </Section>
-
-        <Section
-          title="Saved roles"
-          seeAllHref="/saved"
-          empty={
-            recentSaved.length === 0
-              ? {
-                  title: "Nothing saved yet.",
-                  body: "Bookmark roles from any job page.",
-                  cta: { label: "Browse jobs", href: "/jobs" },
-                }
-              : null
-          }
-        >
-          <div style={{ display: "grid", gap: 10 }}>
-            {recentSaved.map((j) => (
-              <JobMiniCard key={j.id} row={j} />
-            ))}
-          </div>
-        </Section>
-
-        <Section
-          title={
-            sectorPrefs.length > 0 ? "Recommended for you" : "Newest roles"
-          }
-          subtitle={
-            sectorPrefs.length > 0
-              ? `Picked from your sectors: ${sectorPrefs
-                  .map((s) => SECTOR_LABELS[s])
-                  .join(", ")}`
-              : "Pick sectors on your profile for personalized recs."
-          }
-          empty={
-            recommended.length === 0
-              ? {
-                  title: "Nothing to surface yet.",
-                  body: "Check back as employers post more roles.",
-                  cta: { label: "Browse all jobs", href: "/jobs" },
-                }
-              : null
-          }
-        >
-          <div style={{ display: "grid", gap: 10 }}>
-            {recommended.map((j) => (
-              <JobMiniCard key={j.id} row={j} />
-            ))}
-          </div>
-        </Section>
-      </div>
-    </div>
-  );
-}
-
-const listRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-  padding: 14,
-  background: "white",
-  border: "1px solid var(--v2-ink-200)",
-  borderRadius: "var(--v2-r-lg)",
-  color: "inherit",
-};
-
-function KpiTile({
-  label,
-  value,
-  sub,
-  href,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  href?: string;
-}) {
-  const inner = (
-    <div
-      style={{
-        padding: 16,
-        background: "white",
-        border: "1px solid var(--v2-ink-200)",
-        borderRadius: "var(--v2-r-lg)",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--v2-font-mono)",
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--v2-ink-600)",
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--v2-font-serif)",
-          fontSize: 28,
-          fontWeight: 900,
-          fontStyle: "italic",
-        }}
-      >
-        {value}
-      </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: "var(--v2-ink-500)",
-          marginTop: 4,
-        }}
-      >
-        {sub}
-      </div>
-    </div>
-  );
-  return href ? (
-    <Link href={href} style={{ color: "inherit" }}>
-      {inner}
-    </Link>
-  ) : (
-    inner
-  );
-}
-
-function Section({
-  title,
-  subtitle,
-  seeAllHref,
-  empty,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  seeAllHref?: string;
-  empty?: {
-    title: string;
-    body: string;
-    cta?: { label: string; href: string };
-  } | null;
-  children: React.ReactNode;
-}) {
-  return (
-    <section style={{ marginBottom: 32 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          marginBottom: 12,
-          gap: 12,
-        }}
-      >
-        <div>
-          <h3
-            className="v2-h3"
-            style={{
-              fontFamily: "var(--v2-font-serif)",
-              fontWeight: 900,
-              fontStyle: "italic",
-              fontSize: 22,
-              letterSpacing: "-0.015em",
-            }}
-          >
-            {title}
-          </h3>
-          {subtitle && (
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--v2-ink-500)",
-                marginTop: 4,
-              }}
-            >
-              {subtitle}
+    <>
+      <SiteHeader active="dashboard" />
+      <div className="v2-dash">
+        <div className="v2-container">
+          {/* HEADER */}
+          <div className="v2-dash-head">
+            <div>
+              <div className="v2-eyebrow">{today}</div>
+              <h1 className="v2-dash-greeting">
+                Welcome back, <em>{firstName}</em>.
+              </h1>
+              <p className="v2-dash-sub">{statusLine}</p>
             </div>
-          )}
-        </div>
-        {seeAllHref && (
-          <Link
-            href={seeAllHref}
-            style={{
-              fontSize: 12,
-              color: "var(--v2-accent-deep)",
-              fontWeight: 700,
-            }}
-          >
-            See all →
-          </Link>
-        )}
-      </div>
-      {empty ? (
-        <div
-          style={{
-            padding: 28,
-            background: "white",
-            border: "1px dashed var(--v2-ink-200)",
-            borderRadius: "var(--v2-r-lg)",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--v2-font-serif)",
-              fontSize: 18,
-              fontWeight: 900,
-              fontStyle: "italic",
-              marginBottom: 6,
-            }}
-          >
-            {empty.title}
+            <FocusCard
+              offer={focusOffer}
+              interview={focusInterview}
+              recommendedCount={recommended.length}
+            />
           </div>
-          <p
-            style={{
-              fontSize: 13,
-              color: "var(--v2-ink-500)",
-              marginBottom: 14,
-            }}
-          >
-            {empty.body}
-          </p>
-          {empty.cta && (
-            <Link
-              href={empty.cta.href}
-              className="v2-btn v2-btn-primary v2-btn-sm"
-            >
-              {empty.cta.label}
+
+          {/* SUB-NAV */}
+          <div className="v2-dash-subnav">
+            <span className="v2-dash-subnav-link active">Overview</span>
+            <Link href="/applications" className="v2-dash-subnav-link">
+              Applications
+              {activeCount > 0 && (
+                <span className="v2-pipeline-count">{activeCount}</span>
+              )}
             </Link>
-          )}
+            <Link href="/saved" className="v2-dash-subnav-link">
+              Saved roles
+              {savedCount > 0 && (
+                <span className="v2-pipeline-count">{savedCount}</span>
+              )}
+            </Link>
+            <Link href="/profile" className="v2-dash-subnav-link">
+              Profile
+            </Link>
+          </div>
+
+          {/* STAT STRIP */}
+          <div className="v2-stat-strip">
+            <StatCard
+              num={appsCount}
+              label="Applications"
+              icon="send"
+              meta={`${activeCount} active · ${offerCount} offer${offerCount === 1 ? "" : "s"}`}
+            />
+            <StatCard
+              num={savedCount}
+              label="Saved roles"
+              icon="bookmark"
+              meta={
+                savedCount === 0
+                  ? "Bookmark roles to track them"
+                  : `${savedCount} on your shortlist`
+              }
+            />
+            <StatCard
+              num={profileViews30d}
+              label="Profile views"
+              icon="eye"
+              meta="Last 30 days"
+            />
+            <StatCard
+              num={`${completeness}%`}
+              label="Profile strength"
+              icon="user"
+              meta={
+                completeness === 100
+                  ? "Recruiter-ready"
+                  : `${profileChecks.length - doneCount} step${profileChecks.length - doneCount === 1 ? "" : "s"} to go`
+              }
+            />
+          </div>
+
+          {/* MAIN GRID */}
+          <div className="v2-dash-grid">
+            {/* LEFT COLUMN */}
+            <div style={{ display: "grid", gap: 24 }}>
+              {/* Applications pipeline */}
+              <section className="v2-card">
+                <div className="v2-card-head">
+                  <div>
+                    <div className="v2-eyebrow">Applications</div>
+                    <h2 className="v2-card-title" style={{ marginTop: 8 }}>
+                      Your <em>pipeline</em>
+                    </h2>
+                  </div>
+                  <Link href="/applications" className="v2-card-link">
+                    View all <Icon name="arrowRight" size={14} />
+                  </Link>
+                </div>
+
+                <div className="v2-pipeline-tabs">
+                  <span className="v2-pipeline-tab active">
+                    In progress
+                    <span className="v2-pipeline-count">{activeCount}</span>
+                  </span>
+                  <span className="v2-pipeline-tab">
+                    Offers
+                    <span className="v2-pipeline-count">{offerCount}</span>
+                  </span>
+                  <span className="v2-pipeline-tab">
+                    Archive
+                    <span className="v2-pipeline-count">
+                      {rejectedApps.length}
+                    </span>
+                  </span>
+                  <span className="v2-pipeline-tab">
+                    All
+                    <span className="v2-pipeline-count">{appsCount}</span>
+                  </span>
+                </div>
+
+                <div className="v2-app-list">
+                  {inProgressApps.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "40px 0",
+                        textAlign: "center",
+                        color: "var(--v2-ink-500)",
+                      }}
+                    >
+                      No active applications.{" "}
+                      <Link
+                        href="/jobs"
+                        style={{
+                          color: "var(--v2-accent-deep)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Browse roles →
+                      </Link>
+                    </div>
+                  ) : (
+                    inProgressApps.map((a) => (
+                      <ApplicationRow key={a.id} a={a} />
+                    ))
+                  )}
+                </div>
+              </section>
+
+              {/* Recommended */}
+              <section className="v2-card">
+                <div className="v2-card-head">
+                  <div>
+                    <div className="v2-eyebrow">For you</div>
+                    <h2 className="v2-card-title" style={{ marginTop: 8 }}>
+                      Roles <em>you&rsquo;d love</em>
+                    </h2>
+                  </div>
+                  <Link href="/jobs" className="v2-card-link">
+                    Browse all <Icon name="arrowRight" size={14} />
+                  </Link>
+                </div>
+                {recommended.length === 0 ? (
+                  <div
+                    style={{
+                      marginTop: 24,
+                      padding: 32,
+                      border: "1px dashed var(--v2-ink-200)",
+                      borderRadius: "var(--v2-r-lg)",
+                      textAlign: "center",
+                      color: "var(--v2-ink-500)",
+                    }}
+                  >
+                    Pick sectors on your profile to unlock personalized recs.
+                  </div>
+                ) : (
+                  <div className="v2-rec-grid">
+                    {recommended.map((r) => (
+                      <RecCard key={r.id} r={r} />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Saved roles preview */}
+              <section className="v2-card">
+                <div className="v2-card-head">
+                  <div>
+                    <div className="v2-eyebrow">Saved</div>
+                    <h2 className="v2-card-title" style={{ marginTop: 8 }}>
+                      Your <em>shortlist</em>
+                    </h2>
+                  </div>
+                  <Link href="/saved" className="v2-card-link">
+                    See all {savedCount} <Icon name="arrowRight" size={14} />
+                  </Link>
+                </div>
+                {recentSaved.length === 0 ? (
+                  <div
+                    style={{
+                      marginTop: 18,
+                      padding: 24,
+                      border: "1px dashed var(--v2-ink-200)",
+                      borderRadius: "var(--v2-r-lg)",
+                      textAlign: "center",
+                      color: "var(--v2-ink-500)",
+                      fontSize: 13,
+                    }}
+                  >
+                    Bookmark roles from any job page to build your shortlist.
+                  </div>
+                ) : (
+                  <div className="v2-saved-list">
+                    {recentSaved.map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`/jobs/${s.jobId}`}
+                        className="v2-saved-row"
+                        style={{ color: "inherit" }}
+                      >
+                        <div
+                          className="v2-saved-logo"
+                          style={{ background: s.orgLogoColor }}
+                        >
+                          {s.orgName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="v2-saved-title">
+                            {s.jobTitle ?? "Untitled role"}
+                          </div>
+                          <div className="v2-saved-meta">
+                            {s.orgName}
+                            {s.jobLocation && ` · ${s.jobLocation}`}
+                          </div>
+                        </div>
+                        <span
+                          className="v2-saved-match"
+                          style={{
+                            background: "var(--v2-ink-100)",
+                            color: "var(--v2-ink-700)",
+                          }}
+                        >
+                          {formatSalary(
+                            s.salaryMin,
+                            s.salaryMax,
+                            s.salaryCurrency,
+                            s.salaryPeriod,
+                          )}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            {/* RIGHT RAIL */}
+            <aside className="v2-rail">
+              <ProfileCompletenessCard
+                pct={completeness}
+                checks={profileChecks}
+              />
+              <ActivityCard
+                applications={stagedApps.slice(0, 4)}
+                profileViews30d={profileViews30d}
+                savedCount={savedCount}
+              />
+            </aside>
+          </div>
         </div>
-      ) : (
-        children
-      )}
-    </section>
+      </div>
+    </>
   );
 }
 
-function Avatar({
-  text,
-  imageUrl,
-  bg,
-  size,
-}: {
-  text: string;
-  imageUrl: string | null;
-  bg: string;
-  size: number;
-}) {
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: 10,
-        background: bg,
-        color: "white",
-        display: "grid",
-        placeItems: "center",
-        fontFamily: "var(--v2-font-serif)",
-        fontSize: size * 0.4,
-        fontWeight: 900,
-        overflow: "hidden",
-        position: "relative",
-        flexShrink: 0,
-      }}
-    >
-      {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl}
-          alt=""
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
-        />
-      ) : (
-        text
-      )}
-    </div>
-  );
-}
+/* ---------- focus card ---------- */
 
-type MiniRow = {
+type StagedApp = {
+  id: string;
   jobId: string;
   jobTitle: string | null;
-  jobLocation?: string | null;
-  sector: string | null;
-  workSetup: string | null;
-  salaryMin: number | null;
-  salaryMax: number | null;
-  salaryCurrency: string | null;
-  salaryPeriod: string | null;
   orgName: string;
-  orgLogoColor: string;
-  orgLogoUrl: string | null;
+  stage: StageKey;
 };
 
-function JobMiniCard({ row }: { row: MiniRow }) {
-  return (
-    <Link href={`/jobs/${row.jobId}`} style={listRowStyle}>
-      <Avatar
-        text={row.orgName.charAt(0).toUpperCase()}
-        imageUrl={row.orgLogoUrl}
-        bg={row.orgLogoColor}
-        size={36}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ fontWeight: 700, fontSize: 14 }}>
-            {row.jobTitle ?? "Untitled role"}
-          </div>
-          {row.sector && (
-            <span className="v2-chip v2-chip-accent">
-              {SECTOR_LABELS[row.sector as JobSector]}
-            </span>
-          )}
+function FocusCard({
+  offer,
+  interview,
+  recommendedCount,
+}: {
+  offer: StagedApp | null;
+  interview: StagedApp | null;
+  recommendedCount: number;
+}) {
+  if (offer) {
+    return (
+      <div className="v2-focus-card">
+        <div className="v2-focus-eye">This week&rsquo;s focus</div>
+        <div className="v2-focus-headline">
+          Decide on the <em>{offer.orgName}</em> offer for{" "}
+          <em>{offer.jobTitle}</em>.
         </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--v2-ink-500)",
-            marginTop: 2,
-          }}
-        >
-          {row.orgName}
-          {row.jobLocation && ` · ${row.jobLocation}`}
-          {row.workSetup &&
-            ` · ${WORK_SETUP_LABELS[row.workSetup as JobWorkSetup]}`}
-          {` · ${formatSalary(
-            row.salaryMin,
-            row.salaryMax,
-            row.salaryCurrency,
-            row.salaryPeriod,
-          )}`}
+        <div className="v2-focus-actions">
+          <Link
+            href={`/jobs/${offer.jobId}`}
+            className="v2-btn v2-btn-accent"
+          >
+            Review offer
+          </Link>
+          <Link href="/applications" className="v2-btn-ghost-dark">
+            <Icon name="message" size={14} />
+            See pipeline
+          </Link>
         </div>
       </div>
-      <Icon name="arrowUpRight" size={14} />
+    );
+  }
+  if (interview) {
+    return (
+      <div className="v2-focus-card">
+        <div className="v2-focus-eye">This week&rsquo;s focus</div>
+        <div className="v2-focus-headline">
+          Prep for the <em>{interview.orgName}</em> interview.
+        </div>
+        <div className="v2-focus-actions">
+          <Link
+            href={`/jobs/${interview.jobId}`}
+            className="v2-btn v2-btn-accent"
+          >
+            View role
+          </Link>
+          <Link href="/applications" className="v2-btn-ghost-dark">
+            <Icon name="bookOpen" size={14} />
+            Pipeline
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="v2-focus-card">
+      <div className="v2-focus-eye">This week&rsquo;s focus</div>
+      <div className="v2-focus-headline">
+        {recommendedCount > 0
+          ? "Apply to your top match this week."
+          : "Build your profile so Ember can match you."}
+      </div>
+      <div className="v2-focus-actions">
+        <Link
+          href={recommendedCount > 0 ? "/jobs" : "/profile"}
+          className="v2-btn v2-btn-accent"
+        >
+          {recommendedCount > 0 ? "Browse roles" : "Finish profile"}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- stat card ---------- */
+
+function StatCard({
+  num,
+  label,
+  icon,
+  meta,
+}: {
+  num: number | string;
+  label: string;
+  icon: React.ComponentProps<typeof Icon>["name"];
+  meta: string;
+}) {
+  return (
+    <div className="v2-stat">
+      <div className="v2-stat-num-row">
+        <div className="v2-stat-num">{num}</div>
+      </div>
+      <div className="v2-stat-label-row">
+        <div className="v2-stat-icon">
+          <Icon name={icon} size={16} />
+        </div>
+        <div>
+          <div className="v2-stat-label">{label}</div>
+          <div className="v2-stat-meta">{meta}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- application row ---------- */
+
+function ApplicationRow({
+  a,
+}: {
+  a: {
+    id: string;
+    jobId: string;
+    jobTitle: string | null;
+    jobLocation: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+    salaryPeriod: string | null;
+    createdAt: Date;
+    orgName: string;
+    orgLogoColor: string;
+    stage: StageKey;
+  };
+}) {
+  const step = STAGE_STEP[a.stage];
+  const segs = Array.from({ length: STAGE_TOTAL }, (_, i) => {
+    if (i < step - 1) return "done";
+    if (i === step - 1) return "active";
+    return "";
+  });
+  return (
+    <Link
+      href={`/jobs/${a.jobId}`}
+      className="v2-app-row"
+      style={{ color: "inherit" }}
+    >
+      <div
+        className="v2-app-logo"
+        style={{ background: a.orgLogoColor }}
+      >
+        {a.orgName.slice(0, 2).toUpperCase()}
+      </div>
+      <div>
+        <div className="v2-app-title">{a.jobTitle ?? "Untitled role"}</div>
+        <div className="v2-app-meta">
+          <span>{a.orgName}</span>
+          {a.jobLocation && (
+            <span className="v2-app-meta-dot">{a.jobLocation}</span>
+          )}
+          <span className="v2-app-meta-dot">
+            {formatSalary(
+              a.salaryMin,
+              a.salaryMax,
+              a.salaryCurrency,
+              a.salaryPeriod,
+            )}
+          </span>
+        </div>
+        <div className="v2-app-progress">
+          {segs.map((s, i) => (
+            <div key={i} className={`v2-app-progress-bar ${s}`} />
+          ))}
+        </div>
+      </div>
+      <div>
+        <span className={`v2-app-stage ${a.stage}`}>
+          {STAGE_LABEL[a.stage]}
+        </span>
+      </div>
+      <div className="v2-app-time">
+        Applied
+        <br />
+        {timeAgo(a.createdAt)}
+      </div>
     </Link>
+  );
+}
+
+/* ---------- recommended card ---------- */
+
+function RecCard({
+  r,
+}: {
+  r: {
+    id: string;
+    jobTitle: string | null;
+    jobLocation: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+    salaryPeriod: string | null;
+    publishedAt: Date | null;
+    orgName: string;
+    orgLogoColor: string;
+  };
+}) {
+  return (
+    <Link
+      href={`/jobs/${r.id}`}
+      className="v2-rec"
+      style={{ color: "inherit", display: "block" }}
+    >
+      <div className="v2-rec-head">
+        <div className="v2-rec-logo" style={{ background: r.orgLogoColor }}>
+          {r.orgName.slice(0, 2).toUpperCase()}
+        </div>
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              fontFamily: "var(--v2-font-mono)",
+              color: "var(--v2-ink-400)",
+            }}
+          >
+            {r.publishedAt ? timeAgo(r.publishedAt) : "New"}
+          </div>
+          <div className="v2-rec-co">{r.orgName}</div>
+        </div>
+      </div>
+      <div className="v2-rec-title">{r.jobTitle ?? "Untitled role"}</div>
+      <div className="v2-rec-meta">
+        <span>{r.jobLocation ?? "Location TBD"}</span>
+        <span style={{ color: "var(--v2-ink-300)" }}>·</span>
+        <span>
+          {formatSalary(
+            r.salaryMin,
+            r.salaryMax,
+            r.salaryCurrency,
+            r.salaryPeriod,
+          )}
+        </span>
+      </div>
+      <div className="v2-rec-bottom">
+        <div>
+          <div className="v2-rec-why">Matches your sectors</div>
+        </div>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            display: "grid",
+            placeItems: "center",
+            background: "var(--v2-accent)",
+            color: "var(--v2-ink-950)",
+          }}
+        >
+          <Icon name="arrowUpRight" size={14} />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ---------- profile completeness ---------- */
+
+function ProfileCompletenessCard({
+  pct,
+  checks,
+}: {
+  pct: number;
+  checks: { label: string; done: boolean }[];
+}) {
+  const r = 38;
+  const c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  return (
+    <div className="v2-prof-card">
+      <div className="v2-prof-row">
+        <div className="v2-prof-ring">
+          <svg viewBox="0 0 88 88">
+            <circle
+              className="v2-prof-ring-bg"
+              cx="44"
+              cy="44"
+              r={r}
+              fill="none"
+              strokeWidth="6"
+            />
+            <circle
+              className="v2-prof-ring-fg"
+              cx="44"
+              cy="44"
+              r={r}
+              fill="none"
+              strokeWidth="6"
+              strokeDasharray={c}
+              strokeDashoffset={offset}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="v2-prof-ring-num">{pct}%</div>
+        </div>
+        <div>
+          <div className="v2-prof-eye">Profile strength</div>
+          <div className="v2-prof-headline">
+            {pct === 100
+              ? "Recruiter-ready."
+              : `${checks.filter((c) => !c.done).length} step${
+                  checks.filter((c) => !c.done).length === 1 ? "" : "s"
+                } from being recruiter-ready.`}
+          </div>
+        </div>
+      </div>
+      <div className="v2-prof-checks">
+        {checks.map((c) => (
+          <div
+            key={c.label}
+            className={`v2-prof-check ${c.done ? "" : "todo"}`}
+          >
+            <span className="v2-prof-check-tick">
+              {c.done ? <Icon name="check" size={11} /> : null}
+            </span>
+            {c.label}
+          </div>
+        ))}
+      </div>
+      <Link href="/profile" className="v2-prof-cta">
+        {pct === 100 ? "Edit profile" : "Finish profile"}
+        <Icon name="arrowRight" size={14} />
+      </Link>
+    </div>
+  );
+}
+
+/* ---------- derived activity feed ---------- */
+
+type ActivityItem = {
+  id: string;
+  icon: React.ComponentProps<typeof Icon>["name"];
+  tone: "default" | "accent" | "dark" | "sky" | "coral";
+  text: React.ReactNode;
+  time: string;
+};
+
+function ActivityCard({
+  applications,
+  profileViews30d,
+  savedCount,
+}: {
+  applications: {
+    id: string;
+    createdAt: Date;
+    jobTitle: string | null;
+    orgName: string;
+    stage: StageKey;
+  }[];
+  profileViews30d: number;
+  savedCount: number;
+}) {
+  const items: ActivityItem[] = [];
+
+  if (profileViews30d > 0) {
+    items.push({
+      id: "views",
+      icon: "eye",
+      tone: "accent",
+      text: (
+        <>
+          <strong>{profileViews30d}</strong> profile view
+          {profileViews30d === 1 ? "" : "s"} in the last 30 days.
+        </>
+      ),
+      time: "this month",
+    });
+  }
+  applications.slice(0, 4).forEach((a) => {
+    items.push({
+      id: `app-${a.id}`,
+      icon: a.stage === "offer" ? "star" : "briefcase",
+      tone: a.stage === "offer" ? "dark" : "default",
+      text: (
+        <>
+          {a.stage === "offer"
+            ? "Offer received from "
+            : a.stage === "interview"
+              ? "Interview booked with "
+              : a.stage === "review"
+                ? "Application moved to review at "
+                : "Applied to "}
+          <strong>{a.orgName}</strong>
+          {a.jobTitle ? ` for ${a.jobTitle}` : ""}.
+        </>
+      ),
+      time: timeAgo(a.createdAt),
+    });
+  });
+  if (savedCount > 0) {
+    items.push({
+      id: "saved",
+      icon: "bookmark",
+      tone: "sky",
+      text: (
+        <>
+          <strong>{savedCount}</strong> role{savedCount === 1 ? "" : "s"} on
+          your shortlist.
+        </>
+      ),
+      time: "now",
+    });
+  }
+  if (items.length === 0) {
+    items.push({
+      id: "empty",
+      icon: "sparkles",
+      tone: "default",
+      text: <>No activity yet — apply to your first role to get started.</>,
+      time: "—",
+    });
+  }
+
+  return (
+    <div className="v2-card compact">
+      <div className="v2-card-head">
+        <div>
+          <div className="v2-eyebrow">Activity</div>
+          <h3
+            className="v2-card-title"
+            style={{ marginTop: 8, fontSize: 22 }}
+          >
+            Recent
+          </h3>
+        </div>
+      </div>
+      <div className="v2-notif-list">
+        {items.map((n) => (
+          <div key={n.id} className="v2-notif">
+            <div className={`v2-notif-dot ${n.tone}`}>
+              <Icon name={n.icon} size={12} />
+            </div>
+            <div>
+              <div className="v2-notif-text">{n.text}</div>
+              <div className="v2-notif-time">{n.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

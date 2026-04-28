@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { recordEmployerOrgView } from "@/server/services/profile-views";
 import { Icon } from "@/components/shared/icon";
+import { SiteHeader } from "@/components/marketing/site-header";
 import {
   SECTOR_LABELS as JOB_SECTOR_LABELS,
   WORK_SETUP_LABELS,
@@ -103,40 +103,7 @@ export default async function PublicCompanyPage({
         background: "var(--v2-ink-50, #F9FAFC)",
       }}
     >
-      <header
-        style={{
-          padding: "20px 32px",
-          background: "rgba(249,250,252,0.85)",
-          backdropFilter: "saturate(180%) blur(14px)",
-          borderBottom: "1px solid var(--v2-ink-200)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 30,
-          gap: 24,
-        }}
-      >
-        <Link href="/" style={{ display: "inline-block" }}>
-          <Image
-            src="/energized-logo.svg"
-            alt="Energized"
-            width={144}
-            height={80}
-            priority
-            style={{ height: 40, width: "auto" }}
-          />
-        </Link>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Link className="v2-btn v2-btn-ghost v2-btn-sm" href="/sign-in">
-            Sign in
-          </Link>
-          <Link className="v2-btn v2-btn-primary v2-btn-sm" href="/sign-up">
-            Sign up
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main
         style={{

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -171,29 +170,6 @@ export function ProfileClient({
 
   return (
     <div className="pp-shell v2">
-      <header className="pp-top">
-        <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
-          <Brand />
-          <div className="pp-crumbs">
-            <span>App</span>
-            <span className="sep">/</span>
-            <span className="current">Profile</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div className="ob-save-state">
-            <span className="dot" />
-            <span>{saving ? "Saving…" : "All changes saved"}</span>
-          </div>
-          <button
-            className="v2-btn v2-btn-ghost v2-btn-sm"
-            onClick={() => window.open(`/p/${userId}`, "_blank")}
-          >
-            <Icon name="eye" size={14} /> Preview public profile
-          </button>
-        </div>
-      </header>
-
       <div className="pp-body">
         <aside className="pp-side">
           <div className="pp-identity">
@@ -328,6 +304,25 @@ export function ProfileClient({
                 Everything employers see — and the bits only Ember uses to
                 match.
               </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div className="ob-save-state">
+                <span className="dot" />
+                <span>{saving ? "Saving…" : "All changes saved"}</span>
+              </div>
+              <button
+                className="v2-btn v2-btn-ghost v2-btn-sm"
+                onClick={() => window.open(`/p/${userId}`, "_blank")}
+              >
+                <Icon name="eye" size={14} /> Preview public profile
+              </button>
             </div>
           </div>
 
@@ -1353,19 +1348,6 @@ function AccountSection({
         )}
       </div>
     </section>
-  );
-}
-
-function Brand() {
-  return (
-    <Image
-      src="/energized-logo.svg"
-      alt="Energized"
-      width={144}
-      height={80}
-      priority
-      style={{ height: 40, width: "auto" }}
-    />
   );
 }
 

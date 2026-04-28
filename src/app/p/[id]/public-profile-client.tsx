@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Icon, type IconName } from "@/components/shared/icon";
 
 type SectorEnum =
@@ -169,35 +168,6 @@ export function PublicProfileClient({
           </span>
         )}
       </div>
-
-      {/* nav */}
-      <nav className="pub-nav">
-        <Link
-          href="/"
-          className="v2-nav-brand"
-          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-        >
-          <Image
-            src="/energized-logo.svg"
-            alt="Energized"
-            width={144}
-            height={80}
-            priority
-            style={{ height: 32, width: "auto" }}
-          />
-        </Link>
-        <div className="pub-nav-end">
-          {viewerIsSelf ? (
-            <Link className="pub-share-btn" href="/profile">
-              <Icon name="settings" size={13} /> Edit profile
-            </Link>
-          ) : (
-            <Link className="pub-share-btn" href="/sign-in">
-              <Icon name="arrowRight" size={13} /> Sign in
-            </Link>
-          )}
-        </div>
-      </nav>
 
       {/* HERO */}
       <header className="pub-hero">

@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings, savedJobs } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { Icon } from "@/components/shared/icon";
+import { SiteHeader } from "@/components/marketing/site-header";
 import {
   SECTOR_LABELS,
   WORK_SETUP_LABELS,
@@ -53,53 +53,7 @@ export default async function SavedJobsPage() {
       className="v2"
       style={{ minHeight: "100vh", background: "var(--v2-ink-50)" }}
     >
-      <header
-        style={{
-          padding: "20px 32px",
-          background: "rgba(249,250,252,0.85)",
-          backdropFilter: "saturate(180%) blur(14px)",
-          WebkitBackdropFilter: "saturate(180%) blur(14px)",
-          borderBottom: "1px solid var(--v2-ink-200)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 30,
-        }}
-      >
-        <Link href="/" style={{ display: "flex", alignItems: "center" }}>
-          <Image
-            src="/energized-logo.svg"
-            alt="Energized"
-            width={144}
-            height={80}
-            priority
-            style={{ height: 36, width: "auto" }}
-          />
-        </Link>
-        <nav
-          style={{
-            display: "flex",
-            gap: 20,
-            alignItems: "center",
-            fontSize: 14,
-          }}
-        >
-          <Link href="/jobs" style={{ color: "var(--v2-ink-700)" }}>
-            Jobs
-          </Link>
-          <Link href="/applications" style={{ color: "var(--v2-ink-700)" }}>
-            Applications
-          </Link>
-          <Link
-            href="/saved"
-            style={{ color: "var(--v2-ink-900)", fontWeight: 700 }}
-          >
-            Saved
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader active="saved" />
 
       <div
         className="v2-container"

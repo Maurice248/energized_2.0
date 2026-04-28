@@ -1,0 +1,559 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/server/db";
+import { jobListings } from "@/server/db/schema";
+import { SiteHeader } from "@/components/marketing/site-header";
+import { Icon } from "@/components/shared/icon";
+
+export const metadata: Metadata = {
+  title: "Energized — jobs in Canadian energy",
+  description:
+    "The AI-first job network for Canada's energy sector — oil & gas, renewables, nuclear, utilities, hydrogen, power.",
+};
+
+export default async function LandingPage() {
+  const [{ n: liveRoles } = { n: 0 }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(jobListings)
+    .where(eq(jobListings.status, "published"));
+
+  return (
+    <>
+      <SiteHeader active="home" />
+      <main style={{ flex: 1 }}>
+        <Hero liveRoles={liveRoles} />
+        <Marquee />
+        <SectorIndex />
+        <AIShowcase />
+        <HowItWorks />
+        <Quotes />
+        <PricingTeaser />
+        <FinalCta />
+      </main>
+    </>
+  );
+}
+
+/* ---------- hero ---------- */
+
+function Hero({ liveRoles }: { liveRoles: number }) {
+  return (
+    <section className="v2-hero">
+      <div className="v2-container v2-hero-inner">
+        <div className="v2-hero-copy">
+          <div className="v2-eyebrow">Est. 2026 · Calgary → National</div>
+          <h1
+            className="v2-display v2-hero-headline"
+            style={{ color: "var(--v2-ink-950)" }}
+          >
+            Careers for
+            <br />
+            the <em style={{ fontStyle: "italic" }}>energy</em>
+            <br />
+            in motion.
+          </h1>
+          <div className="v2-hero-pill-row">
+            <span className="v2-hero-pill">AI-matched</span>
+            <span className="v2-hero-pill-note">to sector-specific expertise</span>
+          </div>
+          <p className="v2-hero-sub">
+            From reservoir engineers to renewable technicians, Energized pairs
+            Canada&rsquo;s skilled workforce with roles that fit — faster,
+            fairer, with AI that actually understands sector-specific
+            expertise.
+          </p>
+          <div className="v2-hero-actions">
+            <Link href="/sign-up" className="v2-btn v2-btn-primary v2-btn-lg">
+              Find my role <Icon name="arrowUpRight" size={18} />
+            </Link>
+            <Link href="/jobs" className="v2-btn v2-btn-ghost v2-btn-lg">
+              Browse open roles
+            </Link>
+          </div>
+          <div className="v2-hero-meta">
+            <div className="v2-hero-meta-item">
+              <div className="v2-hero-meta-value">{liveRoles}</div>
+              <div className="v2-hero-meta-label">
+                Live roles across Canadian energy
+              </div>
+            </div>
+            <div className="v2-hero-meta-item">
+              <div className="v2-hero-meta-value">
+                6
+                <span
+                  style={{
+                    fontSize: 18,
+                    color: "var(--v2-ink-500)",
+                    fontFamily: "var(--v2-font-sans)",
+                  }}
+                >
+                  {" "}sectors
+                </span>
+              </div>
+              <div className="v2-hero-meta-label">
+                Oil &amp; gas, renewables, nuclear, utilities, hydrogen, power
+              </div>
+            </div>
+            <div className="v2-hero-meta-item">
+              <div className="v2-hero-meta-value">
+                1<span style={{ color: "var(--v2-accent-deep)" }}>-click</span>
+              </div>
+              <div className="v2-hero-meta-label">
+                Apply with a cover note pre-drafted from your profile
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="v2-orbit">
+          <div className="v2-orbit-ring"></div>
+          <div className="v2-orbit-ring v2-orbit-ring-2"></div>
+          <div className="v2-orbit-center">
+            <div className="v2-orbit-center-inner">
+              <span className="v2-orbit-center-num">96%</span>
+              match
+            </div>
+          </div>
+          <div className="v2-orbit-chip v2-orbit-chip-1">
+            <span className="dot" style={{ background: "#0F2545" }}>
+              AE
+            </span>
+            Controls Engineer
+          </div>
+          <div className="v2-orbit-chip v2-orbit-chip-2">
+            <span className="dot" style={{ background: "#1CAAE2" }}>
+              NS
+            </span>
+            Wind Technician
+          </div>
+          <div className="v2-orbit-chip v2-orbit-chip-3">
+            <span className="dot" style={{ background: "#004984" }}>
+              AW
+            </span>
+            Project Manager
+          </div>
+          <div className="v2-orbit-chip v2-orbit-chip-4">
+            <span className="dot" style={{ background: "#FF7A59" }}>
+              HS
+            </span>
+            Solar PM
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- marquee ---------- */
+
+const MARQUEE_ITEMS: { label: string; bg: string; fg: string }[] = [
+  { label: "Wind Techs", bg: "#1CAAE2", fg: "#0B0D12" },
+  { label: "Controls Engineers", bg: "#7CC7FF", fg: "#0B0D12" },
+  { label: "Solar PMs", bg: "#FF7A59", fg: "#fff" },
+  { label: "Reservoir Eng", bg: "#B9A8FF", fg: "#0B0D12" },
+  { label: "Geologists", bg: "#F5F0E6", fg: "#0B0D12" },
+  { label: "Grid Operators", bg: "#0B0D12", fg: "#1CAAE2" },
+  { label: "Pipeline Tech", bg: "#004984", fg: "#fff" },
+  { label: "Safety Officers", bg: "#2A303F", fg: "#fff" },
+];
+
+function Marquee() {
+  const track = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
+  return (
+    <div className="v2-marquee" aria-hidden="true">
+      <div className="v2-marquee-track">
+        {track.map((it, i) => (
+          <div key={i} className="v2-marquee-item">
+            <span
+              className="dot"
+              style={{ background: it.bg, color: it.fg }}
+            >
+              E
+            </span>
+            {it.label}
+            <span style={{ color: "var(--v2-ink-300)", marginLeft: 16 }}>
+              ✦
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- sector index ---------- */
+
+const SECTORS = [
+  { n: "01", t: "Oil & Gas", q: "oil_gas", tags: ["Upstream", "Midstream", "LNG"] },
+  { n: "02", t: "Renewables", q: "renewables", tags: ["Wind", "Solar", "Hydro"] },
+  { n: "03", t: "Power Utilities", q: "utilities", tags: ["Grid", "Distribution"] },
+  { n: "04", t: "Nuclear", q: "nuclear", tags: ["SMR", "CANDU"] },
+  { n: "05", t: "Hydrogen & Carbon Capture", q: "hydrogen", tags: ["Green H₂", "CCUS"] },
+  { n: "06", t: "Power", q: "power", tags: ["Generation", "Transmission"] },
+];
+
+function SectorIndex() {
+  return (
+    <section className="v2-section">
+      <div className="v2-container">
+        <div className="v2-index-head">
+          <div>
+            <div className="v2-eyebrow">Sector index</div>
+            <h2 className="v2-h2" style={{ marginTop: 16 }}>
+              Canada&rsquo;s energy is a{" "}
+              <em
+                style={{
+                  fontStyle: "italic",
+                  color: "var(--v2-accent-deep)",
+                }}
+              >
+                portfolio
+              </em>
+              .<br />
+              So is our talent network.
+            </h2>
+          </div>
+          <p>
+            Every role here is vetted against the sector&rsquo;s unique skill
+            map — no more conflating a pipeline welder with a substation
+            technician.
+          </p>
+        </div>
+
+        <div className="v2-cat-row">
+          {SECTORS.map((cat) => (
+            <Link
+              key={cat.n}
+              href={`/jobs?sector=${cat.q}`}
+              className="v2-cat"
+              style={{ color: "inherit" }}
+            >
+              <div className="v2-cat-num">{cat.n}</div>
+              <div className="v2-cat-title">{cat.t}</div>
+              <div className="v2-cat-meta">
+                {cat.tags.map((tg) => (
+                  <span key={tg} className="v2-chip v2-chip-outline">
+                    {tg}
+                  </span>
+                ))}
+              </div>
+              <div className="v2-cat-count">View roles</div>
+              <div className="v2-cat-arrow">
+                <Icon name="arrowRight" size={16} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- AI showcase ---------- */
+
+function AIShowcase() {
+  return (
+    <section>
+      <div className="v2-ai">
+        <div className="v2-ai-inner">
+          <div>
+            <div className="v2-eyebrow v2-eyebrow-light">
+              AI that speaks energy
+            </div>
+            <h2 className="v2-h2" style={{ marginTop: 16 }}>
+              Not another
+              <br />
+              keyword match. <em>Context.</em>
+            </h2>
+            <p>
+              Our AI understands the difference between a DCS operator and a
+              SCADA engineer, between Class-1 and Class-4 estimator certs,
+              and between a rotating and fixed-equipment background.
+            </p>
+            <div className="v2-ai-stat">
+              <div>
+                <div className="v2-ai-stat-v">3.2×</div>
+                <div className="v2-ai-stat-l">
+                  Faster shortlists vs. traditional boards
+                </div>
+              </div>
+              <div>
+                <div className="v2-ai-stat-v">+41%</div>
+                <div className="v2-ai-stat-l">
+                  Offer acceptance rate improvement
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="v2-ai-visual">
+            <div className="v2-ai-chat">
+              <div className="v2-ai-chat-head">
+                <div className="v2-ai-chat-avatar">E</div>
+                <div>
+                  <div className="v2-ai-chat-name">
+                    Ember · your career AI
+                  </div>
+                  <div className="v2-ai-chat-status">
+                    <span className="dot"></span>Typing
+                  </div>
+                </div>
+              </div>
+              <div className="v2-ai-msg v2-ai-msg-in">
+                I see you have 8 years in upstream controls with Rockwell.
+                3 roles in Calgary match 90%+. Want me to auto-tailor your
+                resume for each?
+              </div>
+              <div className="v2-ai-msg v2-ai-msg-out">
+                Yes — prioritize hybrid with P.Eng sponsorship.
+              </div>
+              <div className="v2-ai-msg v2-ai-msg-in">
+                Done. Ark Energy (96%), CanFlow (91%), BrightGrid (88%).
+                Ark is hiring urgently.
+              </div>
+              <div className="v2-ai-suggestions">
+                <span className="v2-ai-sugg">Apply to all 3</span>
+                <span className="v2-ai-sugg">Compare salaries</span>
+                <span className="v2-ai-sugg">Prep interview</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- how it works ---------- */
+
+const STEPS = [
+  {
+    n: "01",
+    icon: "user" as const,
+    title: "Tell us the work you do",
+    body:
+      "Skip the resume upload. Answer 6 questions about projects, tools, certs, and where you'd move. Ember builds your profile.",
+  },
+  {
+    n: "02",
+    icon: "sparkles" as const,
+    title: "Meet your matches",
+    body:
+      "Ember surfaces 3–5 roles a week, ranked by contextual fit — not by who paid the most for visibility.",
+  },
+  {
+    n: "03",
+    icon: "briefcase" as const,
+    title: "Interview, negotiate, accept",
+    body:
+      "We handle intros, pre-interview briefs, and pay-band research. You focus on the conversation.",
+  },
+];
+
+function HowItWorks() {
+  return (
+    <section className="v2-section">
+      <div className="v2-container">
+        <div className="v2-index-head">
+          <div>
+            <div className="v2-eyebrow">The process</div>
+            <h2 className="v2-h2" style={{ marginTop: 16 }}>
+              Three steps. Zero{" "}
+              <em style={{ fontStyle: "italic" }}>resume-rot</em>.
+            </h2>
+          </div>
+        </div>
+        <div className="v2-steps">
+          {STEPS.map((s) => (
+            <div key={s.n} className="v2-step">
+              <div className="v2-step-num">{s.n}</div>
+              <div className="v2-step-ico">
+                <Icon name={s.icon} size={22} />
+              </div>
+              <h3>{s.title}</h3>
+              <p>{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- quotes ---------- */
+
+function Quotes() {
+  return (
+    <section className="v2-section" style={{ paddingTop: 0 }}>
+      <div className="v2-container">
+        <div className="v2-index-head">
+          <div>
+            <div className="v2-eyebrow">Field notes</div>
+            <h2 className="v2-h2" style={{ marginTop: 16 }}>
+              What the industry says.
+            </h2>
+          </div>
+        </div>
+        <div className="v2-quotes">
+          <div className="v2-quote-main">
+            <div className="v2-quote-mark">&ldquo;</div>
+            <p>
+              Ember surfaced a senior instrumentation role at a
+              carbon-capture project I didn&rsquo;t know existed — 40 km from
+              my house, with the exact PLC stack I&rsquo;ve run for a decade.
+              Interview to offer: nine days.
+            </p>
+            <div className="v2-quote-author">
+              <div
+                className="v2-quote-avatar"
+                style={{ background: "#1CAAE2" }}
+              >
+                DM
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: "var(--v2-ink-950)",
+                  }}
+                >
+                  Devin M.
+                </div>
+                <div
+                  style={{ fontSize: 13, color: "var(--v2-ink-500)" }}
+                >
+                  Sr. I&amp;C Engineer · Carbon-capture project
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="v2-quote-side">
+            <div>
+              <div className="v2-eyebrow v2-eyebrow-light">Employer</div>
+              <h3 style={{ marginTop: 14 }}>
+                &ldquo;We filled a bench of 12 wind techs in six weeks.&rdquo;
+              </h3>
+              <p>
+                Normally it&rsquo;s a six-month saga. The sector-specific
+                vetting alone saved our team 200+ hours of phone screens.
+              </p>
+            </div>
+            <div
+              style={{
+                marginTop: 28,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div
+                className="v2-quote-avatar"
+                style={{ background: "#FF7A59" }}
+              >
+                KT
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>Kate T.</div>
+                <div
+                  style={{ fontSize: 13, color: "var(--v2-ink-300)" }}
+                >
+                  Head of Talent · Wind farm operator
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- pricing teaser ---------- */
+
+function PricingTeaser() {
+  return (
+    <section className="v2-section" style={{ paddingTop: 0 }}>
+      <div className="v2-container">
+        <div className="v2-index-head">
+          <div>
+            <div className="v2-eyebrow">Plans</div>
+            <h2 className="v2-h2" style={{ marginTop: 16 }}>
+              Free for candidates.
+              <br />
+              Subscriptions for employers.
+            </h2>
+          </div>
+        </div>
+        <div className="v2-plans">
+          <div className="v2-plan">
+            <h4>Candidate</h4>
+            <div className="v2-plan-price">Free</div>
+            <div className="v2-plan-period">always</div>
+            <ul>
+              <li>AI matching + Ember chat</li>
+              <li>Profile + ticket showcase</li>
+              <li>Anonymous browsing</li>
+              <li>Save searches and roles</li>
+            </ul>
+          </div>
+          <div className="v2-plan featured">
+            <div className="v2-plan-tag">Most popular</div>
+            <h4>Growth employer</h4>
+            <div className="v2-plan-price">Subscription</div>
+            <div className="v2-plan-period">monthly · cancel anytime</div>
+            <ul>
+              <li>Up to 5 active postings</li>
+              <li>AI pre-screening &amp; shortlists</li>
+              <li>Recruiter seats &amp; pipeline kanban</li>
+              <li>Stripe-managed billing</li>
+            </ul>
+          </div>
+          <div className="v2-plan">
+            <h4>Enterprise</h4>
+            <div className="v2-plan-price">Custom</div>
+            <div className="v2-plan-period">50+ hires / year</div>
+            <ul>
+              <li>API + ATS integrations</li>
+              <li>Private talent pools</li>
+              <li>Branded career pages</li>
+              <li>Success manager</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- final CTA ---------- */
+
+function FinalCta() {
+  return (
+    <section className="v2-cta-band">
+      <div className="v2-container-narrow" style={{ textAlign: "center" }}>
+        <div
+          className="v2-eyebrow v2-eyebrow-light"
+          style={{ justifyContent: "center", display: "inline-flex" }}
+        >
+          Ready when you are
+        </div>
+        <h2
+          className="v2-h2"
+          style={{ marginTop: 20, fontSize: "clamp(44px, 7vw, 88px)" }}
+        >
+          Your next role is
+          <br />
+          <em style={{ fontStyle: "italic" }}>waiting</em> to be matched.
+        </h2>
+        <div className="v2-cta-actions" style={{ justifyContent: "center" }}>
+          <Link href="/sign-up" className="v2-btn v2-btn-accent v2-btn-lg">
+            Create your profile <Icon name="arrowUpRight" size={18} />
+          </Link>
+          <Link href="/jobs" className="v2-btn v2-btn-invert v2-btn-lg">
+            Browse jobs first
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}

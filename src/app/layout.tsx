@@ -6,6 +6,9 @@ import { OnboardingPersister } from "@/components/shared/onboarding-persister";
 import { PostHogProvider } from "@/components/posthog-provider";
 import "./globals.css";
 import "./v2.css";
+import "./v2-dashboard.css";
+import "./v2-about.css";
+import "./v2-contact.css";
 
 const lato = Lato({
   variable: "--font-lato",
