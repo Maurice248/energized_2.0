@@ -11,6 +11,7 @@ import { KpiStrip } from "./_components/kpi-strip";
 import { PlanQuotaCard } from "./_components/plan-quota-card";
 import { InboxQueue } from "./_components/inbox-queue";
 import { StaleAlerts } from "./_components/stale-alerts";
+import { PipelineByJob } from "./_components/pipeline-by-job";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -83,9 +84,7 @@ export default async function EmployerDashboardPage() {
       {/* Pipeline by job — Task 12 replaces this */}
       <section className="mb-6">
         <Suspense fallback={<SectionSkeleton title="Pipeline" />}>
-          <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-            Pipeline by job placeholder
-          </div>
+          <PipelineByJob />
         </Suspense>
       </section>
 
