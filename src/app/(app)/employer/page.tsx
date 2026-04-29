@@ -8,6 +8,7 @@ import { employerOrgs, orgMembers } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { KpiStrip } from "./_components/kpi-strip";
+import { PlanQuotaCard } from "./_components/plan-quota-card";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -93,9 +94,7 @@ export default async function EmployerDashboardPage() {
       {/* Plan + Activity — Tasks 9 & 13 replace these */}
       <section className="grid gap-4 md:grid-cols-2">
         <Suspense fallback={<SectionSkeleton title="Plan" />}>
-          <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-            Plan & quota placeholder
-          </div>
+          <PlanQuotaCard />
         </Suspense>
         <Suspense fallback={<SectionSkeleton title="Activity" />}>
           <div className="rounded-xl border p-4 text-sm text-muted-foreground">
