@@ -79,7 +79,7 @@ export function SiteFooter() {
             <h5>For employers</h5>
             <Link href="/sign-up?role=employer">Post a job</Link>
             <Link href="/sign-up?role=employer">Search talent</Link>
-            <Link href="/employer/profile">Employer dashboard</Link>
+            <Link href="/employer">Employer dashboard</Link>
           </div>
 
           <div>

@@ -31,7 +31,7 @@ export async function PlanQuotaCard() {
       <div className="flex items-baseline justify-between">
         <div className="text-sm font-bold">Plan &amp; quota</div>
         <Link
-          href="/employer/profile#billing"
+          href="/employer/profile#ep-billing"
           className="text-xs font-bold text-[var(--v2-accent)] hover:underline"
         >
           Manage billing →
@@ -60,7 +60,7 @@ export async function PlanQuotaCard() {
             You don&rsquo;t have an active subscription yet.
           </p>
           <Link
-            href="/employer/profile#billing"
+            href="/employer/profile#ep-billing"
             className="v2-btn v2-btn-accent mt-3"
           >
             Choose a plan
