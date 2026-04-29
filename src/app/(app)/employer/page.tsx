@@ -9,6 +9,7 @@ import { getSession } from "@/server/auth";
 import { isRange, type Range } from "@/lib/range";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { KpiStrip } from "./_components/kpi-strip";
+import { HiringFunnel } from "./_components/hiring-funnel";
 import { PlanQuotaCard } from "./_components/plan-quota-card";
 import { InboxQueue } from "./_components/inbox-queue";
 import { StaleAlerts } from "./_components/stale-alerts";
@@ -82,6 +83,10 @@ export default async function EmployerDashboardPage({
 
       <section className="mb-6">
         <KpiStrip range={range} />
+      </section>
+
+      <section className="mb-6">
+        <HiringFunnel range={range} />
       </section>
 
       {/* Inbox + Stale — Tasks 10 & 11 replace these */}
