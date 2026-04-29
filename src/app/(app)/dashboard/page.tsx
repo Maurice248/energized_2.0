@@ -25,12 +25,11 @@ import {
   STAGE_STEP,
   STAGE_TOTAL,
   type StageKey,
-  type ApplicationStatus,
 } from "@/lib/application-stages";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
-/* ---------- status helpers ---------- */
+/* ---------- formatting helpers ---------- */
 
 function timeAgo(d: Date): string {
   const ms = Date.now() - new Date(d).getTime();
@@ -105,7 +104,7 @@ export default async function DashboardPage() {
 
   const stagedApps = allApps.map((a) => ({
     ...a,
-    stage: STAGE_FROM_DB[a.status as ApplicationStatus] ?? "applied",
+    stage: STAGE_FROM_DB[a.status] ?? "applied",
   }));
 
   const activeStages: StageKey[] = ["applied", "review", "interview"];

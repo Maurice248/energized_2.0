@@ -1,3 +1,7 @@
+// Shared application-stage taxonomy. STAGE_FROM_DB and STAGE_LABEL are surface-agnostic.
+// STAGE_STEP / STAGE_TOTAL are specific to the jobseeker pipeline progress bar — employer
+// surfaces should define their own column ordering.
+
 import type { applicationStatusEnum } from "@/server/db/schema/enums";
 
 export type ApplicationStatus = (typeof applicationStatusEnum.enumValues)[number];
