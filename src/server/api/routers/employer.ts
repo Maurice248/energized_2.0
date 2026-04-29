@@ -131,6 +131,31 @@ async function findMyOrg(
   return byEmail?.orgId ?? null;
 }
 
+function floorTo(d: Date, g: "day" | "week" | "month"): Date {
+  const r = new Date(d);
+  r.setHours(0, 0, 0, 0);
+  if (g === "day") return r;
+  if (g === "week") {
+    const day = r.getDay();
+    const diff = (day + 6) % 7; // shift so Monday = 0
+    r.setDate(r.getDate() - diff);
+    return r;
+  }
+  // month
+  r.setDate(1);
+  return r;
+}
+
+function advance(d: Date, g: "day" | "week" | "month"): void {
+  if (g === "day") {
+    d.setDate(d.getDate() + 1);
+  } else if (g === "week") {
+    d.setDate(d.getDate() + 7);
+  } else {
+    d.setMonth(d.getMonth() + 1);
+  }
+}
+
 export const employerRouter = router({
   getMyOrg: protectedProcedure.query(async ({ ctx }) => {
     const orgId = await findMyOrg(ctx);
@@ -258,6 +283,67 @@ export const employerRouter = router({
         rejectedCount: byStatus.rejected,
         totalApplications: applied,
       };
+    }),
+
+  getApplicationsTimeseries: protectedProcedure
+    .input(z.object({ range: z.enum(["7d", "30d", "90d", "all"]).default("30d") }))
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) {
+        return { buckets: [], granularity: "day" as const };
+      }
+
+      const granularity: "day" | "week" | "month" =
+        input.range === "90d" ? "week" : input.range === "all" ? "month" : "day";
+
+      const cutoff = rangeToCutoff(input.range);
+
+      const conditions = [eq(jobListings.orgId, orgId)];
+      if (cutoff) conditions.push(gte(applications.createdAt, cutoff));
+
+      const truncExpr = sql<Date>`date_trunc(${granularity}, ${applications.createdAt})`;
+
+      const rows = await ctx.db
+        .select({
+          at: truncExpr,
+          applications: sql<number>`count(*)::int`,
+          reviewedOrDeeper: sql<number>`count(*) filter (where ${applications.status} in ('reviewed','interview','offer'))::int`,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(and(...conditions))
+        .groupBy(truncExpr)
+        .orderBy(truncExpr);
+
+      // Front-fill missing buckets with zeros so the chart x-axis has no gaps.
+      const buckets: { at: Date; applications: number; reviewedOrDeeper: number }[] = [];
+      const start = cutoff
+        ? floorTo(cutoff, granularity)
+        : rows.length > 0
+          ? floorTo(new Date(rows[0].at), granularity)
+          : null;
+      if (start) {
+        const cursor = new Date(start);
+        const end = new Date();
+        const byKey = new Map<string, { applications: number; reviewedOrDeeper: number }>();
+        for (const r of rows) {
+          byKey.set(r.at.toISOString(), {
+            applications: r.applications,
+            reviewedOrDeeper: r.reviewedOrDeeper,
+          });
+        }
+        while (cursor <= end) {
+          const key = cursor.toISOString();
+          const v = byKey.get(key) ?? { applications: 0, reviewedOrDeeper: 0 };
+          buckets.push({ at: new Date(cursor), ...v });
+          advance(cursor, granularity);
+        }
+      } else {
+        // "all" range with no data — return empty
+        // (no buckets to render)
+      }
+
+      return { buckets, granularity };
     }),
 
   getInboxQueue: protectedProcedure
