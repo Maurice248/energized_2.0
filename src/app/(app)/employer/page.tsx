@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import { employerOrgs, orgMembers } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { KpiStrip } from "./_components/kpi-strip";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -62,11 +63,8 @@ export default async function EmployerDashboardPage() {
         </Link>
       </header>
 
-      {/* KPI strip — Task 8 replaces this */}
       <section className="mb-6">
-        <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-          KPI strip placeholder
-        </div>
+        <KpiStrip />
       </section>
 
       {/* Inbox + Stale — Tasks 10 & 11 replace these */}
