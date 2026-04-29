@@ -200,6 +200,66 @@ export const employerRouter = router({
       };
     }),
 
+  getFunnel: protectedProcedure
+    .input(z.object({ range: z.enum(["7d", "30d", "90d", "all"]).default("30d") }))
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      const empty = {
+        stages: [
+          { key: "applied" as const,   label: "Applied",   count: 0, pctOfPrev: null as number | null },
+          { key: "review" as const,    label: "Review",    count: 0, pctOfPrev: 0 },
+          { key: "interview" as const, label: "Interview", count: 0, pctOfPrev: 0 },
+          { key: "offer" as const,     label: "Offer",     count: 0, pctOfPrev: 0 },
+        ],
+        rejectedCount: 0,
+        totalApplications: 0,
+      };
+      if (!orgId) return empty;
+
+      const cutoff = rangeToCutoff(input.range);
+      const conditions = [eq(jobListings.orgId, orgId)];
+      if (cutoff) conditions.push(gte(applications.createdAt, cutoff));
+
+      const rows = await ctx.db
+        .select({
+          status: applications.status,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(and(...conditions))
+        .groupBy(applications.status);
+
+      const byStatus: Record<string, number> = {
+        submitted: 0,
+        reviewed: 0,
+        interview: 0,
+        offer: 0,
+        rejected: 0,
+      };
+      for (const r of rows) {
+        if (r.status) byStatus[r.status] = r.count;
+      }
+
+      const applied = byStatus.submitted + byStatus.reviewed + byStatus.interview + byStatus.offer + byStatus.rejected;
+      const review = byStatus.reviewed + byStatus.interview + byStatus.offer;
+      const interview = byStatus.interview + byStatus.offer;
+      const offer = byStatus.offer;
+
+      const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
+
+      return {
+        stages: [
+          { key: "applied" as const,   label: "Applied",   count: applied,   pctOfPrev: null as number | null },
+          { key: "review" as const,    label: "Review",    count: review,    pctOfPrev: pct(review, applied) },
+          { key: "interview" as const, label: "Interview", count: interview, pctOfPrev: pct(interview, review) },
+          { key: "offer" as const,     label: "Offer",     count: offer,     pctOfPrev: pct(offer, interview) },
+        ],
+        rejectedCount: byStatus.rejected,
+        totalApplications: applied,
+      };
+    }),
+
   getInboxQueue: protectedProcedure
     .input(
       z.object({
