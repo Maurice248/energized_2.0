@@ -35,7 +35,7 @@ export const metadata: Metadata = { title: "Dashboard — Energized" };
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/sign-in?redirect=/dashboard");
-  if (session.user.role === "employer") redirect("/employer/profile");
+  if (session.user.role === "employer") redirect("/employer");
 
   const userId = session.user.id;
 

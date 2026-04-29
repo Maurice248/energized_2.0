@@ -24,7 +24,7 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
   const initial = (name?.trim()[0] || email[0] || "?").toUpperCase();
   const displayName = name?.trim() || email.split("@")[0];
 
-  const dashboardHref = isEmployer ? "/employer/profile" : "/dashboard";
+  const dashboardHref = isEmployer ? "/employer" : "/dashboard";
   const profileHref = isEmployer ? "/employer/profile" : "/profile";
 
   const handleSignOut = async () => {
@@ -83,11 +83,9 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
         <DropdownMenuItem asChild>
           <Link href={profileHref}>Profile</Link>
         </DropdownMenuItem>
-        {!isEmployer && (
-          <DropdownMenuItem asChild>
-            <Link href={dashboardHref}>Dashboard</Link>
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem asChild>
+          <Link href={dashboardHref}>Dashboard</Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void handleSignOut()}>
           Sign out

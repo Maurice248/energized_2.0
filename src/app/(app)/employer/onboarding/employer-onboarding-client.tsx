@@ -230,7 +230,7 @@ export function EmployerOnboardingClient({
               teamCount={members.length}
               onEnter={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
-                router.push("/employer/profile");
+                router.push("/employer");
               }}
             />
           ) : (
