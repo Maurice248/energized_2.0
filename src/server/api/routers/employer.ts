@@ -380,49 +380,49 @@ export const employerRouter = router({
 
       const fetchN = input.limit;
 
-      const statusEvents = await ctx.db
-        .select({
-          at: applications.updatedAt,
-          applicationId: applications.id,
-          jobTitle: jobListings.title,
-          candidateName: user.name,
-          toStatus: applications.status,
-        })
-        .from(applications)
-        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
-        .innerJoin(user, eq(user.id, applications.candidateId))
-        .where(eq(jobListings.orgId, orgId))
-        .orderBy(desc(applications.updatedAt))
-        .limit(fetchN);
-
-      const publishEvents = await ctx.db
-        .select({
-          at: jobListings.publishedAt,
-          jobId: jobListings.id,
-          jobTitle: jobListings.title,
-        })
-        .from(jobListings)
-        .where(
-          and(
-            eq(jobListings.orgId, orgId),
-            eq(jobListings.status, "published"),
-          ),
-        )
-        .orderBy(desc(jobListings.publishedAt))
-        .limit(fetchN);
-
-      const memberEvents = await ctx.db
-        .select({
-          at: orgMembers.acceptedAt,
-          memberId: orgMembers.id,
-          memberName: user.name,
-          role: orgMembers.role,
-        })
-        .from(orgMembers)
-        .leftJoin(user, eq(user.id, orgMembers.userId))
-        .where(eq(orgMembers.orgId, orgId))
-        .orderBy(desc(orgMembers.acceptedAt))
-        .limit(fetchN);
+      const [statusEvents, publishEvents, memberEvents] = await Promise.all([
+        ctx.db
+          .select({
+            at: applications.updatedAt,
+            applicationId: applications.id,
+            jobTitle: jobListings.title,
+            candidateName: user.name,
+            toStatus: applications.status,
+          })
+          .from(applications)
+          .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+          .innerJoin(user, eq(user.id, applications.candidateId))
+          .where(eq(jobListings.orgId, orgId))
+          .orderBy(desc(applications.updatedAt))
+          .limit(fetchN),
+        ctx.db
+          .select({
+            at: jobListings.publishedAt,
+            jobId: jobListings.id,
+            jobTitle: jobListings.title,
+          })
+          .from(jobListings)
+          .where(
+            and(
+              eq(jobListings.orgId, orgId),
+              eq(jobListings.status, "published"),
+            ),
+          )
+          .orderBy(desc(jobListings.publishedAt))
+          .limit(fetchN),
+        ctx.db
+          .select({
+            at: orgMembers.acceptedAt,
+            memberId: orgMembers.id,
+            memberName: user.name,
+            role: orgMembers.role,
+          })
+          .from(orgMembers)
+          .leftJoin(user, eq(user.id, orgMembers.userId))
+          .where(eq(orgMembers.orgId, orgId))
+          .orderBy(desc(orgMembers.acceptedAt))
+          .limit(fetchN),
+      ]);
 
       type Event =
         | {
@@ -454,7 +454,7 @@ export const employerRouter = router({
           applicationId: e.applicationId,
           jobTitle: e.jobTitle,
           candidateName: e.candidateName,
-          toStatus: e.toStatus as ApplicationStatus,
+          toStatus: e.toStatus,
         })),
         ...publishEvents
           .filter((e): e is typeof e & { at: Date } => Boolean(e.at))
