@@ -17,6 +17,7 @@ import { ApplicationsChart } from "./_components/applications-chart";
 import { PipelineByJob } from "./_components/pipeline-by-job";
 import { RecentActivity } from "./_components/recent-activity";
 import { RangePills } from "./_components/range-pills";
+import { RolesByFamily } from "./_components/roles-by-family";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -120,11 +121,16 @@ export default async function EmployerDashboardPage({
         </Suspense>
       </section>
 
-      {/* Plan + Activity — Tasks 9 & 13 replace these */}
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="mb-6 grid gap-4 md:grid-cols-2">
+        <Suspense fallback={<SectionSkeleton title="By family" />}>
+          <RolesByFamily range={range} />
+        </Suspense>
         <Suspense fallback={<SectionSkeleton title="Plan" />}>
           <PlanQuotaCard />
         </Suspense>
+      </section>
+
+      <section>
         <Suspense fallback={<SectionSkeleton title="Activity" />}>
           <RecentActivity />
         </Suspense>
