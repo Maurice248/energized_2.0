@@ -12,6 +12,7 @@ import { PlanQuotaCard } from "./_components/plan-quota-card";
 import { InboxQueue } from "./_components/inbox-queue";
 import { StaleAlerts } from "./_components/stale-alerts";
 import { PipelineByJob } from "./_components/pipeline-by-job";
+import { RecentActivity } from "./_components/recent-activity";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -94,9 +95,7 @@ export default async function EmployerDashboardPage() {
           <PlanQuotaCard />
         </Suspense>
         <Suspense fallback={<SectionSkeleton title="Activity" />}>
-          <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-            Recent activity placeholder
-          </div>
+          <RecentActivity />
         </Suspense>
       </section>
     </main>
