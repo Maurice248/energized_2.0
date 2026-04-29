@@ -15,6 +15,7 @@ import { env } from "@/env";
 import { countEmployerOrgViewsSince } from "@/server/services/profile-views";
 import { rangeToCutoff } from "@/lib/range";
 import { STAGE_FROM_DB } from "@/lib/application-stages";
+import { SECTOR_LABELS } from "@/lib/jobs-options";
 import type { ApplicationStatus } from "@/lib/application-stages";
 import TeamInviteEmail from "@/emails/team-invite";
 import EmployerVerifyDomainEmail from "@/emails/employer-verify-domain";
@@ -344,6 +345,47 @@ export const employerRouter = router({
       }
 
       return { buckets, granularity };
+    }),
+
+  getApplicantsBySector: protectedProcedure
+    .input(z.object({ range: z.enum(["7d", "30d", "90d", "all"]).default("30d") }))
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) return [];
+
+      const cutoff = rangeToCutoff(input.range);
+      const conditions = [eq(jobListings.orgId, orgId)];
+      if (cutoff) conditions.push(gte(applications.createdAt, cutoff));
+
+      const rows = await ctx.db
+        .select({
+          sector: jobListings.sector,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(and(...conditions))
+        .groupBy(jobListings.sector);
+
+      const total = rows.reduce((s, r) => s + r.count, 0);
+      if (total === 0) return [];
+
+      const result = rows
+        .filter((r): r is { sector: NonNullable<typeof r.sector>; count: number } => r.count > 0 && r.sector !== null)
+        .map((r) => ({
+          sector: r.sector,
+          label: SECTOR_LABELS[r.sector],
+          count: r.count,
+          pct: Math.round((r.count / total) * 100),
+        }))
+        .sort((a, b) => {
+          // "other" goes last
+          if (a.sector === "other") return 1;
+          if (b.sector === "other") return -1;
+          return b.count - a.count;
+        });
+
+      return result;
     }),
 
   getInboxQueue: protectedProcedure
