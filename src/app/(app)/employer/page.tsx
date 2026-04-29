@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/marketing/site-header";
 import { KpiStrip } from "./_components/kpi-strip";
 import { PlanQuotaCard } from "./_components/plan-quota-card";
 import { InboxQueue } from "./_components/inbox-queue";
+import { StaleAlerts } from "./_components/stale-alerts";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -75,9 +76,7 @@ export default async function EmployerDashboardPage() {
           <InboxQueue />
         </Suspense>
         <Suspense fallback={<SectionSkeleton title="Alerts" />}>
-          <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-            Stale alerts placeholder
-          </div>
+          <StaleAlerts />
         </Suspense>
       </section>
 
