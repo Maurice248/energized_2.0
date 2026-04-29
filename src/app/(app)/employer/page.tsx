@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, orgMembers } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
+import { SiteHeader } from "@/components/marketing/site-header";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -30,7 +31,7 @@ export default async function EmployerDashboardPage() {
       await db
         .select({ orgId: orgMembers.orgId })
         .from(orgMembers)
-        .where(eq(orgMembers.email, email))
+        .where(and(eq(orgMembers.email, email), eq(orgMembers.status, "active")))
         .limit(1)
     )[0]?.orgId ??
     null;
@@ -44,7 +45,9 @@ export default async function EmployerDashboardPage() {
     .limit(1);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
+    <>
+      <SiteHeader active="dashboard" />
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 md:py-10">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black md:text-3xl">
@@ -54,10 +57,7 @@ export default async function EmployerDashboardPage() {
             Here&rsquo;s what needs your attention today.
           </p>
         </div>
-        <Link
-          href="/employer/jobs/new"
-          className="inline-flex items-center rounded-md bg-[#1CAAE2] px-4 py-2 text-sm font-bold text-white hover:opacity-90"
-        >
+        <Link href="/employer/jobs/new" className="v2-btn v2-btn-accent">
           + Post a job
         </Link>
       </header>
@@ -106,6 +106,7 @@ export default async function EmployerDashboardPage() {
         </Suspense>
       </section>
     </main>
+    </>
   );
 }
 
