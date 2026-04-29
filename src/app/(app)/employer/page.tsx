@@ -9,6 +9,7 @@ import { getSession } from "@/server/auth";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { KpiStrip } from "./_components/kpi-strip";
 import { PlanQuotaCard } from "./_components/plan-quota-card";
+import { InboxQueue } from "./_components/inbox-queue";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
@@ -71,9 +72,7 @@ export default async function EmployerDashboardPage() {
       {/* Inbox + Stale — Tasks 10 & 11 replace these */}
       <section className="mb-6 grid gap-4 md:grid-cols-2">
         <Suspense fallback={<SectionSkeleton title="Inbox" />}>
-          <div className="rounded-xl border p-4 text-sm text-muted-foreground">
-            Inbox queue placeholder
-          </div>
+          <InboxQueue />
         </Suspense>
         <Suspense fallback={<SectionSkeleton title="Alerts" />}>
           <div className="rounded-xl border p-4 text-sm text-muted-foreground">
