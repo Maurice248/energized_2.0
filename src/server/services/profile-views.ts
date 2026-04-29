@@ -53,16 +53,17 @@ export async function countJobseekerProfileViews30d(subjectUserId: string) {
   return row?.count ?? 0;
 }
 
-export async function countEmployerOrgViews30d(orgId: string) {
-  const cutoff = new Date(Date.now() - THIRTY_DAYS_MS);
+export async function countEmployerOrgViewsSince(orgId: string, since: Date | null) {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(profileViews)
     .where(
-      and(
-        eq(profileViews.subjectOrgId, orgId),
-        gte(profileViews.viewedAt, cutoff),
-      ),
+      since
+        ? and(
+            eq(profileViews.subjectOrgId, orgId),
+            gte(profileViews.viewedAt, since),
+          )
+        : eq(profileViews.subjectOrgId, orgId),
     );
   return row?.count ?? 0;
 }

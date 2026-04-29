@@ -12,7 +12,8 @@ import {
 } from "@/server/db/schema";
 import { resend } from "@/lib/resend";
 import { env } from "@/env";
-import { countEmployerOrgViews30d } from "@/server/services/profile-views";
+import { countEmployerOrgViewsSince } from "@/server/services/profile-views";
+import { rangeToCutoff } from "@/lib/range";
 import { STAGE_FROM_DB } from "@/lib/application-stages";
 import type { ApplicationStatus } from "@/lib/application-stages";
 import TeamInviteEmail from "@/emails/team-invite";
@@ -151,48 +152,53 @@ export const employerRouter = router({
     return { org, members };
   }),
 
-  getKpis: protectedProcedure.query(async ({ ctx }) => {
-    const orgId = await findMyOrg(ctx);
-    if (!orgId) return null;
+  getKpis: protectedProcedure
+    .input(
+      z.object({
+        range: z.enum(["7d", "30d", "90d", "all"]).default("30d"),
+      }).optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) return null;
 
-    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const range = input?.range ?? "30d";
+      const cutoff = rangeToCutoff(range);
 
-    const [openRoles] = await ctx.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(jobListings)
-      .where(
-        and(
-          eq(jobListings.orgId, orgId),
-          eq(jobListings.status, "published"),
-        ),
-      );
+      const [openRoles] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(jobListings)
+        .where(
+          and(
+            eq(jobListings.orgId, orgId),
+            eq(jobListings.status, "published"),
+          ),
+        );
 
-    const [applicants30d] = await ctx.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
-      .where(
-        and(
-          eq(jobListings.orgId, orgId),
-          gte(applications.createdAt, cutoff),
-        ),
-      );
+      const inRangeConditions = [eq(jobListings.orgId, orgId)];
+      if (cutoff) inRangeConditions.push(gte(applications.createdAt, cutoff));
 
-    const [applicantsTotal] = await ctx.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(applications)
-      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
-      .where(eq(jobListings.orgId, orgId));
+      const [applicantsInRange] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(and(...inRangeConditions));
 
-    const profileViews30d = await countEmployerOrgViews30d(orgId);
+      const [applicantsTotal] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(eq(jobListings.orgId, orgId));
 
-    return {
-      openRoles: openRoles?.count ?? 0,
-      applicants30d: applicants30d?.count ?? 0,
-      applicantsTotal: applicantsTotal?.count ?? 0,
-      profileViews30d,
-    };
-  }),
+      const profileViewsInRange = await countEmployerOrgViewsSince(orgId, cutoff);
+
+      return {
+        openRoles: openRoles?.count ?? 0,
+        applicantsInRange: applicantsInRange?.count ?? 0,
+        applicantsTotal: applicantsTotal?.count ?? 0,
+        profileViewsInRange,
+      };
+    }),
 
   getInboxQueue: protectedProcedure
     .input(

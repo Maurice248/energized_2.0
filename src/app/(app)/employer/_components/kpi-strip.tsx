@@ -1,4 +1,5 @@
 import { api } from "@/lib/trpc/server";
+import { rangeLabel, type Range } from "@/lib/range";
 
 function Tile({
   label,
@@ -22,23 +23,17 @@ function Tile({
   );
 }
 
-export async function KpiStrip() {
-  const kpis = await api.employer.getKpis();
+export async function KpiStrip({ range }: { range: Range }) {
+  const kpis = await api.employer.getKpis({ range });
   if (!kpis) return null;
+
+  const subtitle = rangeLabel(range);
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       <Tile label="Open roles" value={kpis.openRoles} />
-      <Tile
-        label="Applicants"
-        value={kpis.applicants30d}
-        context="Last 30 days"
-      />
-      <Tile
-        label="Profile views"
-        value={kpis.profileViews30d}
-        context="Last 30 days"
-      />
+      <Tile label="Applicants" value={kpis.applicantsInRange} context={subtitle} />
+      <Tile label="Profile views" value={kpis.profileViewsInRange} context={subtitle} />
       <Tile label="Total applicants" value={kpis.applicantsTotal} />
     </div>
   );

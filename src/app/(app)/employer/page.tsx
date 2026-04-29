@@ -81,7 +81,7 @@ export default async function EmployerDashboardPage({
       </header>
 
       <section className="mb-6">
-        <KpiStrip />
+        <KpiStrip range={range} />
       </section>
 
       {/* Inbox + Stale — Tasks 10 & 11 replace these */}

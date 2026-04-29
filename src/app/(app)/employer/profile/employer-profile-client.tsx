@@ -617,7 +617,7 @@ export function EmployerProfileClient({
                   label="Applicants · 30d"
                   value={
                     kpisQuery.data
-                      ? String(kpisQuery.data.applicants30d)
+                      ? String(kpisQuery.data.applicantsInRange)
                       : "—"
                   }
                   trend="across all your roles"
@@ -635,7 +635,7 @@ export function EmployerProfileClient({
                   label="Profile views · 30d"
                   value={
                     kpisQuery.data
-                      ? String(kpisQuery.data.profileViews30d)
+                      ? String(kpisQuery.data.profileViewsInRange)
                       : "—"
                   }
                   trend="visits to your public page"
