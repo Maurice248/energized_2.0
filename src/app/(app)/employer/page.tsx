@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, orgMembers } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
+import { isRange, type Range } from "@/lib/range";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { KpiStrip } from "./_components/kpi-strip";
 import { PlanQuotaCard } from "./_components/plan-quota-card";
@@ -13,10 +14,18 @@ import { InboxQueue } from "./_components/inbox-queue";
 import { StaleAlerts } from "./_components/stale-alerts";
 import { PipelineByJob } from "./_components/pipeline-by-job";
 import { RecentActivity } from "./_components/recent-activity";
+import { RangePills } from "./_components/range-pills";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
-export default async function EmployerDashboardPage() {
+export default async function EmployerDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const sp = await searchParams;
+  const range: Range = isRange(sp.range) ? sp.range : "30d";
+
   const session = await getSession();
   if (!session) redirect("/sign-in?redirect=/employer");
   if (session.user.role !== "employer") redirect("/dashboard");
@@ -63,9 +72,12 @@ export default async function EmployerDashboardPage() {
             Here&rsquo;s what needs your attention today.
           </p>
         </div>
-        <Link href="/employer/jobs/new" className="v2-btn v2-btn-accent">
-          + Post a job
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <RangePills active={range} />
+          <Link href="/employer/jobs/new" className="v2-btn v2-btn-accent">
+            + Post a job
+          </Link>
+        </div>
       </header>
 
       <section className="mb-6">
