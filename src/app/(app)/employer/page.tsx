@@ -13,6 +13,7 @@ import { HiringFunnel } from "./_components/hiring-funnel";
 import { PlanQuotaCard } from "./_components/plan-quota-card";
 import { InboxQueue } from "./_components/inbox-queue";
 import { StaleAlerts } from "./_components/stale-alerts";
+import { ApplicationsChart } from "./_components/applications-chart";
 import { PipelineByJob } from "./_components/pipeline-by-job";
 import { RecentActivity } from "./_components/recent-activity";
 import { RangePills } from "./_components/range-pills";
@@ -96,6 +97,19 @@ export default async function EmployerDashboardPage({
         </Suspense>
         <Suspense fallback={<SectionSkeleton title="Alerts" />}>
           <StaleAlerts />
+        </Suspense>
+      </section>
+
+      <section className="mb-6">
+        <Suspense
+          fallback={
+            <div className="rounded-xl border p-4">
+              <div className="mb-2 h-4 w-40 animate-pulse rounded bg-muted" />
+              <div className="h-56 animate-pulse rounded bg-muted/60" />
+            </div>
+          }
+        >
+          <ApplicationsChart range={range} />
         </Suspense>
       </section>
 
