@@ -19,39 +19,18 @@ import {
   formatSalary,
   type JobSector,
 } from "@/lib/jobs-options";
+import {
+  STAGE_FROM_DB,
+  STAGE_LABEL,
+  STAGE_STEP,
+  STAGE_TOTAL,
+  type StageKey,
+  type ApplicationStatus,
+} from "@/lib/application-stages";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
 
 /* ---------- status helpers ---------- */
-
-// DB statuses → reference design buckets
-type DbStatus = "submitted" | "reviewed" | "interview" | "offer" | "rejected";
-type StageKey = "applied" | "review" | "interview" | "offer" | "rejected";
-
-const STAGE_FROM_DB: Record<DbStatus, StageKey> = {
-  submitted: "applied",
-  reviewed: "review",
-  interview: "interview",
-  offer: "offer",
-  rejected: "rejected",
-};
-
-const STAGE_LABEL: Record<StageKey, string> = {
-  applied: "Applied",
-  review: "Under review",
-  interview: "Interview",
-  offer: "Offer received",
-  rejected: "Not selected",
-};
-
-const STAGE_STEP: Record<StageKey, number> = {
-  applied: 1,
-  review: 2,
-  interview: 3,
-  offer: 5,
-  rejected: 2,
-};
-const STAGE_TOTAL = 5;
 
 function timeAgo(d: Date): string {
   const ms = Date.now() - new Date(d).getTime();
@@ -126,7 +105,7 @@ export default async function DashboardPage() {
 
   const stagedApps = allApps.map((a) => ({
     ...a,
-    stage: STAGE_FROM_DB[a.status as DbStatus] ?? "applied",
+    stage: STAGE_FROM_DB[a.status as ApplicationStatus] ?? "applied",
   }));
 
   const activeStages: StageKey[] = ["applied", "review", "interview"];
