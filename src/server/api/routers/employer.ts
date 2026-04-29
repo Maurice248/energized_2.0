@@ -13,6 +13,7 @@ import {
 import { resend } from "@/lib/resend";
 import { env } from "@/env";
 import { countEmployerOrgViews30d } from "@/server/services/profile-views";
+import { STAGE_FROM_DB } from "@/lib/application-stages";
 import TeamInviteEmail from "@/emails/team-invite";
 import EmployerVerifyDomainEmail from "@/emails/employer-verify-domain";
 
@@ -307,6 +308,63 @@ export const employerRouter = router({
     }));
 
     return { staleApplicants, coldJobs };
+  }),
+
+  getPipelineByJob: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await findMyOrg(ctx);
+    if (!orgId) return [];
+
+    const rows = await ctx.db
+      .select({
+        jobId: jobListings.id,
+        jobTitle: jobListings.title,
+        status: applications.status,
+        count: sql<number>`count(${applications.id})::int`,
+      })
+      .from(jobListings)
+      .leftJoin(applications, eq(applications.jobId, jobListings.id))
+      .where(
+        and(
+          eq(jobListings.orgId, orgId),
+          eq(jobListings.status, "published"),
+        ),
+      )
+      .groupBy(jobListings.id, jobListings.title, applications.status);
+
+    const byJob = new Map<
+      string,
+      {
+        jobId: string;
+        jobTitle: string | null;
+        counts: {
+          applied: number;
+          review: number;
+          interview: number;
+          offer: number;
+          rejected: number;
+        };
+        totalApplicants: number;
+      }
+    >();
+
+    for (const r of rows) {
+      const existing = byJob.get(r.jobId) ?? {
+        jobId: r.jobId,
+        jobTitle: r.jobTitle,
+        counts: { applied: 0, review: 0, interview: 0, offer: 0, rejected: 0 },
+        totalApplicants: 0,
+      };
+      if (r.status) {
+        const stage = STAGE_FROM_DB[r.status];
+        existing.counts[stage] += r.count;
+        existing.totalApplicants += r.count;
+      }
+      byJob.set(r.jobId, existing);
+    }
+
+    return [...byJob.values()].sort((a, b) =>
+      (a.jobTitle ?? "").localeCompare(b.jobTitle ?? ""),
+    );
   }),
 
   ensureOrg: protectedProcedure
