@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
@@ -7,6 +7,7 @@ import {
   employerOrgs,
   jobListings,
   orgMembers,
+  profiles,
   user,
 } from "@/server/db/schema";
 import { resend } from "@/lib/resend";
@@ -190,6 +191,53 @@ export const employerRouter = router({
       profileViews30d,
     };
   }),
+
+  getInboxQueue: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(20).default(5),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) return { items: [], totalCount: 0 };
+
+      const items = await ctx.db
+        .select({
+          applicationId: applications.id,
+          jobId: jobListings.id,
+          jobTitle: jobListings.title,
+          candidateId: user.id,
+          candidateName: user.name,
+          candidateHeadline: profiles.headline,
+          appliedAt: applications.createdAt,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .innerJoin(user, eq(user.id, applications.candidateId))
+        .leftJoin(profiles, eq(profiles.userId, applications.candidateId))
+        .where(
+          and(
+            eq(jobListings.orgId, orgId),
+            eq(applications.status, "submitted"),
+          ),
+        )
+        .orderBy(desc(applications.createdAt))
+        .limit(input.limit);
+
+      const [total] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(
+          and(
+            eq(jobListings.orgId, orgId),
+            eq(applications.status, "submitted"),
+          ),
+        );
+
+      return { items, totalCount: total?.count ?? 0 };
+    }),
 
   ensureOrg: protectedProcedure
     .input(z.object({ name: z.string().min(1).max(160) }))
