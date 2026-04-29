@@ -14,6 +14,7 @@ import { resend } from "@/lib/resend";
 import { env } from "@/env";
 import { countEmployerOrgViews30d } from "@/server/services/profile-views";
 import { STAGE_FROM_DB } from "@/lib/application-stages";
+import type { ApplicationStatus } from "@/lib/application-stages";
 import TeamInviteEmail from "@/emails/team-invite";
 import EmployerVerifyDomainEmail from "@/emails/employer-verify-domain";
 
@@ -366,6 +367,120 @@ export const employerRouter = router({
       (a.jobTitle ?? "").localeCompare(b.jobTitle ?? ""),
     );
   }),
+
+  getRecentActivity: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(20).default(8),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) return [];
+
+      const fetchN = input.limit;
+
+      const statusEvents = await ctx.db
+        .select({
+          at: applications.updatedAt,
+          applicationId: applications.id,
+          jobTitle: jobListings.title,
+          candidateName: user.name,
+          toStatus: applications.status,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .innerJoin(user, eq(user.id, applications.candidateId))
+        .where(eq(jobListings.orgId, orgId))
+        .orderBy(desc(applications.updatedAt))
+        .limit(fetchN);
+
+      const publishEvents = await ctx.db
+        .select({
+          at: jobListings.publishedAt,
+          jobId: jobListings.id,
+          jobTitle: jobListings.title,
+        })
+        .from(jobListings)
+        .where(
+          and(
+            eq(jobListings.orgId, orgId),
+            eq(jobListings.status, "published"),
+          ),
+        )
+        .orderBy(desc(jobListings.publishedAt))
+        .limit(fetchN);
+
+      const memberEvents = await ctx.db
+        .select({
+          at: orgMembers.acceptedAt,
+          memberId: orgMembers.id,
+          memberName: user.name,
+          role: orgMembers.role,
+        })
+        .from(orgMembers)
+        .leftJoin(user, eq(user.id, orgMembers.userId))
+        .where(eq(orgMembers.orgId, orgId))
+        .orderBy(desc(orgMembers.acceptedAt))
+        .limit(fetchN);
+
+      type Event =
+        | {
+            kind: "application_status_changed";
+            at: Date;
+            applicationId: string;
+            jobTitle: string | null;
+            candidateName: string;
+            toStatus: ApplicationStatus;
+          }
+        | {
+            kind: "job_published";
+            at: Date;
+            jobId: string;
+            jobTitle: string | null;
+          }
+        | {
+            kind: "member_joined";
+            at: Date;
+            memberId: string;
+            memberName: string;
+            role: string;
+          };
+
+      const merged: Event[] = [
+        ...statusEvents.map((e) => ({
+          kind: "application_status_changed" as const,
+          at: e.at,
+          applicationId: e.applicationId,
+          jobTitle: e.jobTitle,
+          candidateName: e.candidateName,
+          toStatus: e.toStatus as ApplicationStatus,
+        })),
+        ...publishEvents
+          .filter((e): e is typeof e & { at: Date } => Boolean(e.at))
+          .map((e) => ({
+            kind: "job_published" as const,
+            at: e.at,
+            jobId: e.jobId,
+            jobTitle: e.jobTitle,
+          })),
+        ...memberEvents
+          .filter(
+            (e): e is typeof e & { at: Date; memberName: string } =>
+              Boolean(e.at) && Boolean(e.memberName),
+          )
+          .map((e) => ({
+            kind: "member_joined" as const,
+            at: e.at,
+            memberId: e.memberId,
+            memberName: e.memberName,
+            role: e.role,
+          })),
+      ];
+
+      merged.sort((a, b) => b.at.getTime() - a.at.getTime());
+      return merged.slice(0, input.limit);
+    }),
 
   ensureOrg: protectedProcedure
     .input(z.object({ name: z.string().min(1).max(160) }))
