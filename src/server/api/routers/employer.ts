@@ -239,6 +239,76 @@ export const employerRouter = router({
       return { items, totalCount: total?.count ?? 0 };
     }),
 
+  getStaleAlerts: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await findMyOrg(ctx);
+    if (!orgId) return { staleApplicants: [], coldJobs: [] };
+
+    const staleCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const coldCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+    const staleApplicantsRaw = await ctx.db
+      .select({
+        applicationId: applications.id,
+        jobId: jobListings.id,
+        jobTitle: jobListings.title,
+        candidateName: user.name,
+        updatedAt: applications.updatedAt,
+      })
+      .from(applications)
+      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+      .innerJoin(user, eq(user.id, applications.candidateId))
+      .where(
+        and(
+          eq(jobListings.orgId, orgId),
+          sql`${applications.status} IN ('submitted','reviewed')`,
+          lt(applications.updatedAt, staleCutoff),
+        ),
+      )
+      .orderBy(applications.updatedAt)
+      .limit(10);
+
+    const staleApplicants = staleApplicantsRaw.map((r) => ({
+      applicationId: r.applicationId,
+      jobId: r.jobId,
+      jobTitle: r.jobTitle,
+      candidateName: r.candidateName,
+      daysSinceUpdate: Math.floor(
+        (Date.now() - new Date(r.updatedAt).getTime()) / (24 * 60 * 60 * 1000),
+      ),
+    }));
+
+    const coldJobsRaw = await ctx.db
+      .select({
+        jobId: jobListings.id,
+        jobTitle: jobListings.title,
+        publishedAt: jobListings.publishedAt,
+      })
+      .from(jobListings)
+      .leftJoin(applications, eq(applications.jobId, jobListings.id))
+      .where(
+        and(
+          eq(jobListings.orgId, orgId),
+          eq(jobListings.status, "published"),
+          lt(jobListings.publishedAt, coldCutoff),
+          isNull(applications.id),
+        ),
+      )
+      .limit(10);
+
+    const coldJobs = coldJobsRaw.map((r) => ({
+      jobId: r.jobId,
+      jobTitle: r.jobTitle,
+      daysSincePosted: r.publishedAt
+        ? Math.floor(
+            (Date.now() - new Date(r.publishedAt).getTime()) /
+              (24 * 60 * 60 * 1000),
+          )
+        : 0,
+    }));
+
+    return { staleApplicants, coldJobs };
+  }),
+
   ensureOrg: protectedProcedure
     .input(z.object({ name: z.string().min(1).max(160) }))
     .mutation(async ({ ctx, input }) => {
