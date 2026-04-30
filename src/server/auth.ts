@@ -16,20 +16,30 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      const result = await resend.emails.send({
-        from: env.EMAIL_FROM,
-        to: user.email,
-        subject: "Reset your Energized password",
-        react: ResetPassword({
-          name: user.name ?? "",
-          resetUrl: url,
-        }),
-      });
-      if (result.error) {
-        console.error("[auth] resend rejected (reset)", result.error);
-        throw new Error(`Resend: ${result.error.message}`);
-      }
-      console.log("[auth] resend accepted (reset)", result.data?.id);
+      // Fire-and-forget: don't block the API response on Resend network latency.
+      // Aligns with the privacy posture (API always returns success regardless of
+      // whether the email was sent). Errors are logged server-side, not propagated
+      // to the client.
+      void (async () => {
+        try {
+          const result = await resend.emails.send({
+            from: env.EMAIL_FROM,
+            to: user.email,
+            subject: "Reset your Energized password",
+            react: ResetPassword({
+              name: user.name ?? "",
+              resetUrl: url,
+            }),
+          });
+          if (result.error) {
+            console.error("[auth] resend rejected (reset)", result.error);
+            return;
+          }
+          console.log("[auth] resend accepted (reset)", result.data?.id);
+        } catch (err) {
+          console.error("[auth] resend threw (reset)", err);
+        }
+      })();
     },
   },
   emailVerification: {
