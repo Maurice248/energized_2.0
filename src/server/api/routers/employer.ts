@@ -330,8 +330,10 @@ export const employerRouter = router({
         const cursor = new Date(start);
         const end = new Date();
         const byKey = new Map<string, { applications: number; reviewedOrDeeper: number }>();
+        // Drizzle's sql<Date>`...` template doesn't coerce at runtime — the
+        // Neon HTTP driver returns timestamps as strings. Normalize before keying.
         for (const r of rows) {
-          byKey.set(r.at.toISOString(), {
+          byKey.set(new Date(r.at).toISOString(), {
             applications: r.applications,
             reviewedOrDeeper: r.reviewedOrDeeper,
           });
