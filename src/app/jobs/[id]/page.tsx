@@ -21,7 +21,6 @@ import {
   EXPERIENCE_LEVEL_LABELS,
   SECTOR_LABELS,
   WORK_SETUP_LABELS,
-  formatSalary,
   type JobExperienceLevel,
   type JobSector,
   type JobWorkSetup,
@@ -342,7 +341,6 @@ export default async function PublicJobDetailPage({
             workSetup: WORK_SETUP_LABELS,
             experienceLevel: EXPERIENCE_LEVEL_LABELS,
           }}
-          salaryFormatter={formatSalary}
           viewer={viewer}
           signInHref={`/sign-in?redirect=/jobs/${job.id}`}
           saveViewer={saveViewer}

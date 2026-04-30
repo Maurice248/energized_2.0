@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/shared/icon";
-import type {
-  JobExperienceLevel,
-  JobSector,
-  JobWorkSetup,
+import {
+  formatSalary,
+  type JobExperienceLevel,
+  type JobSector,
+  type JobWorkSetup,
 } from "@/lib/jobs-options";
 import {
   ApplyButtonAndModal,
@@ -79,12 +80,6 @@ type Props = {
     workSetup: Record<JobWorkSetup, string>;
     experienceLevel: Record<JobExperienceLevel, string>;
   };
-  salaryFormatter: (
-    min: number | null,
-    max: number | null,
-    currency: string | null,
-    period: string | null,
-  ) => string;
   viewer: ApplyViewerState;
   signInHref: string;
   saveViewer: SaveViewer;
@@ -105,7 +100,6 @@ export function JobDetailClient({
   org,
   similar,
   labels,
-  salaryFormatter,
   viewer,
   signInHref,
   saveViewer,
@@ -240,7 +234,7 @@ export function JobDetailClient({
               style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             >
               <Icon name="dollar" size={14} />{" "}
-              {salaryFormatter(
+              {formatSalary(
                 job.salaryMin,
                 job.salaryMax,
                 job.salaryCurrency,
