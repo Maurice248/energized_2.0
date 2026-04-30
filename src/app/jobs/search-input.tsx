@@ -41,6 +41,18 @@ export function JobsSearchInput({
     router.push(qs ? `/jobs?${qs}` : "/jobs");
   };
 
+  // Clear local state AND drop the param from the URL so the filter clears
+  // immediately. Otherwise the user has to click Search after clicking X.
+  const clearParam = (key: "q" | "loc") => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(key);
+    params.delete("page");
+    if (key === "q") setQ("");
+    else setLoc("");
+    const qs = params.toString();
+    router.push(qs ? `/jobs?${qs}` : "/jobs");
+  };
+
   return (
     <form
       onSubmit={submit}
@@ -82,7 +94,7 @@ export function JobsSearchInput({
         {q && (
           <button
             type="button"
-            onClick={() => setQ("")}
+            onClick={() => clearParam("q")}
             aria-label="Clear search"
             style={{
               border: "none",
@@ -135,7 +147,7 @@ export function JobsSearchInput({
         {loc && (
           <button
             type="button"
-            onClick={() => setLoc("")}
+            onClick={() => clearParam("loc")}
             aria-label="Clear location"
             style={{
               border: "none",
