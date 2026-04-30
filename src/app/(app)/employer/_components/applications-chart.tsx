@@ -1,5 +1,3 @@
-"use server";
-
 import { api } from "@/lib/trpc/server";
 import { rangeLabel, type Range } from "@/lib/range";
 import { AreaChart } from "./charts/area-chart";

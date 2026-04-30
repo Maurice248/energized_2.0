@@ -134,26 +134,26 @@ async function findMyOrg(
 
 function floorTo(d: Date, g: "day" | "week" | "month"): Date {
   const r = new Date(d);
-  r.setHours(0, 0, 0, 0);
+  r.setUTCHours(0, 0, 0, 0);
   if (g === "day") return r;
   if (g === "week") {
-    const day = r.getDay();
+    const day = r.getUTCDay();
     const diff = (day + 6) % 7; // shift so Monday = 0
-    r.setDate(r.getDate() - diff);
+    r.setUTCDate(r.getUTCDate() - diff);
     return r;
   }
   // month
-  r.setDate(1);
+  r.setUTCDate(1);
   return r;
 }
 
 function advance(d: Date, g: "day" | "week" | "month"): void {
   if (g === "day") {
-    d.setDate(d.getDate() + 1);
+    d.setUTCDate(d.getUTCDate() + 1);
   } else if (g === "week") {
-    d.setDate(d.getDate() + 7);
+    d.setUTCDate(d.getUTCDate() + 7);
   } else {
-    d.setMonth(d.getMonth() + 1);
+    d.setUTCMonth(d.getUTCMonth() + 1);
   }
 }
 
@@ -367,11 +367,14 @@ export const employerRouter = router({
         .where(and(...conditions))
         .groupBy(jobListings.sector);
 
-      const total = rows.reduce((s, r) => s + r.count, 0);
+      const filtered = rows.filter(
+        (r): r is { sector: NonNullable<typeof r.sector>; count: number } =>
+          r.count > 0 && r.sector !== null,
+      );
+      const total = filtered.reduce((s, r) => s + r.count, 0);
       if (total === 0) return [];
 
-      const result = rows
-        .filter((r): r is { sector: NonNullable<typeof r.sector>; count: number } => r.count > 0 && r.sector !== null)
+      const result = filtered
         .map((r) => ({
           sector: r.sector,
           label: SECTOR_LABELS[r.sector],
