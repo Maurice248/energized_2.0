@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { headers } from "next/headers";
+import { waitUntil } from "@vercel/functions";
 import { db } from "@/server/db";
 import { env } from "@/env";
 import { resend } from "@/lib/resend";
@@ -16,30 +17,20 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      // Fire-and-forget: don't block the API response on Resend network latency.
-      // Aligns with the privacy posture (API always returns success regardless of
-      // whether the email was sent). Errors are logged server-side, not propagated
-      // to the client.
-      void (async () => {
-        try {
-          const result = await resend.emails.send({
-            from: env.EMAIL_FROM,
-            to: user.email,
-            subject: "Reset your Energized password",
-            react: ResetPassword({
-              name: user.name ?? "",
-              resetUrl: url,
-            }),
-          });
-          if (result.error) {
-            console.error("[auth] resend rejected (reset)", result.error);
-            return;
-          }
-          console.log("[auth] resend accepted (reset)", result.data?.id);
-        } catch (err) {
-          console.error("[auth] resend threw (reset)", err);
-        }
-      })();
+      const result = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: user.email,
+        subject: "Reset your Energized password",
+        react: ResetPassword({
+          name: user.name ?? "",
+          resetUrl: url,
+        }),
+      });
+      if (result.error) {
+        console.error("[auth] resend rejected (reset)", result.error);
+        throw new Error(`Resend: ${result.error.message}`);
+      }
+      console.log("[auth] resend accepted (reset)", result.data?.id);
     },
   },
   emailVerification: {
@@ -50,30 +41,20 @@ export const auth = betterAuth({
       // `url` already carries the caller's callbackURL (or Better Auth's
       // default baseURL). Don't override it — sign-up passes a role-aware
       // destination so jobseekers land on /onboarding.
-      //
-      // Fire-and-forget: don't block the API response on Resend network
-      // latency. Errors are logged server-side, not propagated. Mirrors the
-      // sendResetPassword pattern.
-      void (async () => {
-        try {
-          const result = await resend.emails.send({
-            from: env.EMAIL_FROM,
-            to: user.email,
-            subject: "Confirm your Energized email",
-            react: VerifyEmail({
-              name: user.name ?? "",
-              verifyUrl: url,
-            }),
-          });
-          if (result.error) {
-            console.error("[auth] resend rejected", result.error);
-            return;
-          }
-          console.log("[auth] resend accepted", result.data?.id);
-        } catch (err) {
-          console.error("[auth] resend threw", err);
-        }
-      })();
+      const result = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: user.email,
+        subject: "Confirm your Energized email",
+        react: VerifyEmail({
+          name: user.name ?? "",
+          verifyUrl: url,
+        }),
+      });
+      if (result.error) {
+        console.error("[auth] resend rejected", result.error);
+        throw new Error(`Resend: ${result.error.message}`);
+      }
+      console.log("[auth] resend accepted", result.data?.id);
     },
   },
   user: {
@@ -114,6 +95,12 @@ export const auth = betterAuth({
   },
   advanced: {
     cookiePrefix: "better-auth",
+    // Run Better Auth's send-email callbacks in the background so they don't
+    // block API responses. On Vercel `waitUntil` extends function lifetime so
+    // the email actually sends; in dev (long-running Node) the promise just
+    // runs to completion in the background. Without this, Better Auth `await`s
+    // each callback and the user sees a long "Sending…" delay.
+    backgroundTasks: { handler: waitUntil },
   },
   plugins: [nextCookies()],
 });
