@@ -302,7 +302,10 @@ export const employerRouter = router({
       const conditions = [eq(jobListings.orgId, orgId)];
       if (cutoff) conditions.push(gte(applications.createdAt, cutoff));
 
-      const truncExpr = sql<Date>`date_trunc(${granularity}, ${applications.createdAt})`;
+      // `granularity` is a TS-narrowed union of "day" | "week" | "month" — safe
+      // to inline as raw SQL. Postgres requires the first arg of date_trunc to
+      // be a literal constant, so we cannot pass it as a bound parameter.
+      const truncExpr = sql<Date>`date_trunc('${sql.raw(granularity)}', ${applications.createdAt})`;
 
       const rows = await ctx.db
         .select({
