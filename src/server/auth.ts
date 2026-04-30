@@ -50,21 +50,30 @@ export const auth = betterAuth({
       // `url` already carries the caller's callbackURL (or Better Auth's
       // default baseURL). Don't override it — sign-up passes a role-aware
       // destination so jobseekers land on /onboarding.
-      const result = await resend.emails.send({
-        from: env.EMAIL_FROM,
-        to: user.email,
-        subject: "Confirm your Energized email",
-        react: VerifyEmail({
-          name: user.name ?? "",
-          verifyUrl: url,
-        }),
-      });
-
-      if (result.error) {
-        console.error("[auth] resend rejected", result.error);
-        throw new Error(`Resend: ${result.error.message}`);
-      }
-      console.log("[auth] resend accepted", result.data?.id);
+      //
+      // Fire-and-forget: don't block the API response on Resend network
+      // latency. Errors are logged server-side, not propagated. Mirrors the
+      // sendResetPassword pattern.
+      void (async () => {
+        try {
+          const result = await resend.emails.send({
+            from: env.EMAIL_FROM,
+            to: user.email,
+            subject: "Confirm your Energized email",
+            react: VerifyEmail({
+              name: user.name ?? "",
+              verifyUrl: url,
+            }),
+          });
+          if (result.error) {
+            console.error("[auth] resend rejected", result.error);
+            return;
+          }
+          console.log("[auth] resend accepted", result.data?.id);
+        } catch (err) {
+          console.error("[auth] resend threw", err);
+        }
+      })();
     },
   },
   user: {
