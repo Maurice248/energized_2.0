@@ -14,6 +14,7 @@ import {
   type JobSector,
   type JobWorkSetup,
 } from "@/lib/jobs-options";
+import { UnsaveButton } from "./_components/unsave-button";
 
 export const metadata: Metadata = {
   title: "Saved roles — Energized",
@@ -105,9 +106,8 @@ export default async function SavedJobsPage() {
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {rows.map((r) => (
-              <Link
+              <div
                 key={r.id}
-                href={`/jobs/${r.jobId}`}
                 style={{
                   display: "flex",
                   gap: 14,
@@ -116,96 +116,107 @@ export default async function SavedJobsPage() {
                   background: "white",
                   border: "1px solid var(--v2-ink-200)",
                   borderRadius: "var(--v2-r-xl)",
-                  color: "inherit",
                 }}
               >
-                <div
+                <Link
+                  href={`/jobs/${r.jobId}`}
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: r.orgLogoColor,
-                    color: "white",
-                    display: "grid",
-                    placeItems: "center",
-                    fontFamily: "var(--v2-font-serif)",
-                    fontSize: 18,
-                    fontWeight: 900,
-                    overflow: "hidden",
-                    position: "relative",
-                    flexShrink: 0,
+                    display: "flex",
+                    gap: 14,
+                    alignItems: "flex-start",
+                    flex: 1,
+                    minWidth: 0,
+                    color: "inherit",
                   }}
                 >
-                  {r.orgLogoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={r.orgLogoUrl}
-                      alt={r.orgName}
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: r.orgLogoColor,
+                      color: "white",
+                      display: "grid",
+                      placeItems: "center",
+                      fontFamily: "var(--v2-font-serif)",
+                      fontSize: 18,
+                      fontWeight: 900,
+                      overflow: "hidden",
+                      position: "relative",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {r.orgLogoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={r.orgLogoUrl}
+                        alt={r.orgName}
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      r.orgName.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        marginBottom: 4,
                       }}
-                    />
-                  ) : (
-                    r.orgName.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      marginBottom: 4,
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, fontSize: 16 }}>
-                      {r.jobTitle ?? "Untitled role"}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: 16 }}>
+                        {r.jobTitle ?? "Untitled role"}
+                      </div>
+                      {r.sector && (
+                        <span className="v2-chip v2-chip-accent">
+                          {SECTOR_LABELS[r.sector as JobSector]}
+                        </span>
+                      )}
+                      {r.jobStatus !== "published" && (
+                        <span className="v2-chip v2-chip-coral">
+                          {r.jobStatus === "closed" ? "Closed" : "Not public"}
+                        </span>
+                      )}
                     </div>
-                    {r.sector && (
-                      <span className="v2-chip v2-chip-accent">
-                        {SECTOR_LABELS[r.sector as JobSector]}
-                      </span>
-                    )}
-                    {r.jobStatus !== "published" && (
-                      <span className="v2-chip v2-chip-coral">
-                        {r.jobStatus === "closed" ? "Closed" : "Not public"}
-                      </span>
-                    )}
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--v2-ink-500)",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {r.orgName}
+                      {r.jobLocation && ` · ${r.jobLocation}`}
+                      {r.workSetup &&
+                        ` · ${WORK_SETUP_LABELS[r.workSetup as JobWorkSetup]}`}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "var(--v2-font-mono)",
+                        fontSize: 12,
+                        color: "var(--v2-ink-600)",
+                      }}
+                    >
+                      {formatSalary(
+                        r.salaryMin,
+                        r.salaryMax,
+                        r.salaryCurrency,
+                        r.salaryPeriod,
+                      )}
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "var(--v2-ink-500)",
-                      marginBottom: 8,
-                    }}
-                  >
-                    {r.orgName}
-                    {r.jobLocation && ` · ${r.jobLocation}`}
-                    {r.workSetup &&
-                      ` · ${WORK_SETUP_LABELS[r.workSetup as JobWorkSetup]}`}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--v2-font-mono)",
-                      fontSize: 12,
-                      color: "var(--v2-ink-600)",
-                    }}
-                  >
-                    {formatSalary(
-                      r.salaryMin,
-                      r.salaryMax,
-                      r.salaryCurrency,
-                      r.salaryPeriod,
-                    )}
-                  </div>
-                </div>
-                <Icon name="arrowUpRight" size={14} />
-              </Link>
+                </Link>
+                <UnsaveButton jobId={r.jobId} />
+              </div>
             ))}
           </div>
         )}

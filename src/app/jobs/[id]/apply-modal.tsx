@@ -153,19 +153,19 @@ export function ApplyButtonAndModal({
                   className="v2-btn v2-btn-ghost v2-btn-sm"
                   onClick={() => {
                     closeAndReset();
-                    router.push("/applications");
+                    router.refresh();
                   }}
                 >
-                  My applications
+                  Done
                 </button>
                 <button
                   className="v2-btn v2-btn-primary v2-btn-sm"
                   onClick={() => {
                     closeAndReset();
-                    router.refresh();
+                    router.push("/applications");
                   }}
                 >
-                  Done
+                  View my applications
                 </button>
               </DialogFooter>
             </>

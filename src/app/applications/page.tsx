@@ -11,6 +11,7 @@ import {
 import { getSession } from "@/server/auth";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
+import { STAGE_FROM_DB, STAGE_LABEL } from "@/lib/application-stages";
 
 export const metadata: Metadata = {
   title: "My applications — Energized",
@@ -163,7 +164,15 @@ export default async function MyApplicationsPage() {
                     )}`}
                   </div>
                 </div>
-                <span className="v2-chip v2-chip-accent">Submitted</span>
+                <span
+                  className={
+                    STAGE_FROM_DB[r.status] === "rejected"
+                      ? "v2-chip v2-chip-coral"
+                      : "v2-chip v2-chip-accent"
+                  }
+                >
+                  {STAGE_LABEL[STAGE_FROM_DB[r.status]]}
+                </span>
                 <Icon name="arrowUpRight" size={14} />
               </Link>
             ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/shared/icon";
 
@@ -15,6 +15,17 @@ export function JobsSearchInput({
   const searchParams = useSearchParams();
   const [q, setQ] = useState(initialQ);
   const [loc, setLoc] = useState(initialLoc);
+
+  // Sync the local input state when the URL params change (e.g., the user
+  // clicks "Reset all" or navigates back). Without this, useState's initial
+  // value sticks across re-renders and the inputs keep showing the old
+  // search/location even after the URL has cleared.
+  useEffect(() => {
+    setQ(initialQ);
+  }, [initialQ]);
+  useEffect(() => {
+    setLoc(initialLoc);
+  }, [initialLoc]);
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
