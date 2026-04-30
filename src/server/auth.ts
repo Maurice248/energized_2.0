@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { env } from "@/env";
 import { resend } from "@/lib/resend";
 import VerifyEmail from "@/emails/verify-email";
+import ResetPassword from "@/emails/reset-password";
 
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
@@ -14,6 +15,22 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      const result = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: user.email,
+        subject: "Reset your Energized password",
+        react: ResetPassword({
+          name: user.name ?? "",
+          resetUrl: url,
+        }),
+      });
+      if (result.error) {
+        console.error("[auth] resend rejected (reset)", result.error);
+        throw new Error(`Resend: ${result.error.message}`);
+      }
+      console.log("[auth] resend accepted (reset)", result.data?.id);
+    },
   },
   emailVerification: {
     sendOnSignUp: true,
