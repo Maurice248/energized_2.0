@@ -1106,6 +1106,19 @@ export const employerRouter = router({
       return updated;
     }),
 
+  setLogo: protectedProcedure
+    .input(z.object({ url: z.string().url().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+      const [updated] = await ctx.db
+        .update(employerOrgs)
+        .set({ logoUrl: input.url })
+        .where(eq(employerOrgs.id, orgId))
+        .returning({ logoUrl: employerOrgs.logoUrl });
+      return updated;
+    }),
+
   markVerified: protectedProcedure.mutation(async ({ ctx }) => {
     const orgId = await findMyOrg(ctx);
     if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });

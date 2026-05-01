@@ -209,6 +209,10 @@ export function EmployerProfileClient({
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
 
+  const setLogo = api.employer.setLogo.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
+
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
@@ -242,8 +246,7 @@ export function EmployerProfileClient({
         throw new Error(body.error ?? "Upload failed");
       }
       const { url } = (await res.json()) as { url: string };
-      await updateBasics.mutateAsync({ logoUrl: url });
-      await orgQuery.refetch();
+      await setLogo.mutateAsync({ url });
     } catch (e) {
       setLogoError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -255,8 +258,7 @@ export function EmployerProfileClient({
     setLogoError(null);
     setLogoBusy(true);
     try {
-      await updateBasics.mutateAsync({ logoUrl: null });
-      await orgQuery.refetch();
+      await setLogo.mutateAsync({ url: null });
     } catch (e) {
       setLogoError(e instanceof Error ? e.message : "Couldn't remove logo");
     } finally {
