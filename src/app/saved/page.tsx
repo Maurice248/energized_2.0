@@ -5,7 +5,6 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { employerOrgs, jobListings, savedJobs } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
-import { Icon } from "@/components/shared/icon";
 import { SiteHeader } from "@/components/marketing/site-header";
 import {
   SECTOR_LABELS,

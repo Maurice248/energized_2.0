@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -188,6 +189,26 @@ export function NotificationBell() {
               </div>
             </DropdownMenuItem>
           ))
+        )}
+        {items.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link
+                href="/notifications"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--v2-ink-700)",
+                  textAlign: "center",
+                  width: "100%",
+                  justifyContent: "center",
+                }}
+              >
+                View all
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

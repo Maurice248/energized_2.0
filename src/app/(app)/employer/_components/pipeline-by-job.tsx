@@ -11,6 +11,41 @@ const COLS: Array<{
   { key: "offer", label: "Offer" },
 ];
 
+function Sparkline({ data }: { data: number[] }) {
+  if (data.length === 0) return null;
+  const max = Math.max(...data, 1);
+  const W = 80;
+  const H = 24;
+  const step = data.length > 1 ? W / (data.length - 1) : 0;
+  const points = data
+    .map((v, i) => {
+      const x = i * step;
+      const y = H - (v / max) * (H - 2) - 1;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const total = data.reduce((s, v) => s + v, 0);
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width={W}
+      height={H}
+      role="img"
+      aria-label={`30-day applications: ${total} total`}
+      style={{ overflow: "visible" }}
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="var(--v2-accent)"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export async function PipelineByJob() {
   const rows = await api.employer.getPipelineByJob();
 
@@ -39,6 +74,7 @@ export async function PipelineByJob() {
           <thead>
             <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <th className="py-2 pr-4 font-normal">Job</th>
+              <th className="px-2 py-2 text-center font-normal">30d</th>
               {COLS.map((c) => (
                 <th key={c.key} className="px-2 py-2 text-right font-normal">
                   {c.label}
@@ -51,6 +87,9 @@ export async function PipelineByJob() {
             {rows.map((r) => (
               <tr key={r.jobId} className="border-b last:border-0">
                 <td className="py-2 pr-4 font-bold">{r.jobTitle}</td>
+                <td className="px-2 py-2">
+                  <Sparkline data={r.sparkline} />
+                </td>
                 {COLS.map((c) => (
                   <td
                     key={c.key}

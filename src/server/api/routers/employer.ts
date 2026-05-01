@@ -6,6 +6,7 @@ import {
   applications,
   employerOrgs,
   jobListings,
+  notifications,
   orgMembers,
   profiles,
   user,
@@ -396,6 +397,51 @@ export const employerRouter = router({
       return result;
     }),
 
+  getApplicantsByGeography: protectedProcedure
+    .input(
+      z.object({
+        range: z.enum(["7d", "30d", "90d", "qtd", "all"]).default("30d"),
+        limit: z.number().int().min(3).max(20).default(8),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) return [];
+
+      const cutoff = rangeToCutoff(input.range);
+      const conditions = [
+        eq(jobListings.orgId, orgId),
+        sql`${profiles.location} is not null and length(trim(${profiles.location})) > 0`,
+      ];
+      if (cutoff) conditions.push(gte(applications.createdAt, cutoff));
+
+      const rows = await ctx.db
+        .select({
+          location: profiles.location,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .innerJoin(profiles, eq(profiles.userId, applications.candidateId))
+        .where(and(...conditions))
+        .groupBy(profiles.location)
+        .orderBy(sql`count(*) desc`)
+        .limit(input.limit);
+
+      const filtered = rows.filter(
+        (r): r is { location: string; count: number } =>
+          r.count > 0 && r.location !== null,
+      );
+      const total = filtered.reduce((s, r) => s + r.count, 0);
+      if (total === 0) return [];
+
+      return filtered.map((r) => ({
+        location: r.location,
+        count: r.count,
+        pct: Math.round((r.count / total) * 100),
+      }));
+    }),
+
   getInboxQueue: protectedProcedure
     .input(
       z.object({
@@ -547,6 +593,7 @@ export const employerRouter = router({
           rejected: number;
         };
         totalApplicants: number;
+        sparkline: number[];
       }
     >();
 
@@ -556,6 +603,7 @@ export const employerRouter = router({
         jobTitle: r.jobTitle,
         counts: { applied: 0, review: 0, interview: 0, offer: 0, rejected: 0 },
         totalApplicants: 0,
+        sparkline: new Array<number>(30).fill(0),
       };
       if (r.status) {
         const stage = STAGE_FROM_DB[r.status];
@@ -563,6 +611,40 @@ export const employerRouter = router({
         existing.totalApplicants += r.count;
       }
       byJob.set(r.jobId, existing);
+    }
+
+    // 30-day sparkline of new applications per job. Front-fill missing days
+    // with zero so all sparklines render the same width.
+    const sparkCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const sparkRows = await ctx.db
+      .select({
+        jobId: applications.jobId,
+        bucket: sql<string>`date_trunc(${sql.raw("'day'")}, ${applications.createdAt})`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(applications)
+      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+      .where(
+        and(
+          eq(jobListings.orgId, orgId),
+          gte(applications.createdAt, sparkCutoff),
+        ),
+      )
+      .groupBy(applications.jobId, sql.raw(`date_trunc('day', "applications"."created_at")`));
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    for (const sr of sparkRows) {
+      const job = byJob.get(sr.jobId);
+      if (!job) continue;
+      const bucketDate = new Date(sr.bucket);
+      bucketDate.setUTCHours(0, 0, 0, 0);
+      const daysAgo = Math.floor(
+        (today.getTime() - bucketDate.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      if (daysAgo < 0 || daysAgo >= 30) continue;
+      // Index 0 = 29 days ago, index 29 = today
+      job.sparkline[29 - daysAgo] = sr.count;
     }
 
     return [...byJob.values()].sort((a, b) =>
@@ -893,6 +975,34 @@ export const employerRouter = router({
         .where(eq(orgMembers.id, member.id))
         .returning();
 
+      // Notify the org owner that the invite was accepted. Best-effort.
+      try {
+        const [owner] = await ctx.db
+          .select({ userId: orgMembers.userId })
+          .from(orgMembers)
+          .where(
+            and(
+              eq(orgMembers.orgId, member.orgId),
+              eq(orgMembers.role, "owner"),
+              eq(orgMembers.status, "active"),
+            ),
+          )
+          .limit(1);
+        if (owner?.userId && owner.userId !== ctx.session.user.id) {
+          const accepterName =
+            ctx.session.user.name ?? ctx.session.user.email;
+          await ctx.db.insert(notifications).values({
+            userId: owner.userId,
+            kind: "team_invite_accepted",
+            title: `${accepterName} joined your team`,
+            body: `Now active as ${member.role}.`,
+            href: "/employer/profile#ep-team",
+          });
+        }
+      } catch {
+        // Silently swallow — invite accept already succeeded.
+      }
+
       return updated;
     }),
 
@@ -1189,6 +1299,67 @@ export const employerRouter = router({
       await ctx.db
         .delete(employerOrgs)
         .where(eq(employerOrgs.id, orgId));
+      return { ok: true };
+    }),
+
+  transferOwnership: protectedProcedure
+    .input(z.object({ toMemberId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [me] = await ctx.db
+        .select({ id: orgMembers.id, role: orgMembers.role })
+        .from(orgMembers)
+        .where(
+          and(
+            eq(orgMembers.orgId, orgId),
+            eq(orgMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+      if (!me || me.role !== "owner") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the current owner can transfer ownership.",
+        });
+      }
+      if (me.id === input.toMemberId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You're already the owner.",
+        });
+      }
+
+      const [target] = await ctx.db
+        .select()
+        .from(orgMembers)
+        .where(
+          and(
+            eq(orgMembers.id, input.toMemberId),
+            eq(orgMembers.orgId, orgId),
+          ),
+        )
+        .limit(1);
+      if (!target || target.status !== "active") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "New owner must be an active member.",
+        });
+      }
+
+      // Two-row swap. Drizzle doesn't expose a transaction builder via Neon
+      // HTTP, but UNIQUE constraint on owner-per-org isn't enforced at the
+      // schema level so the order of UPDATEs doesn't matter for correctness.
+      await ctx.db
+        .update(orgMembers)
+        .set({ role: "admin" })
+        .where(eq(orgMembers.id, me.id));
+      await ctx.db
+        .update(orgMembers)
+        .set({ role: "owner" })
+        .where(eq(orgMembers.id, target.id));
+
       return { ok: true };
     }),
 

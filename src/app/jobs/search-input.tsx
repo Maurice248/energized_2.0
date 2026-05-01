@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/shared/icon";
 
@@ -13,19 +13,23 @@ export function JobsSearchInput({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // React docs pattern: track previous props so we can sync local input state
+  // when the URL changes (e.g. "Reset all" or back-nav) without using an
+  // effect — effects that synchronously call setState are flagged by the
+  // react-hooks lint rule and cascade-render.
+  const [prevInitialQ, setPrevInitialQ] = useState(initialQ);
+  const [prevInitialLoc, setPrevInitialLoc] = useState(initialLoc);
   const [q, setQ] = useState(initialQ);
   const [loc, setLoc] = useState(initialLoc);
-
-  // Sync the local input state when the URL params change (e.g., the user
-  // clicks "Reset all" or navigates back). Without this, useState's initial
-  // value sticks across re-renders and the inputs keep showing the old
-  // search/location even after the URL has cleared.
-  useEffect(() => {
+  if (initialQ !== prevInitialQ) {
+    setPrevInitialQ(initialQ);
     setQ(initialQ);
-  }, [initialQ]);
-  useEffect(() => {
+  }
+  if (initialLoc !== prevInitialLoc) {
+    setPrevInitialLoc(initialLoc);
     setLoc(initialLoc);
-  }, [initialLoc]);
+  }
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

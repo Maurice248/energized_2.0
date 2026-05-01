@@ -202,6 +202,9 @@ export function EmployerProfileClient({
   const updateMemberRole = api.employer.updateMemberRole.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
+  const transferOwnership = api.employer.transferOwnership.useMutation({
+    onSuccess: () => void orgQuery.refetch(),
+  });
   const setCover = api.employer.setCover.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
@@ -793,6 +796,10 @@ export function EmployerProfileClient({
                 onChangeRole={(id, role) =>
                   updateMemberRole.mutate({ id, role })
                 }
+                onTransferOwnership={(id) =>
+                  transferOwnership.mutate({ toMemberId: id })
+                }
+                transferBusy={transferOwnership.isPending}
                 inviteError={invite.error?.message ?? null}
                 inviteBusy={invite.isPending}
               />
@@ -1163,6 +1170,8 @@ function TeamSection({
   onInvite,
   onRemove,
   onChangeRole,
+  onTransferOwnership,
+  transferBusy,
   inviteError,
   inviteBusy,
   id,
@@ -1173,10 +1182,14 @@ function TeamSection({
   onInvite: (v: { email: string; role: OrgRole }) => void;
   onRemove: (id: string) => void;
   onChangeRole: (id: string, role: OrgRole) => void;
+  onTransferOwnership: (id: string) => void;
+  transferBusy: boolean;
   inviteError: string | null;
   inviteBusy: boolean;
   id?: string;
 }) {
+  const me = members.find((m) => m.email.toLowerCase() === meEmail);
+  const iAmOwner = me?.role === "owner";
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<OrgRole>("recruiter");
 
@@ -1321,6 +1334,37 @@ function TeamSection({
             ) : (
               <span className="v2-chip v2-chip-accent">Active</span>
             )}
+            {iAmOwner &&
+              m.role !== "owner" &&
+              m.status === "active" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        `Make ${m.email} the new owner? You'll be demoted to admin and can no longer delete the org.`,
+                      )
+                    )
+                      return;
+                    onTransferOwnership(m.id);
+                  }}
+                  disabled={transferBusy}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    border: "1px solid var(--v2-ink-200)",
+                    background: "white",
+                    color: "var(--v2-ink-700)",
+                    cursor: transferBusy ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                  title="Transfer ownership"
+                >
+                  Make owner
+                </button>
+              )}
             <button
               type="button"
               className="ob-icon-btn danger"

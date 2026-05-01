@@ -77,6 +77,14 @@ export const billingRouter = router({
       publishedThisCycle = row?.count ?? 0;
     }
 
+    const [seats] = await ctx.db
+      .select({
+        active: sql<number>`count(*) filter (where ${orgMembers.status} = 'active')::int`,
+        pending: sql<number>`count(*) filter (where ${orgMembers.status} = 'pending')::int`,
+      })
+      .from(orgMembers)
+      .where(eq(orgMembers.orgId, org.id));
+
     return {
       stripeEnabled: STRIPE_ENABLED,
       role: member.role,
@@ -88,6 +96,8 @@ export const billingRouter = router({
       cancellationDisposition: org.cancellationDisposition,
       publishedThisCycle,
       quota,
+      activeSeats: seats?.active ?? 0,
+      pendingSeats: seats?.pending ?? 0,
     };
   }),
 

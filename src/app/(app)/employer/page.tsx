@@ -18,6 +18,7 @@ import { PipelineByJob } from "./_components/pipeline-by-job";
 import { RecentActivity } from "./_components/recent-activity";
 import { RangePills } from "./_components/range-pills";
 import { RolesByFamily } from "./_components/roles-by-family";
+import { GeographyBreakdown } from "./_components/geography-breakdown";
 import { Icon } from "@/components/shared/icon";
 
 export const metadata: Metadata = { title: "Dashboard — Energized" };
@@ -70,10 +71,15 @@ export default async function EmployerDashboardPage({
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black md:text-3xl">
-            Welcome back, {org?.name ?? "team"}
+            {(() => {
+              const first = (session.user.name ?? "").trim().split(/\s+/)[0];
+              return first
+                ? `Welcome back, ${first}`
+                : `Welcome back, ${org?.name ?? "team"}`;
+            })()}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Here&rsquo;s what needs your attention today.
+            Here&rsquo;s what&rsquo;s happening at {org?.name ?? "your team"} today.
           </p>
         </div>
         <div className="flex flex-col items-end gap-3">
@@ -144,6 +150,12 @@ export default async function EmployerDashboardPage({
         <Suspense fallback={<SectionSkeleton title="By family" />}>
           <RolesByFamily range={range} />
         </Suspense>
+        <Suspense fallback={<SectionSkeleton title="By location" />}>
+          <GeographyBreakdown range={range} />
+        </Suspense>
+      </section>
+
+      <section className="mb-6">
         <Suspense fallback={<SectionSkeleton title="Plan" />}>
           <PlanQuotaCard />
         </Suspense>

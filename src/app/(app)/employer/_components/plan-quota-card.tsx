@@ -54,6 +54,26 @@ export async function PlanQuotaCard() {
               style={{ width: `${pct}%` }}
             />
           </div>
+          <div
+            className="mt-3 flex items-center justify-between text-xs text-muted-foreground"
+            style={{ paddingTop: 10, borderTop: "1px dashed var(--v2-ink-200)" }}
+          >
+            <span>
+              <strong className="text-[var(--v2-ink-950)]">
+                {data.activeSeats}
+              </strong>{" "}
+              active seat{data.activeSeats === 1 ? "" : "s"}
+              {data.pendingSeats > 0 && (
+                <span> · {data.pendingSeats} pending</span>
+              )}
+            </span>
+            <Link
+              href="/employer/profile#ep-team"
+              className="font-bold text-[var(--v2-accent)] hover:underline"
+            >
+              Manage team →
+            </Link>
+          </div>
           {(() => {
             const next = nextTier(data.tier);
             const canUpgrade =
