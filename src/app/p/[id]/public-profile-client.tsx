@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/shared/icon";
+import { api } from "@/lib/trpc/client";
 
 type SectorEnum =
   | "oil_gas"
@@ -134,6 +135,8 @@ export function PublicProfileClient({
   education,
   viewerIsSelf,
   viewerIsAuthed,
+  viewerIsEmployer,
+  candidateUserId,
 }: {
   user: PublicUser;
   profile: PublicProfile;
@@ -142,6 +145,8 @@ export function PublicProfileClient({
   education: EducationItem[];
   viewerIsSelf: boolean;
   viewerIsAuthed: boolean;
+  viewerIsEmployer: boolean;
+  candidateUserId: string;
 }) {
   const [firstName, lastName] = splitName(user.name);
   const initials = initialsOf(user.name);
@@ -275,14 +280,18 @@ export function PublicProfileClient({
               >
                 Request intro <Icon name="arrowRight" size={14} />
               </button>
-              <button
-                type="button"
-                className="pub-cta-secondary"
-                disabled
-                title="Shortlists are coming soon."
-              >
-                <Icon name="bookmark" size={13} /> Save to shortlist
-              </button>
+              {viewerIsEmployer ? (
+                <ShortlistButton candidateUserId={candidateUserId} />
+              ) : (
+                <button
+                  type="button"
+                  className="pub-cta-secondary"
+                  disabled
+                  title="Only employers can shortlist."
+                >
+                  <Icon name="bookmark" size={13} /> Save to shortlist
+                </button>
+              )}
               <div className="pub-id-foot">
                 <Icon name="shield" size={12} />
                 <span>
@@ -621,5 +630,53 @@ function workSummaryTitle(years: number | null): React.ReactNode {
     <>
       {years} years across <em>energy.</em>
     </>
+  );
+}
+
+function ShortlistButton({ candidateUserId }: { candidateUserId: string }) {
+  const utils = api.useUtils();
+  const status = api.savedCandidates.isShortlisted.useQuery(
+    { candidateId: candidateUserId },
+    { retry: false },
+  );
+  const save = api.savedCandidates.save.useMutation({
+    onSuccess: () => {
+      void utils.savedCandidates.isShortlisted.invalidate({
+        candidateId: candidateUserId,
+      });
+      void utils.savedCandidates.list.invalidate();
+    },
+  });
+  const remove = api.savedCandidates.remove.useMutation({
+    onSuccess: () => {
+      void utils.savedCandidates.isShortlisted.invalidate({
+        candidateId: candidateUserId,
+      });
+      void utils.savedCandidates.list.invalidate();
+    },
+  });
+
+  const isShortlisted = status.data?.shortlisted ?? false;
+  const busy = save.isPending || remove.isPending;
+
+  return (
+    <button
+      type="button"
+      className="pub-cta-secondary"
+      onClick={() => {
+        if (busy) return;
+        if (isShortlisted) remove.mutate({ candidateId: candidateUserId });
+        else save.mutate({ candidateId: candidateUserId });
+      }}
+      disabled={busy}
+      title={
+        isShortlisted
+          ? "Remove from your team's shortlist"
+          : "Save to your team's shortlist"
+      }
+    >
+      <Icon name="bookmark" size={13} />{" "}
+      {isShortlisted ? "Shortlisted ✓" : "Save to shortlist"}
+    </button>
   );
 }

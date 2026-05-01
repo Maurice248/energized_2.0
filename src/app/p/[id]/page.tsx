@@ -118,6 +118,7 @@ export default async function PublicJobseekerProfilePage({
   const session = await getSession();
   const viewerIsSelf = session?.user.id === u.id;
   const viewerIsAuthed = Boolean(session);
+  const viewerIsEmployer = session?.user.role === "employer";
 
   await recordJobseekerProfileView({
     subjectUserId: u.id,
@@ -175,6 +176,8 @@ export default async function PublicJobseekerProfilePage({
       }))}
       viewerIsSelf={viewerIsSelf}
       viewerIsAuthed={viewerIsAuthed}
+      viewerIsEmployer={viewerIsEmployer}
+      candidateUserId={u.id}
     />
     </>
   );

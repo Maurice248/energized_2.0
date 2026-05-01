@@ -120,6 +120,13 @@
       "when": 1777658698658,
       "tag": "0016_first_karen_page",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777664546109,
+      "tag": "0017_lame_shooting_star",
+      "breakpoints": true
     }
   ]
 }

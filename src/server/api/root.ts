@@ -12,6 +12,7 @@ import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { profileRouter } from "@/server/api/routers/profile";
 import { savedJobsRouter } from "@/server/api/routers/saved-jobs";
 import { savedSearchesRouter } from "@/server/api/routers/saved-searches";
+import { savedCandidatesRouter } from "@/server/api/routers/saved-candidates";
 
 export const appRouter = router({
   account: accountRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   profile: profileRouter,
   savedJobs: savedJobsRouter,
   savedSearches: savedSearchesRouter,
+  savedCandidates: savedCandidatesRouter,
 });
 
 export type AppRouter = typeof appRouter;

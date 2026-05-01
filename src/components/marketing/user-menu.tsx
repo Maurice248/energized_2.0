@@ -87,10 +87,18 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
           <Link href={dashboardHref}>Dashboard</Link>
         </DropdownMenuItem>
         {isEmployer && (
-          <DropdownMenuItem asChild>
-            <Link href="/candidates">Find candidates</Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/candidates">Find candidates</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/shortlist">Shortlist</Link>
+            </DropdownMenuItem>
+          </>
         )}
+        <DropdownMenuItem asChild>
+          <Link href="/saved-searches">Saved searches</Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/account">Account</Link>
         </DropdownMenuItem>
