@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, User } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+import { PasswordInput } from "@/components/shared/password-input";
 import {
   ONBOARDING_DRAFT_KEY,
   type OnboardingDraft,
@@ -136,10 +137,20 @@ const EMPLOYER_PLAN_OPTIONS: {
 
 export default function SignUpPage() {
   const router = useRouter();
-  const [step, setStep] = useState(0);
-  const [role, setRole] = useState<Role | null>(null);
+  const searchParams = useSearchParams();
+
+  // Invitees arrive here from /accept-invite with pre-set email + a `next`
+  // pointing back to the accept page. Skip role selection + company info +
+  // plan picker for them — acceptInvite will set their role to "employer"
+  // when they confirm acceptance.
+  const invitedEmail = searchParams.get("email") ?? "";
+  const nextPath = searchParams.get("next") ?? "";
+  const isInvite = nextPath.startsWith("/accept-invite");
+
+  const [step, setStep] = useState(isInvite ? 1 : 0);
+  const [role, setRole] = useState<Role | null>(isInvite ? "employer" : null);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(true);
   const [sector, setSector] = useState<string | null>(null);
@@ -174,7 +185,7 @@ export default function SignUpPage() {
       return (
         name.trim().length > 0 &&
         /\S+@\S+\.\S+/.test(email) &&
-        password.length >= 12 &&
+        password.length >= 8 &&
         agreed
       );
     if (step === 2) {
@@ -191,8 +202,13 @@ export default function SignUpPage() {
     setError(null);
     setSubmitting(true);
 
-    const postVerifyPath =
-      role === "jobseeker" ? "/onboarding" : "/employer/onboarding";
+    // Invitees skip onboarding — after email verification we send them back
+    // to /accept-invite to complete the join.
+    const postVerifyPath = isInvite
+      ? nextPath
+      : role === "jobseeker"
+        ? "/onboarding"
+        : "/employer/onboarding";
     const { error: signUpError } = await authClient.signUp.email({
       name,
       email,
@@ -210,7 +226,8 @@ export default function SignUpPage() {
     // protected mutations can't run. Stash role + profile draft in
     // localStorage (sessionStorage doesn't survive the email-link tab switch);
     // the OnboardingPersister drains it on the first authenticated page load.
-    if (typeof window !== "undefined") {
+    // Skip for invitees — they're joining an existing org, not seeding one.
+    if (!isInvite && typeof window !== "undefined") {
       const draft: OnboardingDraft =
         role === "employer"
           ? {
@@ -238,6 +255,11 @@ export default function SignUpPage() {
 
   async function handleNext() {
     if (!canAdvance()) return;
+    // Invitees only need the credentials step — submit immediately after it.
+    if (isInvite && step === 1) {
+      await handleComplete();
+      return;
+    }
     if (step < 3) {
       setStep(step + 1);
       return;
@@ -246,6 +268,12 @@ export default function SignUpPage() {
   }
 
   function handlePrev() {
+    // Invitees can't step back into the role/company/plan flow — bounce them
+    // back to the invite landing instead.
+    if (isInvite && step <= 1) {
+      router.push(nextPath || "/");
+      return;
+    }
     if (step > 0) {
       setStep(step - 1);
     } else {
@@ -411,11 +439,10 @@ export default function SignUpPage() {
                   <label className="v2-field-label" htmlFor="password">
                     Password
                   </label>
-                  <input
+                  <PasswordInput
                     id="password"
                     className="v2-input-block"
-                    type="password"
-                    placeholder="Minimum 12 characters"
+                    placeholder="At least 8 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"

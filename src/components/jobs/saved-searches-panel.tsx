@@ -147,7 +147,11 @@ export function SavedSearchesPanel({ surface }: { surface: Surface }) {
                   queryString: currentQs,
                 });
               }}
-              style={{ display: "flex", gap: 6 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
             >
               <input
                 autoFocus
@@ -156,9 +160,9 @@ export function SavedSearchesPanel({ surface }: { surface: Surface }) {
                 placeholder="Name this search…"
                 maxLength={60}
                 style={{
-                  flex: 1,
+                  width: "100%",
                   fontSize: 13,
-                  padding: "6px 12px",
+                  padding: "8px 14px",
                   background: "white",
                   border: "1px solid var(--v2-ink-200)",
                   borderRadius: 999,
@@ -166,29 +170,37 @@ export function SavedSearchesPanel({ surface }: { surface: Surface }) {
                   minWidth: 0,
                 }}
               />
-              <button
-                type="submit"
-                disabled={save.isPending || !name.trim()}
-                className="v2-btn v2-btn-primary v2-btn-sm"
-                style={{ flexShrink: 0 }}
-              >
-                {save.isPending ? "…" : "Save"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowInput(false);
-                  setName("");
-                }}
+              <div
                 style={{
-                  fontSize: 13,
-                  color: "var(--v2-ink-500)",
-                  cursor: "pointer",
-                  padding: "0 8px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 8,
                 }}
               >
-                Cancel
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInput(false);
+                    setName("");
+                  }}
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--v2-ink-500)",
+                    cursor: "pointer",
+                    padding: "6px 10px",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={save.isPending || !name.trim()}
+                  className="v2-btn v2-btn-primary v2-btn-sm"
+                >
+                  {save.isPending ? "Saving…" : "Save"}
+                </button>
+              </div>
             </form>
           ) : (
             <button

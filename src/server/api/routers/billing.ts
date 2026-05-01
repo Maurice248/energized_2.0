@@ -15,6 +15,7 @@ import {
   isPlanTier,
   type PlanTier,
 } from "@/lib/billing-tiers";
+import { syncSubscriptionFromStripe } from "@/server/services/billing-sync";
 
 type OrgRole = "owner" | "admin" | "recruiter" | "hiring_manager" | "viewer";
 const BILLING_ROLES: OrgRole[] = ["owner", "admin"];
@@ -347,6 +348,24 @@ export const billingRouter = router({
 
       return { ok: true, tier: input.tier };
     }),
+
+  syncFromStripe: protectedProcedure.mutation(async ({ ctx }) => {
+    const member = await findMyOrgRole(ctx);
+    if (!member) throw new TRPCError({ code: "NOT_FOUND" });
+    if (!BILLING_ROLES.includes(member.role)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only owners and admins can refresh billing.",
+      });
+    }
+    if (!STRIPE_ENABLED) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Stripe is not configured on this environment.",
+      });
+    }
+    return syncSubscriptionFromStripe(member.orgId);
+  }),
 
   // List of all tiers for the UI (so the client doesn't import billing-tiers
   // — keeps env import contained server-side).

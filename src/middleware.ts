@@ -14,6 +14,7 @@ const APP_PREFIXES = [
   "/candidates",
   "/notifications",
   "/profile",
+  "/account",
 ];
 
 const AUTH_PREFIXES = ["/sign-in", "/sign-up"];

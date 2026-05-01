@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+import { PasswordInput } from "@/components/shared/password-input";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -99,10 +100,9 @@ export default function SignInPage() {
               <label className="v2-field-label" htmlFor="password">
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 className="v2-input-block"
-                type="password"
                 autoComplete="current-password"
                 required
                 placeholder="Your password"

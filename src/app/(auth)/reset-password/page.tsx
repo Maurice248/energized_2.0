@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+import { PasswordInput } from "@/components/shared/password-input";
 
 type Status =
   | "idle"
@@ -126,10 +127,9 @@ function ResetPasswordInner() {
           <label className="v2-field-label" htmlFor="new-password">
             New password
           </label>
-          <input
+          <PasswordInput
             id="new-password"
             className="v2-input-block"
-            type="password"
             autoComplete="new-password"
             required
             minLength={8}
@@ -151,10 +151,9 @@ function ResetPasswordInner() {
           <label className="v2-field-label" htmlFor="confirm-password">
             Confirm password
           </label>
-          <input
+          <PasswordInput
             id="confirm-password"
             className="v2-input-block"
-            type="password"
             autoComplete="new-password"
             required
             placeholder="Repeat the new password"

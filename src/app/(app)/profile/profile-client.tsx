@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/shared/icon";
+import { PasswordInput } from "@/components/shared/password-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AddRoleDialog,
@@ -1149,25 +1150,22 @@ function AccountSection({
             gap: 10,
           }}
         >
-          <input
+          <PasswordInput
             className="v2-input-block"
-            type="password"
             value={currentPw}
             onChange={(e) => setCurrentPw(e.target.value)}
             placeholder="Current password"
             autoComplete="current-password"
           />
-          <input
+          <PasswordInput
             className="v2-input-block"
-            type="password"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
             placeholder="New password (8+ characters)"
             autoComplete="new-password"
           />
-          <input
+          <PasswordInput
             className="v2-input-block"
-            type="password"
             value={confirmPw}
             onChange={(e) => setConfirmPw(e.target.value)}
             placeholder="Confirm new password"

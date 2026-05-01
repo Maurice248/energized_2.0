@@ -59,6 +59,18 @@ export function BillingSection({ id }: { id?: string }) {
     },
     onError: (e) => setError(e.message),
   });
+  const sync = api.billing.syncFromStripe.useMutation({
+    onSuccess: () => {
+      void utils.billing.getCurrent.invalidate();
+    },
+    onError: (e) => setError(e.message),
+  });
+  const switchTier = api.billing.switchTier.useMutation({
+    onSuccess: () => {
+      void utils.billing.getCurrent.invalidate();
+    },
+    onError: (e) => setError(e.message),
+  });
 
   if (current.isLoading || tiers.isLoading) {
     return (
@@ -98,16 +110,35 @@ export function BillingSection({ id }: { id?: string }) {
               : "Pick a plan to start posting roles"}
           </div>
         </div>
-        {subscribed && canManage && (
-          <button
-            className="v2-btn v2-btn-ghost v2-btn-sm"
-            onClick={() => portal.mutate()}
-            disabled={portal.isPending || !stripeReady}
-            title={!stripeReady ? "Stripe not configured" : undefined}
-          >
-            Manage billing <Icon name="arrowUpRight" size={13} />
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {canManage && stripeReady && (
+            <button
+              type="button"
+              onClick={() => sync.mutate()}
+              disabled={sync.isPending}
+              title="Refresh subscription state from Stripe"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--v2-ink-500)",
+                cursor: sync.isPending ? "default" : "pointer",
+                padding: "6px 4px",
+              }}
+            >
+              {sync.isPending ? "Refreshing…" : "Refresh"}
+            </button>
+          )}
+          {subscribed && canManage && (
+            <button
+              className="v2-btn v2-btn-ghost v2-btn-sm"
+              onClick={() => portal.mutate()}
+              disabled={portal.isPending || !stripeReady}
+              title={!stripeReady ? "Stripe not configured" : undefined}
+            >
+              Manage billing <Icon name="arrowUpRight" size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -291,6 +322,134 @@ export function BillingSection({ id }: { id?: string }) {
               </div>
             )}
           </div>
+
+          {canManage && !data.cancelAtPeriodEnd && (
+            <div style={{ marginTop: 18 }}>
+              <div
+                style={{
+                  fontFamily: "var(--v2-font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--v2-ink-500)",
+                  marginBottom: 10,
+                }}
+              >
+                Switch plan
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {tierList
+                  .filter((t) => t.id !== data.tier)
+                  .map((t) => {
+                    const currentIdx = tierList.findIndex(
+                      (x) => x.id === data.tier,
+                    );
+                    const targetIdx = tierList.findIndex(
+                      (x) => x.id === t.id,
+                    );
+                    const direction =
+                      targetIdx > currentIdx ? "Upgrade" : "Downgrade";
+                    return (
+                      <div
+                        key={t.id}
+                        style={{
+                          padding: 16,
+                          border: "1px solid var(--v2-ink-200)",
+                          borderRadius: "var(--v2-r-lg)",
+                          background: "white",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "baseline",
+                            gap: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: "var(--v2-ink-950)",
+                            }}
+                          >
+                            {t.label}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "var(--v2-ink-700)",
+                            }}
+                          >
+                            {formatPriceCents(t.priceCents)}
+                            <span
+                              style={{
+                                fontSize: 11,
+                                color: "var(--v2-ink-500)",
+                              }}
+                            >
+                              {" "}
+                              /mo
+                            </span>
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--v2-ink-500)",
+                          }}
+                        >
+                          {t.jobsPerCycle} job
+                          {t.jobsPerCycle === 1 ? "" : "s"} per cycle
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                `${direction} to ${t.label}? Stripe charges or credits the prorated difference for the rest of this cycle.`,
+                              )
+                            )
+                              return;
+                            switchTier.mutate({ tier: t.id });
+                          }}
+                          disabled={
+                            switchTier.isPending ||
+                            !stripeReady ||
+                            !t.configured
+                          }
+                          className="v2-btn v2-btn-ghost v2-btn-sm"
+                          style={{ marginTop: "auto" }}
+                          title={
+                            !stripeReady
+                              ? "Stripe not configured."
+                              : !t.configured
+                                ? `${t.label} price id not set in env.`
+                                : undefined
+                          }
+                        >
+                          {switchTier.isPending
+                            ? "Switching…"
+                            : `${direction} to ${t.label}`}
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div
