@@ -67,4 +67,18 @@ export const notificationsRouter = router({
       );
     return { ok: true };
   }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .delete(notifications)
+        .where(
+          and(
+            eq(notifications.id, input.id),
+            eq(notifications.userId, ctx.session.user.id),
+          ),
+        );
+      return { ok: true };
+    }),
 });
