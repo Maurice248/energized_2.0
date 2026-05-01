@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
@@ -208,9 +209,9 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
             style={{ height: 40, width: "auto" }}
           />
           <div className="pp-crumbs">
-            <span>App</span>
-            <span className="sep">/</span>
-            <span>Employer</span>
+            <Link href="/employer" style={{ color: "inherit" }}>
+              Dashboard
+            </Link>
             <span className="sep">/</span>
             <span>Jobs</span>
             <span className="sep">/</span>

@@ -34,7 +34,7 @@ export async function PlanQuotaCard() {
           href="/employer/profile#ep-billing"
           className="text-xs font-bold text-[var(--v2-accent)] hover:underline"
         >
-          Manage billing →
+          Plan &amp; billing →
         </Link>
       </div>
 
