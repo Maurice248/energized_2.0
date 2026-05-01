@@ -490,24 +490,42 @@ export default async function JobsBrowsePage({
             >
               <div
                 style={{
-                  fontFamily: "var(--v2-font-serif)",
-                  fontSize: 32,
-                  fontWeight: 900,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  flexWrap: "wrap",
                 }}
               >
-                {total}
-                <em
+                <div
                   style={{
-                    fontSize: 14,
-                    marginLeft: 8,
-                    color: "var(--v2-ink-500)",
-                    fontWeight: 400,
-                    fontStyle: "normal",
-                    fontFamily: "var(--v2-font-sans)",
+                    fontFamily: "var(--v2-font-serif)",
+                    fontSize: 32,
+                    fontWeight: 900,
                   }}
                 >
-                  {total === 1 ? "result" : "results"}
-                </em>
+                  {total}
+                  <em
+                    style={{
+                      fontSize: 14,
+                      marginLeft: 8,
+                      color: "var(--v2-ink-500)",
+                      fontWeight: 400,
+                      fontStyle: "normal",
+                      fontFamily: "var(--v2-font-sans)",
+                    }}
+                  >
+                    {total === 1 ? "result" : "results"}
+                  </em>
+                </div>
+                {hasAnyFilter(filters) && (
+                  <Link
+                    href="/jobs"
+                    className="v2-btn v2-btn-ghost v2-btn-sm"
+                    style={{ padding: "4px 10px", fontSize: 12 }}
+                  >
+                    × Clear filters
+                  </Link>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <span
