@@ -20,6 +20,7 @@ export const metadata: Metadata = {
 export default async function MyApplicationsPage() {
   const session = await getSession();
   if (!session) redirect("/sign-in?redirect=/applications");
+  if (session.user.role === "employer") redirect("/employer");
 
   const rows = await db
     .select({

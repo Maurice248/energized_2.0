@@ -23,6 +23,7 @@ export const metadata: Metadata = {
 export default async function SavedJobsPage() {
   const session = await getSession();
   if (!session) redirect("/sign-in?redirect=/saved");
+  if (session.user.role === "employer") redirect("/employer");
 
   const rows = await db
     .select({

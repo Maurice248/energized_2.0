@@ -157,7 +157,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
       await publish.mutateAsync({ id: initial.id });
       await utils.jobs.listForOrg.invalidate();
       await utils.jobs.getById.invalidate({ id: initial.id });
-      router.push(`/employer/profile#ep-jobs`);
+      router.push("/employer");
     } catch (e) {
       if (e instanceof Error) {
         const missingMatch = e.message.match(/^MISSING_FIELDS:(.+)$/);
@@ -236,7 +236,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
             className="v2-btn v2-btn-link"
             onClick={async () => {
               await flushSave();
-              router.push("/employer/profile#ep-jobs");
+              router.push("/employer");
             }}
           >
             Save &amp; exit →
@@ -402,7 +402,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
                   className="v2-btn v2-btn-ghost"
                   onClick={async () => {
                     await flushSave();
-                    router.push("/employer/profile#ep-jobs");
+                    router.push("/employer");
                   }}
                 >
                   Save draft &amp; exit
