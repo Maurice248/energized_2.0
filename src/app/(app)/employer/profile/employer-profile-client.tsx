@@ -209,6 +209,61 @@ export function EmployerProfileClient({
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
 
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  const handleLogoFile = async (file: File) => {
+    setLogoError(null);
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError("Logo must be under 2MB.");
+      return;
+    }
+    if (
+      !["image/jpeg", "image/png", "image/webp", "image/svg+xml"].includes(
+        file.type,
+      )
+    ) {
+      setLogoError("JPG, PNG, WebP, or SVG only.");
+      return;
+    }
+    setLogoBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/org-logo", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error ?? "Upload failed");
+      }
+      const { url } = (await res.json()) as { url: string };
+      await updateBasics.mutateAsync({ logoUrl: url });
+      await orgQuery.refetch();
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    setLogoError(null);
+    setLogoBusy(true);
+    try {
+      await updateBasics.mutateAsync({ logoUrl: null });
+      await orgQuery.refetch();
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : "Couldn't remove logo");
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
   const handleCoverFile = async (file: File) => {
     setCoverError(null);
     if (file.size > 5 * 1024 * 1024) {
@@ -292,6 +347,80 @@ export function EmployerProfileClient({
                 <span>{org?.name.charAt(0).toUpperCase() ?? "?"}</span>
               )}
             </div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/svg+xml"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void handleLogoFile(f);
+              }}
+            />
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                justifyContent: "center",
+                marginBottom: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoBusy}
+                style={{
+                  border: "1px solid var(--v2-ink-200)",
+                  background: "white",
+                  color: "var(--v2-ink-800)",
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: logoBusy ? "default" : "pointer",
+                  opacity: logoBusy ? 0.6 : 1,
+                }}
+              >
+                {logoBusy
+                  ? "Uploading…"
+                  : org?.logoUrl
+                    ? "Replace logo"
+                    : "Upload logo"}
+              </button>
+              {org?.logoUrl && !logoBusy && (
+                <button
+                  type="button"
+                  onClick={() => void handleLogoRemove()}
+                  disabled={logoBusy}
+                  style={{
+                    border: "1px solid var(--v2-ink-200)",
+                    background: "white",
+                    color: "var(--v2-ink-600)",
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {logoError && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#A63A20",
+                  textAlign: "center",
+                  marginBottom: 10,
+                }}
+              >
+                {logoError}
+              </div>
+            )}
             <div className="pp-name">{org?.name ?? "Untitled company"}</div>
             {org?.tagline && (
               <div
