@@ -125,17 +125,26 @@ export function ApplicantCard({
               marginBottom: 2,
             }}
           >
-            <div
+            <Link
+              href={`/p/${applicant.candidateId}`}
               style={{
                 fontWeight: 700,
                 fontSize: 14,
+                color: "inherit",
+                textDecoration: "none",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
             >
               {applicant.candidateName ?? "Anonymous"}
-            </div>
+            </Link>
             <span className={statusChipClass(applicant.status)}>
               {STATUS_LABELS[applicant.status]}
             </span>

@@ -106,14 +106,14 @@ export default async function JobApplicantsPage({
         style={{ paddingTop: 32, paddingBottom: 64, maxWidth: 1440 }}
       >
         <Link
-          href="/employer/profile#ep-jobs"
+          href="/employer"
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 8,
             fontSize: 13,
             color: "var(--v2-ink-500)",
-            marginBottom: 20,
+            marginBottom: 28,
             fontFamily: "var(--v2-font-mono)",
             letterSpacing: "0.06em",
             textTransform: "uppercase",
@@ -124,7 +124,7 @@ export default async function JobApplicantsPage({
             size={12}
             style={{ transform: "rotate(180deg)" }}
           />{" "}
-          Back to company profile
+          Back to dashboard
         </Link>
 
         <div className="v2-eyebrow">Applicants · {applicants.length}</div>

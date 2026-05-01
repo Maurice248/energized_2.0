@@ -134,8 +134,56 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
     };
   }, [draft, flushSave, status]);
 
+  // Per-step required fields. Aligns with the server-side publish validator
+  // in src/server/api/routers/jobs.ts so users hit the same wall at Next as
+  // they would at Publish — but earlier and tied to the step they're on.
+  const findMissingForStep = (s: number, d: WizardDraft): string[] => {
+    const m: string[] = [];
+    if (s === 1) {
+      if (!d.title || d.title.trim().length < 3) m.push("title");
+      if (!d.sector) m.push("sector");
+      if (!d.experienceLevel) m.push("experienceLevel");
+    }
+    if (s === 2) {
+      if (!d.location || d.location.trim().length < 2) m.push("location");
+      if (!d.workSetup) m.push("workSetup");
+    }
+    if (s === 3) {
+      if (d.salaryMin == null && d.salaryMax == null) m.push("salary");
+      if (
+        d.salaryMin != null &&
+        d.salaryMax != null &&
+        d.salaryMin > d.salaryMax
+      ) {
+        m.push("salaryRange");
+      }
+    }
+    if (s === 4) {
+      if (!d.description || d.description.trim().length < 1)
+        m.push("description");
+    }
+    return m;
+  };
+
   const goStep = async (next: number) => {
     const target = Math.max(1, Math.min(4, next));
+    // Going BACKWARD (or to the same step) never validates — let the user
+    // freely move around. Only block forward progress on the current step's
+    // required fields.
+    if (target > step) {
+      const missing = findMissingForStep(step, draft);
+      if (missing.length > 0) {
+        setMissingFields(missing);
+        setPublishError(
+          `Some required fields are missing: ${missing.join(
+            ", ",
+          )}. They're highlighted below.`,
+        );
+        return;
+      }
+    }
+    setMissingFields([]);
+    setPublishError(null);
     await flushSave();
     setStep(target);
     router.replace(`/employer/jobs/${initial.id}/edit?step=${target}`);
