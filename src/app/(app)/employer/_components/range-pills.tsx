@@ -35,10 +35,11 @@ export function RangePills({ active }: { active: Range }) {
     <div
       role="tablist"
       aria-label="Date range"
-      className="inline-flex items-center gap-1 rounded-full border bg-background p-1"
+      className="inline-flex items-stretch overflow-hidden rounded-full border bg-background"
       data-pending={pending ? "true" : "false"}
+      style={{ borderColor: "var(--v2-ink-200)" }}
     >
-      {RANGES.map((r) => {
+      {RANGES.map((r, i) => {
         const isActive = r === active;
         return (
           <button
@@ -46,11 +47,19 @@ export function RangePills({ active }: { active: Range }) {
             role="tab"
             aria-selected={isActive}
             onClick={() => select(r)}
-            className={
-              isActive
-                ? "rounded-full bg-[var(--v2-accent)] px-3 py-1 text-xs font-bold text-white"
-                : "rounded-full px-3 py-1 text-xs font-bold text-muted-foreground hover:text-foreground"
-            }
+            className="px-4 py-1.5 text-xs font-bold transition-colors"
+            style={{
+              color: isActive ? "white" : "var(--v2-ink-600)",
+              background: isActive ? "var(--v2-accent)" : "transparent",
+              boxShadow: isActive
+                ? "inset 0 0 0 1px var(--v2-accent), 0 1px 3px rgba(28,170,226,0.25)"
+                : "none",
+              borderLeft:
+                i > 0 && !isActive
+                  ? "1px solid var(--v2-ink-200)"
+                  : "1px solid transparent",
+              cursor: "pointer",
+            }}
           >
             {LABELS[r]}
           </button>

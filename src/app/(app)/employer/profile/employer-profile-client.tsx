@@ -1418,6 +1418,12 @@ function JobsSection({
                       </button>
                       <button
                         className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onEdit(j.id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
                         onClick={() => onPreview(j.id)}
                       >
                         Preview
@@ -1445,6 +1451,12 @@ function JobsSection({
                       >
                         Applicants ({counts[j.id] ?? 0}){" "}
                         <Icon name="arrowUpRight" size={13} />
+                      </button>
+                      <button
+                        className="v2-btn v2-btn-ghost v2-btn-sm"
+                        onClick={() => onEdit(j.id)}
+                      >
+                        Edit
                       </button>
                       <button
                         className="v2-btn v2-btn-ghost v2-btn-sm"
