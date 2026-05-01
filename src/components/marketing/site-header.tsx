@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Icon } from "@/components/shared/icon";
 import { getSession } from "@/server/auth";
 import { UserMenu } from "./user-menu";
+import { NotificationBell } from "./notification-bell";
 
 export type SiteHeaderActive =
   | "home"
@@ -89,12 +90,15 @@ export async function SiteHeader({ active }: { active?: SiteHeaderActive }) {
               </Link>
             </>
           ) : (
-            <UserMenu
-              name={user.name ?? ""}
-              email={user.email}
-              image={user.image ?? null}
-              isEmployer={isEmployer}
-            />
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <NotificationBell />
+              <UserMenu
+                name={user.name ?? ""}
+                email={user.email}
+                image={user.image ?? null}
+                isEmployer={isEmployer}
+              />
+            </div>
           )}
         </div>
       </div>

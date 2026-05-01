@@ -13,6 +13,7 @@ import {
   workHistory,
 } from "@/server/db/schema";
 import type { sendApplicationEmailTask } from "../../../../code/trigger/send-application-email";
+import type { sendApplicationStatusEmailTask } from "../../../../code/trigger/send-application-status-email";
 import { safeCapture } from "@/lib/posthog";
 import {
   EVENT_APPLICATION_STATUS_CHANGED,
@@ -317,6 +318,19 @@ export const applicationsRouter = router({
           toStatus: input.status,
         },
       });
+
+      // Notify the candidate when they advance through the pipeline. We skip
+      // "submitted" (the application-received email already covered that) and
+      // we only fire on actual transitions (no email when status is unchanged).
+      if (
+        input.status !== "submitted" &&
+        input.status !== hit.fromStatus
+      ) {
+        await tasks.trigger<typeof sendApplicationStatusEmailTask>(
+          "send-application-status-email",
+          { applicationId: input.id, toStatus: input.status },
+        );
+      }
 
       return { id: input.id, status: input.status };
     }),

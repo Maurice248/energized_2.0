@@ -181,7 +181,7 @@ export const employerRouter = router({
   getKpis: protectedProcedure
     .input(
       z.object({
-        range: z.enum(["7d", "30d", "90d", "all"]).default("30d"),
+        range: z.enum(["7d", "30d", "90d", "qtd", "all"]).default("30d"),
       }).optional(),
     )
     .query(async ({ ctx, input }) => {
@@ -227,7 +227,7 @@ export const employerRouter = router({
     }),
 
   getFunnel: protectedProcedure
-    .input(z.object({ range: z.enum(["7d", "30d", "90d", "all"]).default("30d") }))
+    .input(z.object({ range: z.enum(["7d", "30d", "90d", "qtd", "all"]).default("30d") }))
     .query(async ({ ctx, input }) => {
       const orgId = await findMyOrg(ctx);
       const empty = {
@@ -287,7 +287,7 @@ export const employerRouter = router({
     }),
 
   getApplicationsTimeseries: protectedProcedure
-    .input(z.object({ range: z.enum(["7d", "30d", "90d", "all"]).default("30d") }))
+    .input(z.object({ range: z.enum(["7d", "30d", "90d", "qtd", "all"]).default("30d") }))
     .query(async ({ ctx, input }) => {
       const orgId = await findMyOrg(ctx);
       if (!orgId) {
@@ -353,7 +353,7 @@ export const employerRouter = router({
     }),
 
   getApplicantsBySector: protectedProcedure
-    .input(z.object({ range: z.enum(["7d", "30d", "90d", "all"]).default("30d") }))
+    .input(z.object({ range: z.enum(["7d", "30d", "90d", "qtd", "all"]).default("30d") }))
     .query(async ({ ctx, input }) => {
       const orgId = await findMyOrg(ctx);
       if (!orgId) return [];
@@ -1129,5 +1129,109 @@ export const employerRouter = router({
       .where(eq(employerOrgs.id, orgId))
       .returning();
     return updated;
+  }),
+
+  deleteOrg: protectedProcedure
+    .input(z.object({ confirmName: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await findMyOrg(ctx);
+      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [member] = await ctx.db
+        .select({ role: orgMembers.role })
+        .from(orgMembers)
+        .where(
+          and(
+            eq(orgMembers.orgId, orgId),
+            eq(orgMembers.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+      if (!member || member.role !== "owner") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the owner can delete the org.",
+        });
+      }
+
+      const [org] = await ctx.db
+        .select({
+          name: employerOrgs.name,
+          subStatus: employerOrgs.subscriptionStatus,
+        })
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, orgId))
+        .limit(1);
+      if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (
+        input.confirmName.trim().toLowerCase() !== org.name.trim().toLowerCase()
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Type the org name exactly to confirm.",
+        });
+      }
+
+      if (
+        org.subStatus === "active" ||
+        org.subStatus === "trialing" ||
+        org.subStatus === "past_due"
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Cancel your active subscription via Manage billing before deleting the org.",
+        });
+      }
+
+      // Cascade deletes job_listings, applications, org_members, etc.
+      await ctx.db
+        .delete(employerOrgs)
+        .where(eq(employerOrgs.id, orgId));
+      return { ok: true };
+    }),
+
+  leaveOrg: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const email = ctx.session.user.email.toLowerCase();
+
+    const [byUser] = await ctx.db
+      .select({ id: orgMembers.id, role: orgMembers.role })
+      .from(orgMembers)
+      .where(eq(orgMembers.userId, userId))
+      .limit(1);
+
+    const member =
+      byUser ??
+      (
+        await ctx.db
+          .select({ id: orgMembers.id, role: orgMembers.role })
+          .from(orgMembers)
+          .where(
+            and(
+              eq(orgMembers.email, email),
+              eq(orgMembers.status, "active"),
+            ),
+          )
+          .limit(1)
+      )[0];
+
+    if (!member) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "You're not a member of any org.",
+      });
+    }
+    if (member.role === "owner") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Owners can't leave directly. Delete the org or transfer ownership first.",
+      });
+    }
+
+    await ctx.db.delete(orgMembers).where(eq(orgMembers.id, member.id));
+    return { ok: true };
   }),
 });

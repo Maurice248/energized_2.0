@@ -17,6 +17,7 @@ import {
 } from "@/lib/jobs-options";
 import { JobsSearchInput } from "./search-input";
 import { SalarySlider } from "./salary-slider";
+import { SavedSearchesPanel } from "@/components/jobs/saved-searches-panel";
 
 const PAGE_SIZE = 12;
 
@@ -475,6 +476,7 @@ export default async function JobsBrowsePage({
                 Reset all
               </Link>
             )}
+            <SavedSearchesPanel surface="jobs" />
           </aside>
 
           <div>

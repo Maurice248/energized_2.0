@@ -86,6 +86,11 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
         <DropdownMenuItem asChild>
           <Link href={dashboardHref}>Dashboard</Link>
         </DropdownMenuItem>
+        {isEmployer && (
+          <DropdownMenuItem asChild>
+            <Link href="/candidates">Find candidates</Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void handleSignOut()}>
           Sign out

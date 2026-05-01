@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { TRPCError } from "@trpc/server";
 import { api } from "@/lib/trpc/server";
-import { TIERS } from "@/lib/billing-tiers";
+import { TIERS, nextTier } from "@/lib/billing-tiers";
+import { UpgradeCta } from "./upgrade-cta";
 
 export async function PlanQuotaCard() {
   let data;
@@ -53,6 +54,17 @@ export async function PlanQuotaCard() {
               style={{ width: `${pct}%` }}
             />
           </div>
+          {(() => {
+            const next = nextTier(data.tier);
+            const canUpgrade =
+              next &&
+              (data.role === "owner" || data.role === "admin") &&
+              data.status !== "canceled" &&
+              data.status !== "incomplete_expired";
+            return canUpgrade ? (
+              <UpgradeCta currentTier={data.tier} nextTier={next} />
+            ) : null;
+          })()}
         </>
       ) : (
         <>

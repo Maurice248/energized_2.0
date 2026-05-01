@@ -13,6 +13,7 @@ import {
   WORK_SETUP_LABELS as JOB_WORK_SETUP_LABELS,
 } from "@/lib/jobs-options";
 import { BillingSection } from "./billing-section";
+import { DangerZone } from "./danger-zone";
 
 type JobRow = inferRouterOutputs<AppRouter>["jobs"]["listForOrg"][number];
 
@@ -832,6 +833,21 @@ export function EmployerProfileClient({
 
               {/* Verification */}
               <VerificationSection id="ep-verify" org={org} />
+
+              {/* Danger zone — owner sees Delete; everyone else sees Leave. */}
+              {(() => {
+                const me = members.find(
+                  (m) => m.email.toLowerCase() === email.toLowerCase(),
+                );
+                if (!me) return null;
+                return (
+                  <DangerZone
+                    id="ep-danger"
+                    isOwner={me.role === "owner"}
+                    orgName={org?.name ?? ""}
+                  />
+                );
+              })()}
             </>
           )}
         </main>

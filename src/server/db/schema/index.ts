@@ -11,3 +11,5 @@ export * from "./applications";
 export * from "./saved-jobs";
 export * from "./job-matches";
 export * from "./profile-views";
+export * from "./notifications";
+export * from "./saved-searches";

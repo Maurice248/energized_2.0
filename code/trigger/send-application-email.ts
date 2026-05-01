@@ -5,6 +5,7 @@ import {
   applications,
   employerOrgs,
   jobListings,
+  notifications,
   orgMembers,
   profiles,
   user,
@@ -120,6 +121,24 @@ export const sendApplicationEmailTask = task({
       logger.error("employer email failed", {
         reason: String(employerResult.reason),
       });
+    }
+
+    // In-app notification for the employer owner. Best-effort — if it fails we
+    // still consider the email send successful.
+    if (owner?.userId) {
+      try {
+        await db.insert(notifications).values({
+          userId: owner.userId,
+          kind: "application_received",
+          title: `New applicant — ${jobTitleLabel}`,
+          body: `${row.candidateName ?? "Someone"} just applied.`,
+          href: applicantsUrl,
+        });
+      } catch (e) {
+        logger.warn("notification insert failed (employer)", {
+          reason: String(e),
+        });
+      }
     }
 
     return { sent };

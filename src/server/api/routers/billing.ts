@@ -264,6 +264,80 @@ export const billingRouter = router({
       return { ok: true };
     }),
 
+  switchTier: protectedProcedure
+    .input(z.object({ tier: tierZ }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await findMyOrgRole(ctx);
+      if (!member) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!BILLING_ROLES.includes(member.role)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owners and admins can change plans.",
+        });
+      }
+
+      if (!STRIPE_ENABLED) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Stripe is not configured on this environment.",
+        });
+      }
+
+      const tierDef = TIERS[input.tier];
+      if (!tierDef.stripePriceId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Stripe price id not set for ${tierDef.label}.`,
+        });
+      }
+
+      const [org] = await ctx.db
+        .select()
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, member.orgId))
+        .limit(1);
+      if (!org?.stripeSubscriptionId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No active subscription to switch. Subscribe first.",
+        });
+      }
+
+      if (org.plan === input.tier) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You're already on that plan.",
+        });
+      }
+
+      const stripe = getStripe();
+      const sub = await stripe.subscriptions.retrieve(org.stripeSubscriptionId);
+      const itemId = sub.items.data[0]?.id;
+      if (!itemId) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Subscription has no line item to update.",
+        });
+      }
+
+      // Stripe handles proration; the webhook will update org.plan.
+      await stripe.subscriptions.update(org.stripeSubscriptionId, {
+        items: [{ id: itemId, price: tierDef.stripePriceId }],
+        proration_behavior: "create_prorations",
+        cancel_at_period_end: false,
+      });
+
+      // Optimistically reflect locally so the UI doesn't have to wait on
+      // Stripe's webhook to feel responsive. The webhook is still the source
+      // of truth and will overwrite if anything diverges.
+      await ctx.db
+        .update(employerOrgs)
+        .set({ plan: input.tier, cancelAtPeriodEnd: false })
+        .where(eq(employerOrgs.id, org.id));
+
+      return { ok: true, tier: input.tier };
+    }),
+
   // List of all tiers for the UI (so the client doesn't import billing-tiers
   // — keeps env import contained server-side).
   listTiers: protectedProcedure.query(() => {
