@@ -210,4 +210,105 @@ export const interviewsRouter = router({
 
       return { interviewId: iv.id };
     }),
+
+  confirmSlot: protectedProcedure
+    .input(z.object({ interviewId: z.string().uuid(), slotId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [iv] = await ctx.db
+        .select({
+          id: interviews.id,
+          status: interviews.status,
+          applicationId: interviews.applicationId,
+          candidateId: applications.candidateId,
+        })
+        .from(interviews)
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .where(eq(interviews.id, input.interviewId))
+        .limit(1);
+
+      if (!iv) throw new TRPCError({ code: "NOT_FOUND" });
+      if (iv.candidateId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (iv.status !== "proposed") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This proposal is no longer active.",
+        });
+      }
+
+      const [slot] = await ctx.db
+        .select({ id: interviewSlots.id, startsAt: interviewSlots.startsAt })
+        .from(interviewSlots)
+        .where(
+          and(
+            eq(interviewSlots.id, input.slotId),
+            eq(interviewSlots.interviewId, input.interviewId),
+          ),
+        )
+        .limit(1);
+
+      if (!slot) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Slot does not belong to this interview." });
+      }
+      if (new Date(slot.startsAt).getTime() <= Date.now()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That time has already passed." });
+      }
+
+      await ctx.db
+        .update(interviews)
+        .set({
+          status: "confirmed",
+          confirmedSlotId: slot.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(interviews.id, input.interviewId));
+
+      // Notify both sides in-app.
+      try {
+        await ctx.db.insert(notifications).values({
+          userId: iv.candidateId,
+          kind: "interview_confirmed",
+          title: "Interview confirmed",
+          body: "Your interview is confirmed. Calendar invite is on its way.",
+          href: `/applications/${iv.applicationId}`,
+        });
+      } catch {}
+
+      // Resolve org owner for employer-side notif.
+      const [meta] = await ctx.db
+        .select({ jobId: jobListings.id, orgId: jobListings.orgId, candidateName: user.name })
+        .from(applications)
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .innerJoin(user, eq(user.id, applications.candidateId))
+        .where(eq(applications.id, iv.applicationId))
+        .limit(1);
+
+      if (meta) {
+        const [owner] = await ctx.db
+          .select({ id: user.id })
+          .from(orgMembers)
+          .innerJoin(user, eq(user.id, orgMembers.userId))
+          .where(and(eq(orgMembers.orgId, meta.orgId), eq(orgMembers.role, "owner")))
+          .limit(1);
+        if (owner) {
+          try {
+            await ctx.db.insert(notifications).values({
+              userId: owner.id,
+              kind: "interview_confirmed",
+              title: "Interview confirmed",
+              body: `${meta.candidateName ?? "A candidate"} confirmed an interview slot.`,
+              href: `/employer/jobs/${meta.jobId}/applicants?focus=${iv.applicationId}`,
+            });
+          } catch {}
+        }
+      }
+
+      await tasks.trigger<typeof sendInterviewConfirmedTask>(
+        "send-interview-confirmed",
+        { interviewId: input.interviewId },
+      );
+
+      return { ok: true };
+    }),
 });
