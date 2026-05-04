@@ -147,7 +147,7 @@ export const sendInterviewConfirmedTask = task({
       const employerResult = await resend.emails.send({
         from: env.EMAIL_FROM,
         to: employerEmail,
-        subject: `Interview confirmed — ${iv.candidateName ?? "candidate"} for ${iv.jobTitle}`,
+        subject: `Interview confirmed — ${iv.candidateName ?? "candidate"} for ${iv.jobTitle ?? "your role"}`,
         react: InterviewConfirmedEmail({
           recipientName: employerName ?? null,
           companyName: iv.orgName,

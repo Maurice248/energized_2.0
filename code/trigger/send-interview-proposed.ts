@@ -87,7 +87,7 @@ export const sendInterviewProposedTask = task({
       from: env.EMAIL_FROM,
       to: row.candidateEmail,
       subject: payload.wasRescheduled
-        ? `${row.orgName} rescheduled your interview — ${row.jobTitle}`
+        ? `${row.orgName} rescheduled your interview — ${row.jobTitle ?? "your role"}`
         : `Pick a time for your interview at ${row.orgName}`,
       react: InterviewProposedEmail({
         candidateName: row.candidateName ?? null,
