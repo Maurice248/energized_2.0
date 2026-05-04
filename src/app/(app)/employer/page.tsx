@@ -16,6 +16,7 @@ import { StaleAlerts } from "./_components/stale-alerts";
 import { ApplicationsChart } from "./_components/applications-chart";
 import { PipelineByJob } from "./_components/pipeline-by-job";
 import { RecentActivity } from "./_components/recent-activity";
+import { TodaysInterviews } from "./_components/todays-interviews";
 import { RangePills } from "./_components/range-pills";
 import { RolesByFamily } from "./_components/roles-by-family";
 import { GeographyBreakdown } from "./_components/geography-breakdown";
@@ -112,6 +113,10 @@ export default async function EmployerDashboardPage({
 
       <section className="mb-6">
         <KpiStrip range={range} />
+      </section>
+
+      <section className="mb-6">
+        <TodaysInterviews orgId={orgId} />
       </section>
 
       <section className="mb-6">
