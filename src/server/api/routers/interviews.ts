@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -628,6 +628,7 @@ export const interviewsRouter = router({
             inArray(interviews.status, ["completed", "canceled"]),
             gte(interviews.updatedAt, windowStart),
             lte(interviews.updatedAt, now),
+            isNotNull(interviews.confirmedSlotId),
           ),
         )
         .orderBy(desc(interviews.updatedAt))
