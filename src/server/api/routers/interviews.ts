@@ -676,4 +676,48 @@ export const interviewsRouter = router({
 
       return rows;
     }),
+
+  recentForCandidate: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date();
+      const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const rows = await ctx.db
+        .select({
+          interviewId: interviews.id,
+          applicationId: interviews.applicationId,
+          jobId: jobListings.id,
+          jobTitle: jobListings.title,
+          orgId: employerOrgs.id,
+          orgName: employerOrgs.name,
+          orgLogoUrl: employerOrgs.logoUrl,
+          orgLogoColor: employerOrgs.logoColor,
+          startsAt: interviewSlots.startsAt,
+          durationMin: interviews.durationMin,
+          medium: interviews.medium,
+          details: interviews.details,
+          status: interviews.status,
+          cancelReason: interviews.cancelReason,
+          updatedAt: interviews.updatedAt,
+        })
+        .from(interviews)
+        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
+        .where(
+          and(
+            eq(applications.candidateId, ctx.session.user.id),
+            inArray(interviews.status, ["completed", "canceled"]),
+            gte(interviews.updatedAt, windowStart),
+            lte(interviews.updatedAt, now),
+            isNotNull(interviews.confirmedSlotId),
+          ),
+        )
+        .orderBy(desc(interviews.updatedAt))
+        .limit(input.limit);
+
+      return rows;
+    }),
 });
