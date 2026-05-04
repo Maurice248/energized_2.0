@@ -48,7 +48,10 @@ export const interviews = pgTable(
     expiresAt: timestamp("expires_at").notNull(),
     remindedAt: timestamp("reminded_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => ({
     applicationStatusIdx: index("interviews_application_status_idx").on(
