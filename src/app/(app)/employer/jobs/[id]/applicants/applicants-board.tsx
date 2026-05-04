@@ -165,6 +165,7 @@ export function ApplicantsBoard({
                     key={a.id}
                     applicant={a}
                     jobId={jobId}
+                    applicationStatus={status}
                     canEdit={canEdit}
                     onMove={onMove}
                     pending={pendingId === a.id}

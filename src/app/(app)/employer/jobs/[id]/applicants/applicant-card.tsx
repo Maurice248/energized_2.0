@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/shared/icon";
+import { api } from "@/lib/trpc/client";
 
 export type ApplicationStatus =
   | "submitted"
@@ -44,15 +45,58 @@ export function statusChipClass(status: ApplicationStatus): string {
   return "v2-chip v2-chip-outline";
 }
 
+function InterviewBadge({ applicationId }: { applicationId: string }) {
+  const list = api.interviews.list.useQuery({ applicationId });
+  const latest = list.data?.[0];
+  if (!latest) return null;
+
+  if (latest.status === "proposed") {
+    const days = Math.max(
+      0,
+      Math.ceil((new Date(latest.expiresAt).getTime() - Date.now()) / 86_400_000),
+    );
+    return (
+      <span style={{ fontSize: 11, color: "var(--v2-ink-500)" }}>
+        Awaiting candidate · {days}d
+      </span>
+    );
+  }
+
+  if (latest.status === "confirmed") {
+    const slot = latest.slots.find((s) => s.isConfirmed);
+    if (!slot) return null;
+    const fmt = new Date(slot.startsAt).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    return (
+      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--v2-accent-deep)" }}>
+        Confirmed · {fmt}
+      </span>
+    );
+  }
+
+  if (latest.status === "expired") {
+    return <span style={{ fontSize: 11, color: "var(--v2-coral)" }}>Expired</span>;
+  }
+
+  // canceled / completed → no badge
+  return null;
+}
+
 export function ApplicantCard({
   applicant,
   jobId,
+  applicationStatus,
   canEdit,
   onMove,
   pending,
 }: {
   applicant: ApplicantRow;
   jobId: string;
+  applicationStatus: ApplicationStatus;
   canEdit: boolean;
   onMove: (id: string, status: ApplicationStatus) => void;
   pending: boolean;
@@ -174,6 +218,11 @@ export function ApplicantCard({
               ` · ${applicant.yearsExperience}y`}
             {` · Applied ${appliedLabel}`}
           </div>
+          {applicationStatus === "interview" && (
+            <div style={{ marginTop: 6 }}>
+              <InterviewBadge applicationId={applicant.id} />
+            </div>
+          )}
         </div>
       </div>
 
