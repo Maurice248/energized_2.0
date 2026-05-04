@@ -100,7 +100,7 @@ export default async function MyApplicationsPage() {
             {rows.map((r) => (
               <Link
                 key={r.id}
-                href={`/jobs/${r.jobId}`}
+                href={`/applications/${r.id}`}
                 style={{
                   display: "flex",
                   gap: 14,
@@ -163,6 +163,19 @@ export default async function MyApplicationsPage() {
                       "en-CA",
                       { month: "short", day: "numeric" },
                     )}`}
+                    {" · "}
+                    <span
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ display: "inline" }}
+                    >
+                      <Link
+                        href={`/jobs/${r.jobId}`}
+                        style={{ color: "var(--v2-accent-deep)" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View role
+                      </Link>
+                    </span>
                   </div>
                 </div>
                 <span
