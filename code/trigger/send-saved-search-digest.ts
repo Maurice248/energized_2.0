@@ -1,5 +1,5 @@
 import { logger, schedules } from "@trigger.dev/sdk/v3";
-import { and, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, eq, gte, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
   employerOrgs,
@@ -12,7 +12,14 @@ import { env } from "@/env";
 import SavedSearchDigestEmail, {
   type DigestJob,
 } from "@/emails/saved-search-digest";
-import { SECTOR_LABELS } from "@/lib/jobs-options";
+import {
+  CERTIFICATION_OPTIONS,
+  EXPERIENCE_LEVEL_LABELS,
+  SECTOR_LABELS,
+  WORK_SETUP_LABELS,
+  type JobExperienceLevel,
+  type JobWorkSetup,
+} from "@/lib/jobs-options";
 
 type SectorValue = keyof typeof SECTOR_LABELS;
 
@@ -26,10 +33,22 @@ const ALLOWED_SECTORS: readonly SectorValue[] = [
   "other",
 ];
 
+const ALLOWED_SETUPS = Object.keys(WORK_SETUP_LABELS) as JobWorkSetup[];
+const ALLOWED_LEVELS = Object.keys(
+  EXPERIENCE_LEVEL_LABELS,
+) as JobExperienceLevel[];
+
+// Reasonable upper bound for a yearly minimum-salary filter (CAD).
+// Any value outside [0, 10_000_000] is treated as garbage and skipped.
+const MIN_SALARY_CEIL = 10_000_000;
+
 // Daily digest cron — runs at 12:00 UTC (~ 7am Eastern). For each saved
-// /jobs search, find roles published in the last 24 hours that match a
-// minimum subset of the saved filters (sector + free-text q + location +
-// experience level). If anything matches, send the user a digest email.
+// /jobs search, find roles published in the last 24 hours that match the
+// saved filters (q, sector, level, setup, loc, certs, minSalary). The
+// `posted` filter is intentionally ignored — the digest is always a
+// fixed 24-hour window, so a stricter `posted` would silently zero
+// results and a looser one would be a no-op. If anything matches, send
+// the user a digest email.
 export const sendSavedSearchDigest = schedules.task({
   id: "send-saved-search-digest",
   cron: "0 12 * * *",
@@ -61,7 +80,30 @@ export const sendSavedSearchDigest = schedules.task({
           ? (sectorParam as SectorValue)
           : null;
       const loc = params.get("loc")?.trim() ?? "";
-      const level = params.get("level")?.trim() ?? "";
+      const levelParam = params.get("level")?.trim() ?? "";
+      const level =
+        levelParam &&
+        (ALLOWED_LEVELS as readonly string[]).includes(levelParam)
+          ? (levelParam as JobExperienceLevel)
+          : null;
+      const setupParam = params.get("setup")?.trim() ?? "";
+      const setup =
+        setupParam &&
+        (ALLOWED_SETUPS as readonly string[]).includes(setupParam)
+          ? (setupParam as JobWorkSetup)
+          : null;
+      const certs = (params.get("certs") ?? "")
+        .split(",")
+        .map((c) => c.trim())
+        .filter((c) => c.length > 0 && CERTIFICATION_OPTIONS.includes(c))
+        .slice(0, 10);
+      const minSalaryRaw = parseInt(params.get("minSalary") ?? "", 10);
+      const minSalary =
+        Number.isFinite(minSalaryRaw) &&
+        minSalaryRaw > 0 &&
+        minSalaryRaw <= MIN_SALARY_CEIL
+          ? minSalaryRaw
+          : null;
 
       const conditions = [
         eq(jobListings.status, "published"),
@@ -72,12 +114,26 @@ export const sendSavedSearchDigest = schedules.task({
         conditions.push(
           sql`${jobListings.experienceLevel}::text = ${level}`,
         );
+      if (setup) conditions.push(eq(jobListings.workSetup, setup));
       if (loc) conditions.push(ilike(jobListings.location, `%${loc}%`));
+      if (certs.length > 0) {
+        conditions.push(
+          arrayOverlaps(jobListings.requiredCertifications, certs),
+        );
+      }
+      if (minSalary != null) {
+        const salaryFilter = or(
+          gte(jobListings.salaryMax, minSalary),
+          gte(jobListings.salaryMin, minSalary),
+        );
+        if (salaryFilter) conditions.push(salaryFilter);
+      }
       if (q) {
-        const term = `%${q}%`;
+        const term = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`;
         const qFilter = or(
           ilike(jobListings.title, term),
           ilike(jobListings.description, term),
+          ilike(employerOrgs.name, term),
         );
         if (qFilter) conditions.push(qFilter);
       }
