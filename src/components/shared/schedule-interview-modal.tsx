@@ -33,24 +33,30 @@ export function ScheduleInterviewModal({
   const [durationMin, setDurationMin] = useState(60);
   const [notes, setNotes] = useState("");
   const [slots, setSlots] = useState<string[]>(["", ""]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const utils = api.useUtils();
   const propose = api.interviews.proposeSlots.useMutation({
     onSuccess: () => {
       void utils.interviews.list.invalidate({ applicationId });
       setOpen(false);
+      setErrorMessage(null);
       onDone?.();
     },
+    onError: (err) => setErrorMessage(err.message ?? "Could not send proposal."),
   });
   const reschedule = api.interviews.reschedule.useMutation({
     onSuccess: () => {
       void utils.interviews.list.invalidate({ applicationId });
       setOpen(false);
+      setErrorMessage(null);
       onDone?.();
     },
+    onError: (err) => setErrorMessage(err.message ?? "Could not reschedule."),
   });
 
   const submit = () => {
+    setErrorMessage(null);
     const validSlots = slots
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
@@ -87,7 +93,13 @@ export function ScheduleInterviewModal({
   const isPending = propose.isPending || reschedule.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setErrorMessage(null);
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -189,6 +201,21 @@ export function ScheduleInterviewModal({
             </div>
           </div>
         </div>
+        {errorMessage && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: "10px 12px",
+              background: "#fff5f5",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              color: "#742a2a",
+              fontSize: 13,
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>Cancel</Button>
           <Button onClick={submit} disabled={isPending}>
