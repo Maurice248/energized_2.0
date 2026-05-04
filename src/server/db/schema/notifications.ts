@@ -13,6 +13,11 @@ export const notificationKindEnum = pgEnum("notification_kind", [
   "application_received",
   "application_status_changed",
   "team_invite_accepted",
+  "interview_proposed",
+  "interview_confirmed",
+  "interview_canceled",
+  "interview_reminder",
+  "interview_time_requested",
 ]);
 
 export const notifications = pgTable(

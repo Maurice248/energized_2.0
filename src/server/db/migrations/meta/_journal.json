@@ -127,6 +127,13 @@
       "when": 1777664546109,
       "tag": "0017_lame_shooting_star",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1777906177294,
+      "tag": "0018_chunky_genesis",
+      "breakpoints": true
     }
   ]
 }
