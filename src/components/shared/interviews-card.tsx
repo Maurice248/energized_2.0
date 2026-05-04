@@ -98,8 +98,8 @@ function Avatar({
   fallbackColor: string;
 }) {
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         src={url}
         alt=""
