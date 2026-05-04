@@ -456,37 +456,41 @@ export const interviewsRouter = router({
 
       await assertAccess(ctx, iv.applicationId, true);
 
-      const newId = await ctx.db.transaction(async (tx) => {
-        await tx
-          .update(interviews)
-          .set({
-            status: "canceled",
-            cancelReason: "rescheduled",
-            canceledById: ctx.session.user.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(interviews.id, input.interviewId));
+      // Neon's HTTP driver doesn't support transactions, so do the
+      // cancel → insert → insert sequence as separate statements.
+      // Order: cancel old FIRST so the active-interview invariant
+      // (at most one proposed/confirmed per application) is never
+      // briefly violated. If a later step fails, recovery is to retry
+      // — the now-canceled old row no longer blocks a fresh propose.
+      await ctx.db
+        .update(interviews)
+        .set({
+          status: "canceled",
+          cancelReason: "rescheduled",
+          canceledById: ctx.session.user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(interviews.id, input.interviewId));
 
-        const expiresAt = new Date(now + 7 * 24 * 60 * 60 * 1000);
-        const [created] = await tx
-          .insert(interviews)
-          .values({
-            applicationId: iv.applicationId,
-            proposedById: ctx.session.user.id,
-            medium: input.medium,
-            details: input.details,
-            durationMin: input.durationMin,
-            notes: input.notes,
-            expiresAt,
-          })
-          .returning({ id: interviews.id });
+      const expiresAt = new Date(now + 7 * 24 * 60 * 60 * 1000);
+      const [created] = await ctx.db
+        .insert(interviews)
+        .values({
+          applicationId: iv.applicationId,
+          proposedById: ctx.session.user.id,
+          medium: input.medium,
+          details: input.details,
+          durationMin: input.durationMin,
+          notes: input.notes,
+          expiresAt,
+        })
+        .returning({ id: interviews.id });
 
-        await tx.insert(interviewSlots).values(
-          input.slots.map((startsAt) => ({ interviewId: created.id, startsAt })),
-        );
+      await ctx.db.insert(interviewSlots).values(
+        input.slots.map((startsAt) => ({ interviewId: created.id, startsAt })),
+      );
 
-        return created.id;
-      });
+      const newId = created.id;
 
       // Notify candidate in-app for the new proposal.
       const [candidate] = await ctx.db
