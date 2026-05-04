@@ -26,7 +26,7 @@ function isToday(iso: string | Date): boolean {
 }
 
 export function TodaysInterviews({ orgId }: { orgId: string }) {
-  const q = api.interviews.todaysForOrg.useQuery({ orgId });
+  const q = api.interviews.upcomingForOrg.useQuery({ orgId });
   const items = (q.data ?? []).filter((r) => isToday(r.startsAt));
 
   return (

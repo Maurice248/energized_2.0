@@ -528,10 +528,9 @@ export const interviewsRouter = router({
       return { interviewId: newId };
     }),
 
-  todaysForOrg: protectedProcedure
+  upcomingForOrg: protectedProcedure
     .input(z.object({ orgId: z.string() }))
     .query(async ({ ctx, input }) => {
-      // Caller must be a member of this org (any role).
       const [member] = await ctx.db
         .select({ role: orgMembers.role })
         .from(orgMembers)
@@ -540,23 +539,23 @@ export const interviewsRouter = router({
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
       const now = new Date();
-      // 36-hour window centered on the next day boundary; client filters precisely by browser TZ.
-      const windowStart = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-      const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       const rows = await ctx.db
         .select({
           interviewId: interviews.id,
-          candidateUserId: applications.candidateId,
-          candidateName: user.name,
-          candidateAvatarUrl: user.image,
           applicationId: interviews.applicationId,
           jobId: jobListings.id,
           jobTitle: jobListings.title,
+          candidateUserId: applications.candidateId,
+          candidateName: user.name,
+          candidateAvatarUrl: user.image,
           startsAt: interviewSlots.startsAt,
           durationMin: interviews.durationMin,
           medium: interviews.medium,
           details: interviews.details,
+          status: interviews.status,
+          cancelReason: interviews.cancelReason,
         })
         .from(interviews)
         .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
@@ -567,7 +566,7 @@ export const interviewsRouter = router({
           and(
             eq(jobListings.orgId, input.orgId),
             eq(interviews.status, "confirmed"),
-            gt(interviewSlots.startsAt, windowStart),
+            gt(interviewSlots.startsAt, now),
             sql`${interviewSlots.startsAt} < ${windowEnd}`,
           ),
         )
