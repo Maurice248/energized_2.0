@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import { z } from "zod";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -20,7 +20,6 @@ import type { sendInterviewTimeRequestedTask } from "../../../../code/trigger/se
 
 const MEDIUM = z.enum(["video", "phone", "in_person"]);
 const PRIVILEGED_ROLES = ["owner", "admin", "recruiter"] as const;
-type PrivilegedRole = (typeof PRIVILEGED_ROLES)[number];
 
 async function assertAccess(
   ctx: { db: typeof import("@/server/db").db; session: { user: { id: string } } },
@@ -572,7 +571,7 @@ export const interviewsRouter = router({
           and(
             eq(jobListings.orgId, input.orgId),
             eq(interviews.status, "confirmed"),
-            gt(interviewSlots.startsAt, now),
+            gte(interviewSlots.startsAt, now),
             lt(interviewSlots.startsAt, windowEnd),
           ),
         )
@@ -668,7 +667,7 @@ export const interviewsRouter = router({
           and(
             eq(applications.candidateId, ctx.session.user.id),
             eq(interviews.status, "confirmed"),
-            gt(interviewSlots.startsAt, now),
+            gte(interviewSlots.startsAt, now),
             lt(interviewSlots.startsAt, windowEnd),
           ),
         )
