@@ -523,4 +523,52 @@ export const interviewsRouter = router({
 
       return { interviewId: newId };
     }),
+
+  todaysForOrg: protectedProcedure
+    .input(z.object({ orgId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      // Caller must be a member of this org (any role).
+      const [member] = await ctx.db
+        .select({ role: orgMembers.role })
+        .from(orgMembers)
+        .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.session.user.id)))
+        .limit(1);
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const now = new Date();
+      // 36-hour window centered on the next day boundary; client filters precisely by browser TZ.
+      const windowStart = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+      const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+      const rows = await ctx.db
+        .select({
+          interviewId: interviews.id,
+          candidateUserId: applications.candidateId,
+          candidateName: user.name,
+          candidateAvatarUrl: user.image,
+          applicationId: interviews.applicationId,
+          jobId: jobListings.id,
+          jobTitle: jobListings.title,
+          startsAt: interviewSlots.startsAt,
+          durationMin: interviews.durationMin,
+          medium: interviews.medium,
+          details: interviews.details,
+        })
+        .from(interviews)
+        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .innerJoin(user, eq(user.id, applications.candidateId))
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(
+          and(
+            eq(jobListings.orgId, input.orgId),
+            eq(interviews.status, "confirmed"),
+            gt(interviewSlots.startsAt, windowStart),
+            sql`${interviewSlots.startsAt} < ${windowEnd}`,
+          ),
+        )
+        .orderBy(asc(interviewSlots.startsAt));
+
+      return rows;
+    }),
 });
