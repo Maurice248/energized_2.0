@@ -423,4 +423,104 @@ export const interviewsRouter = router({
 
       return { ok: true };
     }),
+
+  reschedule: protectedProcedure
+    .input(
+      z.object({
+        interviewId: z.string().uuid(),
+        medium: MEDIUM,
+        details: z.string().min(1).max(2000),
+        durationMin: z.number().int().min(15).max(480).default(60),
+        notes: z.string().max(1000).optional(),
+        slots: z.array(z.coerce.date()).min(2).max(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const now = Date.now();
+      if (input.slots.some((s) => s.getTime() <= now)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "All proposed slots must be in the future." });
+      }
+
+      const [iv] = await ctx.db
+        .select({
+          applicationId: interviews.applicationId,
+          status: interviews.status,
+        })
+        .from(interviews)
+        .where(eq(interviews.id, input.interviewId))
+        .limit(1);
+      if (!iv) throw new TRPCError({ code: "NOT_FOUND" });
+      if (iv.status !== "proposed" && iv.status !== "confirmed") {
+        throw new TRPCError({ code: "BAD_REQUEST" });
+      }
+
+      await assertAccess(ctx, iv.applicationId, true);
+
+      const newId = await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(interviews)
+          .set({
+            status: "canceled",
+            cancelReason: "rescheduled",
+            canceledById: ctx.session.user.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(interviews.id, input.interviewId));
+
+        const expiresAt = new Date(now + 7 * 24 * 60 * 60 * 1000);
+        const [created] = await tx
+          .insert(interviews)
+          .values({
+            applicationId: iv.applicationId,
+            proposedById: ctx.session.user.id,
+            medium: input.medium,
+            details: input.details,
+            durationMin: input.durationMin,
+            notes: input.notes,
+            expiresAt,
+          })
+          .returning({ id: interviews.id });
+
+        await tx.insert(interviewSlots).values(
+          input.slots.map((startsAt) => ({ interviewId: created.id, startsAt })),
+        );
+
+        return created.id;
+      });
+
+      // Notify candidate in-app for the new proposal.
+      const [candidate] = await ctx.db
+        .select({ candidateId: applications.candidateId })
+        .from(applications)
+        .where(eq(applications.id, iv.applicationId))
+        .limit(1);
+      if (candidate) {
+        try {
+          await ctx.db.insert(notifications).values({
+            userId: candidate.candidateId,
+            kind: "interview_proposed",
+            title: "Your interview was rescheduled",
+            body: "New times have been proposed.",
+            href: `/applications/${iv.applicationId}`,
+          });
+        } catch {}
+      }
+
+      // Two tasks: cancel (audit trail, no emails) + new proposal (rescheduled variant).
+      await tasks.trigger<typeof sendInterviewCanceledTask>(
+        "send-interview-canceled",
+        {
+          interviewId: input.interviewId,
+          variant: "rescheduled",
+          notifyCandidate: false, // suppressed — proposal email below covers the candidate
+          notifyEmployer: false,
+        },
+      );
+      await tasks.trigger<typeof sendInterviewProposedTask>(
+        "send-interview-proposed",
+        { interviewId: newId, wasRescheduled: true },
+      );
+
+      return { interviewId: newId };
+    }),
 });
