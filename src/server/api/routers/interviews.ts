@@ -636,4 +636,44 @@ export const interviewsRouter = router({
 
       return rows;
     }),
+
+  upcomingForCandidate: protectedProcedure
+    .query(async ({ ctx }) => {
+      const now = new Date();
+      const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      const rows = await ctx.db
+        .select({
+          interviewId: interviews.id,
+          applicationId: interviews.applicationId,
+          jobId: jobListings.id,
+          jobTitle: jobListings.title,
+          orgId: employerOrgs.id,
+          orgName: employerOrgs.name,
+          orgLogoUrl: employerOrgs.logoUrl,
+          orgLogoColor: employerOrgs.logoColor,
+          startsAt: interviewSlots.startsAt,
+          durationMin: interviews.durationMin,
+          medium: interviews.medium,
+          details: interviews.details,
+          status: interviews.status,
+          cancelReason: interviews.cancelReason,
+        })
+        .from(interviews)
+        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
+        .where(
+          and(
+            eq(applications.candidateId, ctx.session.user.id),
+            eq(interviews.status, "confirmed"),
+            gt(interviewSlots.startsAt, now),
+            lt(interviewSlots.startsAt, windowEnd),
+          ),
+        )
+        .orderBy(asc(interviewSlots.startsAt));
+
+      return rows;
+    }),
 });
