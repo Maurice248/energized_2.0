@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
+import { ScheduleInterviewModal } from "@/components/shared/schedule-interview-modal";
 
 type Viewer = "candidate" | "employer";
 
@@ -39,7 +40,18 @@ export function InterviewBlock({
   const utils = api.useUtils();
   const invalidate = () => void utils.interviews.list.invalidate({ applicationId });
 
-  const confirm = api.interviews.confirmSlot.useMutation({ onSuccess: invalidate });
+  const [tentativePicks, setTentativePicks] = useState<Record<string, string>>({});
+
+  const confirm = api.interviews.confirmSlot.useMutation({
+    onSuccess: (_data, variables) => {
+      invalidate();
+      setTentativePicks((p) => {
+        const next = { ...p };
+        delete next[variables.interviewId];
+        return next;
+      });
+    },
+  });
   const cancel = api.interviews.cancel.useMutation({ onSuccess: invalidate });
   const requestDifferent = api.interviews.requestDifferentTime.useMutation({ onSuccess: invalidate });
 
@@ -86,9 +98,11 @@ export function InterviewBlock({
                     {iv.status === "proposed" && viewer === "candidate" ? (
                       <Button
                         size="sm"
-                        variant={s.isConfirmed ? "default" : "outline"}
+                        variant={tentativePicks[iv.id] === s.id ? "default" : "outline"}
                         disabled={confirm.isPending}
-                        onClick={() => confirm.mutate({ interviewId: iv.id, slotId: s.id })}
+                        onClick={() =>
+                          setTentativePicks((p) => ({ ...p, [iv.id]: s.id }))
+                        }
                       >
                         {fmtSlot(s.startsAt)}
                       </Button>
@@ -100,6 +114,23 @@ export function InterviewBlock({
                   </li>
                 ))}
               </ul>
+
+              {iv.status === "proposed" && viewer === "candidate" && tentativePicks[iv.id] && (
+                <div style={{ marginTop: 8 }}>
+                  <Button
+                    size="sm"
+                    disabled={confirm.isPending}
+                    onClick={() =>
+                      confirm.mutate({
+                        interviewId: iv.id,
+                        slotId: tentativePicks[iv.id]!,
+                      })
+                    }
+                  >
+                    {confirm.isPending ? "Confirming…" : "Confirm time"}
+                  </Button>
+                </div>
+              )}
 
               {iv.status === "confirmed" && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -133,6 +164,14 @@ export function InterviewBlock({
                   >
                     Cancel
                   </Button>
+                  {viewer === "employer" && (
+                    <ScheduleInterviewModal
+                      applicationId={applicationId}
+                      rescheduleInterviewId={iv.id}
+                      trigger={<Button size="sm" variant="ghost">Reschedule</Button>}
+                      onDone={invalidate}
+                    />
+                  )}
                   {viewer === "candidate" && iv.status === "proposed" && (
                     showRequest === iv.id ? (
                       <div style={{ display: "flex", gap: 6, flex: 1 }}>

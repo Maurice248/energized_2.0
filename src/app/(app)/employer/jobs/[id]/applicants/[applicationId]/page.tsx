@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { STAGE_FROM_DB, STAGE_LABEL } from "@/lib/application-stages";
 import { InterviewBlock } from "@/components/shared/interview-block";
-import { ScheduleInterviewModal } from "../_components/schedule-interview-modal";
+import { ScheduleInterviewModal } from "@/components/shared/schedule-interview-modal";
 
 export const metadata: Metadata = {
   title: "Applicant — Energized",
