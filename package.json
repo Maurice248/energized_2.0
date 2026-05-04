@@ -18,7 +18,7 @@
     "db:push": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs push",
     "db:studio": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs studio",
     "email:dev": "email dev --dir src/emails",
-    "trigger:dev": "trigger.dev dev"
+    "trigger:dev": "trigger dev"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
