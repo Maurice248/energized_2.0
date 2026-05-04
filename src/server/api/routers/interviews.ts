@@ -311,4 +311,59 @@ export const interviewsRouter = router({
 
       return { ok: true };
     }),
+
+  requestDifferentTime: protectedProcedure
+    .input(z.object({ interviewId: z.string().uuid(), message: z.string().max(1000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const [iv] = await ctx.db
+        .select({
+          status: interviews.status,
+          applicationId: interviews.applicationId,
+          candidateId: applications.candidateId,
+          proposedById: interviews.proposedById,
+          orgId: jobListings.orgId,
+          jobId: jobListings.id,
+        })
+        .from(interviews)
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(eq(interviews.id, input.interviewId))
+        .limit(1);
+
+      if (!iv) throw new TRPCError({ code: "NOT_FOUND" });
+      if (iv.candidateId !== ctx.session.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      if (iv.status !== "proposed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This proposal is no longer active." });
+      }
+
+      // Notify proposer (or org owner fallback).
+      let targetUserId = iv.proposedById ?? null;
+      if (!targetUserId) {
+        const [owner] = await ctx.db
+          .select({ id: user.id })
+          .from(orgMembers)
+          .innerJoin(user, eq(user.id, orgMembers.userId))
+          .where(and(eq(orgMembers.orgId, iv.orgId), eq(orgMembers.role, "owner")))
+          .limit(1);
+        targetUserId = owner?.id ?? null;
+      }
+      if (targetUserId) {
+        try {
+          await ctx.db.insert(notifications).values({
+            userId: targetUserId,
+            kind: "interview_time_requested",
+            title: "Candidate asked for a different time",
+            body: input.message ?? "No further details provided.",
+            href: `/employer/jobs/${iv.jobId}/applicants?focus=${iv.applicationId}`,
+          });
+        } catch {}
+      }
+
+      await tasks.trigger<typeof sendInterviewTimeRequestedTask>(
+        "send-interview-time-requested",
+        { interviewId: input.interviewId, message: input.message ?? null },
+      );
+
+      return { ok: true };
+    }),
 });
