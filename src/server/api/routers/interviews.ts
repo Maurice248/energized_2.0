@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -577,6 +577,61 @@ export const interviewsRouter = router({
           ),
         )
         .orderBy(asc(interviewSlots.startsAt));
+
+      return rows;
+    }),
+
+  recentForOrg: protectedProcedure
+    .input(z.object({ orgId: z.string(), limit: z.number().int().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const [member] = await ctx.db
+        .select({ role: orgMembers.role })
+        .from(orgMembers)
+        .where(
+          and(
+            eq(orgMembers.orgId, input.orgId),
+            eq(orgMembers.userId, ctx.session.user.id),
+            inArray(orgMembers.role, PRIVILEGED_ROLES),
+          ),
+        )
+        .limit(1);
+      if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const now = new Date();
+      const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const rows = await ctx.db
+        .select({
+          interviewId: interviews.id,
+          applicationId: interviews.applicationId,
+          jobId: jobListings.id,
+          jobTitle: jobListings.title,
+          candidateUserId: applications.candidateId,
+          candidateName: user.name,
+          candidateAvatarUrl: user.image,
+          startsAt: interviewSlots.startsAt,
+          durationMin: interviews.durationMin,
+          medium: interviews.medium,
+          details: interviews.details,
+          status: interviews.status,
+          cancelReason: interviews.cancelReason,
+          updatedAt: interviews.updatedAt,
+        })
+        .from(interviews)
+        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .innerJoin(user, eq(user.id, applications.candidateId))
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(
+          and(
+            eq(jobListings.orgId, input.orgId),
+            inArray(interviews.status, ["completed", "canceled"]),
+            gte(interviews.updatedAt, windowStart),
+            lte(interviews.updatedAt, now),
+          ),
+        )
+        .orderBy(desc(interviews.updatedAt))
+        .limit(input.limit);
 
       return rows;
     }),
