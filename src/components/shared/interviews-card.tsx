@@ -248,15 +248,17 @@ function InterviewRow({
       </div>
       {tab === "upcoming" ? (
         isJoinable ? (
-          <a
-            href={row.details}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(row.details, "_blank", "noopener,noreferrer");
+            }}
             className="v2-btn v2-btn-ghost v2-btn-sm"
           >
             Join
-          </a>
+          </button>
         ) : null
       ) : (
         <StatusChip status={row.status} cancelReason={row.cancelReason} />
@@ -346,6 +348,19 @@ export function InterviewsCard(props: Props) {
 
   const rows = (activeQ.data ?? []) as Array<EmployerRow | CandidateRow>;
   const grouped = groupByDay(rows);
+  if (tab === "past") {
+    for (const [key, bucket] of grouped) {
+      grouped.set(
+        key,
+        bucket
+          .slice()
+          .sort(
+            (a, b) =>
+              toDate(b.startsAt).getTime() - toDate(a.startsAt).getTime(),
+          ),
+      );
+    }
+  }
   const dayKeys = Array.from(grouped.keys()).sort((a, b) =>
     tab === "upcoming" ? a - b : b - a,
   );
