@@ -120,28 +120,39 @@ export const sendInterviewConfirmedTask = task({
 
     let sent = 0;
 
-    const candidateResult = await resend.emails.send({
-      from: env.EMAIL_FROM,
-      to: iv.candidateEmail,
-      subject: `Interview confirmed — ${startsAtLabel}`,
-      react: InterviewConfirmedEmail({
-        recipientName: iv.candidateName ?? null,
-        companyName: iv.orgName,
-        jobTitle: iv.jobTitle ?? "",
-        startsAtLabel,
-        durationMin: iv.durationMin,
-        medium: iv.medium,
-        details: iv.details,
-        detailUrl: candidateDetailUrl,
-        appUrl: env.NEXT_PUBLIC_APP_URL,
-      }),
-      attachments: [icsAttachment],
-    });
-    if (candidateResult.error) {
-      logger.warn("send-interview-confirmed: candidate send failed", {
-        reason: String(candidateResult.error),
+    // Dedupe by normalized address: if candidate and employer resolve
+    // to the same inbox (common in dev/testing), skip the candidate
+    // send and let the employer email — which carries the candidate
+    // name + job title in the subject — cover both audiences.
+    const sameInbox =
+      employerEmail !== null &&
+      iv.candidateEmail.trim().toLowerCase() ===
+        employerEmail.trim().toLowerCase();
+
+    if (!sameInbox) {
+      const candidateResult = await resend.emails.send({
+        from: env.EMAIL_FROM,
+        to: iv.candidateEmail,
+        subject: `Interview confirmed — ${startsAtLabel}`,
+        react: InterviewConfirmedEmail({
+          recipientName: iv.candidateName ?? null,
+          companyName: iv.orgName,
+          jobTitle: iv.jobTitle ?? "",
+          startsAtLabel,
+          durationMin: iv.durationMin,
+          medium: iv.medium,
+          details: iv.details,
+          detailUrl: candidateDetailUrl,
+          appUrl: env.NEXT_PUBLIC_APP_URL,
+        }),
+        attachments: [icsAttachment],
       });
-    } else sent++;
+      if (candidateResult.error) {
+        logger.warn("send-interview-confirmed: candidate send failed", {
+          reason: String(candidateResult.error),
+        });
+      } else sent++;
+    }
 
     if (employerEmail) {
       const employerResult = await resend.emails.send({
