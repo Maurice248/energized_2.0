@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -534,7 +534,13 @@ export const interviewsRouter = router({
       const [member] = await ctx.db
         .select({ role: orgMembers.role })
         .from(orgMembers)
-        .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.session.user.id)))
+        .where(
+          and(
+            eq(orgMembers.orgId, input.orgId),
+            eq(orgMembers.userId, ctx.session.user.id),
+            inArray(orgMembers.role, PRIVILEGED_ROLES),
+          ),
+        )
         .limit(1);
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
@@ -567,7 +573,7 @@ export const interviewsRouter = router({
             eq(jobListings.orgId, input.orgId),
             eq(interviews.status, "confirmed"),
             gt(interviewSlots.startsAt, now),
-            sql`${interviewSlots.startsAt} < ${windowEnd}`,
+            lt(interviewSlots.startsAt, windowEnd),
           ),
         )
         .orderBy(asc(interviewSlots.startsAt));
