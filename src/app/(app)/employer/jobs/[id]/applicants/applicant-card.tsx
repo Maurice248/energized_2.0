@@ -46,11 +46,13 @@ export function statusChipClass(status: ApplicationStatus): string {
 
 export function ApplicantCard({
   applicant,
+  jobId,
   canEdit,
   onMove,
   pending,
 }: {
   applicant: ApplicantRow;
+  jobId: string;
   canEdit: boolean;
   onMove: (id: string, status: ApplicationStatus) => void;
   pending: boolean;
@@ -238,13 +240,22 @@ export function ApplicantCard({
           flexWrap: "wrap",
         }}
       >
-        <Link
-          href={`/p/${applicant.candidateId}`}
-          className="v2-btn v2-btn-ghost v2-btn-sm"
-          style={{ fontSize: 12 }}
-        >
-          View profile <Icon name="arrowUpRight" size={12} />
-        </Link>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Link
+            href={`/employer/jobs/${jobId}/applicants/${applicant.id}`}
+            className="v2-btn v2-btn-ghost v2-btn-sm"
+            style={{ fontSize: 12 }}
+          >
+            View applicant <Icon name="arrowUpRight" size={12} />
+          </Link>
+          <Link
+            href={`/p/${applicant.candidateId}`}
+            className="v2-btn v2-btn-ghost v2-btn-sm"
+            style={{ fontSize: 12 }}
+          >
+            Profile <Icon name="arrowUpRight" size={12} />
+          </Link>
+        </div>
         {canEdit && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

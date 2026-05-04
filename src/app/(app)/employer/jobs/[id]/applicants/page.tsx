@@ -184,7 +184,7 @@ export default async function JobApplicantsPage({
             </div>
           </div>
         ) : (
-          <ApplicantsBoard initialApplicants={applicants} canEdit={canEdit} />
+          <ApplicantsBoard initialApplicants={applicants} canEdit={canEdit} jobId={job.id} />
         )}
       </div>
     </div>

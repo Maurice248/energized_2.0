@@ -21,9 +21,11 @@ const COLUMNS: ApplicationStatus[] = [
 export function ApplicantsBoard({
   initialApplicants,
   canEdit,
+  jobId,
 }: {
   initialApplicants: ApplicantRow[];
   canEdit: boolean;
+  jobId: string;
 }) {
   const router = useRouter();
   const [applicants, setApplicants] = useState<ApplicantRow[]>(initialApplicants);
@@ -162,6 +164,7 @@ export function ApplicantsBoard({
                   <ApplicantCard
                     key={a.id}
                     applicant={a}
+                    jobId={jobId}
                     canEdit={canEdit}
                     onMove={onMove}
                     pending={pendingId === a.id}
