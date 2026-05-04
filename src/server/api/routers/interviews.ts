@@ -366,4 +366,61 @@ export const interviewsRouter = router({
 
       return { ok: true };
     }),
+
+  cancel: protectedProcedure
+    .input(z.object({ interviewId: z.string().uuid(), reason: z.string().max(1000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const [iv] = await ctx.db
+        .select({
+          status: interviews.status,
+          applicationId: interviews.applicationId,
+          candidateId: applications.candidateId,
+          orgId: jobListings.orgId,
+        })
+        .from(interviews)
+        .innerJoin(applications, eq(applications.id, interviews.applicationId))
+        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+        .where(eq(interviews.id, input.interviewId))
+        .limit(1);
+
+      if (!iv) throw new TRPCError({ code: "NOT_FOUND" });
+      if (iv.status !== "proposed" && iv.status !== "confirmed") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Already finalized." });
+      }
+
+      const isCandidate = iv.candidateId === ctx.session.user.id;
+      if (!isCandidate) {
+        const [member] = await ctx.db
+          .select({ role: orgMembers.role })
+          .from(orgMembers)
+          .where(and(eq(orgMembers.orgId, iv.orgId), eq(orgMembers.userId, ctx.session.user.id)))
+          .limit(1);
+        if (!member || !(["owner", "admin", "recruiter"] as readonly string[]).includes(member.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
+
+      await ctx.db
+        .update(interviews)
+        .set({
+          status: "canceled",
+          canceledById: ctx.session.user.id,
+          cancelReason: input.reason ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(interviews.id, input.interviewId));
+
+      await tasks.trigger<typeof sendInterviewCanceledTask>(
+        "send-interview-canceled",
+        {
+          interviewId: input.interviewId,
+          variant: "canceled",
+          notifyCandidate: !isCandidate, // notify the OTHER side
+          notifyEmployer: isCandidate,
+          cancelReason: input.reason ?? null,
+        },
+      );
+
+      return { ok: true };
+    }),
 });
