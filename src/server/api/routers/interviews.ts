@@ -118,4 +118,96 @@ export const interviewsRouter = router({
         })),
       }));
     }),
+
+  proposeSlots: protectedProcedure
+    .input(
+      z.object({
+        applicationId: z.string().uuid(),
+        medium: MEDIUM,
+        details: z.string().min(1).max(2000),
+        durationMin: z.number().int().min(15).max(480).default(60),
+        notes: z.string().max(1000).optional(),
+        slots: z
+          .array(z.coerce.date())
+          .min(2)
+          .max(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertAccess(ctx, input.applicationId, true);
+
+      const now = Date.now();
+      if (input.slots.some((s) => s.getTime() <= now)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "All proposed slots must be in the future.",
+        });
+      }
+
+      const [active] = await ctx.db
+        .select({ id: interviews.id })
+        .from(interviews)
+        .where(
+          and(
+            eq(interviews.applicationId, input.applicationId),
+            inArray(interviews.status, ["proposed", "confirmed"]),
+          ),
+        )
+        .limit(1);
+      if (active) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cancel the existing interview before proposing a new one.",
+        });
+      }
+
+      const expiresAt = new Date(now + 7 * 24 * 60 * 60 * 1000);
+
+      const [iv] = await ctx.db
+        .insert(interviews)
+        .values({
+          applicationId: input.applicationId,
+          proposedById: ctx.session.user.id,
+          medium: input.medium,
+          details: input.details,
+          durationMin: input.durationMin,
+          notes: input.notes,
+          expiresAt,
+        })
+        .returning({ id: interviews.id });
+
+      await ctx.db.insert(interviewSlots).values(
+        input.slots.map((startsAt) => ({
+          interviewId: iv.id,
+          startsAt,
+        })),
+      );
+
+      // In-app notif for candidate.
+      const [candidate] = await ctx.db
+        .select({ candidateId: applications.candidateId })
+        .from(applications)
+        .where(eq(applications.id, input.applicationId))
+        .limit(1);
+      if (candidate) {
+        try {
+          await ctx.db.insert(notifications).values({
+            userId: candidate.candidateId,
+            kind: "interview_proposed",
+            title: "Pick a time for your interview",
+            body: "An employer has proposed times for your interview.",
+            href: `/applications/${input.applicationId}`,
+          });
+        } catch {
+          // Don't poison the email send on a notif insert blip.
+        }
+      }
+
+      await tasks.trigger<typeof sendInterviewProposedTask>(
+        "send-interview-proposed",
+        { interviewId: iv.id },
+      );
+
+      return { interviewId: iv.id };
+    }),
 });
