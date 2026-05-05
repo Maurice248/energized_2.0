@@ -1,8 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gt } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
-import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
 import {
   employerOrgs,
@@ -10,7 +8,6 @@ import {
   notifications,
   orgMembers,
   orgRoleEnum,
-  profiles,
   user,
 } from "@/server/db/schema";
 
@@ -22,7 +19,12 @@ async function requireOrgMembership(
   const [row] = await ctx.db
     .select({ orgId: orgMembers.orgId, role: orgMembers.role })
     .from(orgMembers)
-    .where(eq(orgMembers.userId, ctx.session.user.id))
+    .where(
+      and(
+        eq(orgMembers.userId, ctx.session.user.id),
+        eq(orgMembers.status, "active"),
+      ),
+    )
     .limit(1);
   if (!row) {
     throw new TRPCError({
