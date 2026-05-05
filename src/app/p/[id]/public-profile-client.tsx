@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
+import { IntroRequestModal } from "@/components/profile/intro-request-modal";
+import { IntroContactPanel } from "@/components/profile/intro-contact-panel";
 
 type SectorEnum =
   | "oil_gas"
@@ -271,35 +274,11 @@ export function PublicProfileClient({
               </div>
             </div>
           ) : showHiddenDetails ? (
-            <div className="pub-cta-stack">
-              <button
-                type="button"
-                className="pub-cta-primary"
-                disabled
-                title="Intro requests are coming soon."
-              >
-                Request intro <Icon name="arrowRight" size={14} />
-              </button>
-              {viewerIsEmployer ? (
-                <ShortlistButton candidateUserId={candidateUserId} />
-              ) : (
-                <button
-                  type="button"
-                  className="pub-cta-secondary"
-                  disabled
-                  title="Only employers can shortlist."
-                >
-                  <Icon name="bookmark" size={13} /> Save to shortlist
-                </button>
-              )}
-              <div className="pub-id-foot">
-                <Icon name="shield" size={12} />
-                <span>
-                  Contact info is hidden until {firstName || "the candidate"}{" "}
-                  accepts your intro request.
-                </span>
-              </div>
-            </div>
+            <IntroRequestCta
+              candidateUserId={candidateUserId}
+              firstName={firstName}
+              viewerIsEmployer={viewerIsEmployer}
+            />
           ) : (
             <div className="pub-cta-stack">
               <Link
@@ -541,15 +520,11 @@ export function PublicProfileClient({
       {!viewerIsSelf && (
         <div className="pub-sticky-cta">
           {viewerIsAuthed ? (
-            <button
-              type="button"
-              className="pub-cta-primary"
-              style={{ flex: 1 }}
-              disabled
-              title="Coming soon"
-            >
-              Request intro <Icon name="arrowRight" size={14} />
-            </button>
+            <IntroRequestCta
+              candidateUserId={candidateUserId}
+              firstName={firstName}
+              viewerIsEmployer={viewerIsEmployer}
+            />
           ) : (
             <Link
               href="/sign-in"
@@ -630,6 +605,119 @@ function workSummaryTitle(years: number | null): React.ReactNode {
     <>
       {years} years across <em>energy.</em>
     </>
+  );
+}
+
+function IntroRequestCta({
+  candidateUserId,
+  firstName,
+  viewerIsEmployer,
+}: {
+  candidateUserId: string;
+  firstName: string;
+  viewerIsEmployer: boolean;
+}) {
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const utils = api.useUtils();
+  const state = api.introRequests.pendingFromMyOrg.useQuery({ candidateUserId });
+
+  const cancel = api.introRequests.cancel.useMutation({
+    onSuccess: () => {
+      void utils.introRequests.pendingFromMyOrg.invalidate({ candidateUserId });
+    },
+  });
+
+  const s = state.data;
+
+  if (!s || s.state === "idle" || s.state === "declined-can-retry") {
+    return (
+      <div className="pub-cta-stack">
+        <button
+          type="button"
+          className="pub-cta-primary"
+          onClick={() => setRequestModalOpen(true)}
+        >
+          Request intro <Icon name="arrowRight" size={14} />
+        </button>
+        {viewerIsEmployer ? (
+          <ShortlistButton candidateUserId={candidateUserId} />
+        ) : (
+          <button
+            type="button"
+            className="pub-cta-secondary"
+            disabled
+            title="Only employers can shortlist."
+          >
+            <Icon name="bookmark" size={13} /> Save to shortlist
+          </button>
+        )}
+        <div className="pub-id-foot">
+          <Icon name="shield" size={12} />
+          <span>
+            Contact info is hidden until {firstName || "the candidate"} accepts your intro request.
+          </span>
+        </div>
+        <IntroRequestModal
+          open={requestModalOpen}
+          onClose={() => setRequestModalOpen(false)}
+          candidateUserId={candidateUserId}
+          candidateFirstName={firstName}
+        />
+      </div>
+    );
+  }
+
+  if (s.state === "pending") {
+    return (
+      <div className="pub-cta-stack">
+        <button type="button" className="pub-cta-primary" disabled>
+          Intro requested <Icon name="check" size={14} />
+        </button>
+        <button
+          type="button"
+          className="pub-cta-link"
+          disabled={cancel.isPending}
+          onClick={() => cancel.mutate({ id: s.requestId })}
+        >
+          Cancel request
+        </button>
+        <div className="pub-id-foot">
+          <Icon name="shield" size={12} />
+          <span>Waiting for {firstName || "the candidate"} to respond.</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (s.state === "accepted") {
+    return (
+      <div className="pub-cta-stack">
+        <IntroContactPanel candidateUserId={candidateUserId} />
+        {viewerIsEmployer ? (
+          <ShortlistButton candidateUserId={candidateUserId} />
+        ) : null}
+      </div>
+    );
+  }
+
+  // declined-cooldown
+  return (
+    <div className="pub-cta-stack">
+      <button
+        type="button"
+        className="pub-cta-primary"
+        disabled
+        title={`Available again on ${s.retryAt.toLocaleDateString()}`}
+      >
+        Request unavailable
+      </button>
+      <div className="pub-id-foot">
+        <Icon name="shield" size={12} />
+        <span>
+          {firstName || "This candidate"} declined a recent request from your team. Try again in {s.daysRemaining} day{s.daysRemaining === 1 ? "" : "s"}.
+        </span>
+      </div>
+    </div>
   );
 }
 
