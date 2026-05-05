@@ -17,12 +17,15 @@ const TABS: { value: Tab; label: string }[] = [
 export function IntroRequestsClient() {
   const params = useSearchParams();
   const focusId = params.get("focus");
-  const [tab, setTab] = useState<Tab>("pending");
+  const [tab, setTab] = useState<Tab>(focusId ? "all" : "pending");
   const [expandedId, setExpandedId] = useState<string | null>(focusId);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   const utils = api.useUtils();
   const list = api.introRequests.listForOrg.useQuery({ status: tab, limit: 100 });
   const cancel = api.introRequests.cancel.useMutation({
+    onMutate: ({ id }) => setCancelingId(id),
+    onSettled: () => setCancelingId(null),
     onSuccess: () => void utils.introRequests.listForOrg.invalidate(),
   });
 
@@ -162,7 +165,7 @@ export function IntroRequestsClient() {
                   <button
                     type="button"
                     onClick={() => cancel.mutate({ id: r.id })}
-                    disabled={cancel.isPending}
+                    disabled={cancelingId === r.id}
                     className="v2-btn v2-btn-ghost v2-btn-sm"
                     style={{ alignSelf: "flex-start" }}
                   >
