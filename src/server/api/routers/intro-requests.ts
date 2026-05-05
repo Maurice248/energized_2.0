@@ -170,4 +170,133 @@ export const introRequestsRouter = router({
         .where(eq(introRequests.id, input.id));
       return { ok: true };
     }),
+
+  acceptForMe: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select({
+          status: introRequests.status,
+          candidateUserId: introRequests.candidateUserId,
+          requestedByUserId: introRequests.requestedByUserId,
+          orgId: introRequests.orgId,
+        })
+        .from(introRequests)
+        .where(eq(introRequests.id, input.id))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      if (row.candidateUserId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (row.status !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This request is no longer pending.",
+        });
+      }
+
+      await ctx.db
+        .update(introRequests)
+        .set({ status: "accepted", acceptedAt: new Date(), updatedAt: new Date() })
+        .where(eq(introRequests.id, input.id));
+
+      // Resolve recipient: requester first, org owner fallback
+      let recipientUserId: string | null = row.requestedByUserId;
+      if (!recipientUserId) {
+        const [owner] = await ctx.db
+          .select({ id: user.id })
+          .from(orgMembers)
+          .innerJoin(user, eq(user.id, orgMembers.userId))
+          .where(
+            and(
+              eq(orgMembers.orgId, row.orgId),
+              eq(orgMembers.role, "owner"),
+            ),
+          )
+          .limit(1);
+        recipientUserId = owner?.id ?? null;
+      }
+
+      const [candidateRow] = await ctx.db
+        .select({ name: user.name })
+        .from(user)
+        .where(eq(user.id, row.candidateUserId))
+        .limit(1);
+
+      if (recipientUserId) {
+        try {
+          await ctx.db.insert(notifications).values({
+            userId: recipientUserId,
+            kind: "intro_accepted",
+            title: `${candidateRow?.name ?? "A candidate"} accepted your intro request`,
+            body: null,
+            href: `/employer/intro-requests?focus=${input.id}`,
+          });
+        } catch {}
+      }
+
+      return { ok: true };
+    }),
+
+  declineForMe: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select({
+          status: introRequests.status,
+          candidateUserId: introRequests.candidateUserId,
+          requestedByUserId: introRequests.requestedByUserId,
+          orgId: introRequests.orgId,
+        })
+        .from(introRequests)
+        .where(eq(introRequests.id, input.id))
+        .limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      if (row.candidateUserId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      if (row.status !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This request is no longer pending.",
+        });
+      }
+
+      await ctx.db
+        .update(introRequests)
+        .set({ status: "declined", declinedAt: new Date(), updatedAt: new Date() })
+        .where(eq(introRequests.id, input.id));
+
+      // Same recipient resolution as accept (requester then owner fallback)
+      let recipientUserId: string | null = row.requestedByUserId;
+      if (!recipientUserId) {
+        const [owner] = await ctx.db
+          .select({ id: user.id })
+          .from(orgMembers)
+          .innerJoin(user, eq(user.id, orgMembers.userId))
+          .where(
+            and(
+              eq(orgMembers.orgId, row.orgId),
+              eq(orgMembers.role, "owner"),
+            ),
+          )
+          .limit(1);
+        recipientUserId = owner?.id ?? null;
+      }
+
+      if (recipientUserId) {
+        try {
+          await ctx.db.insert(notifications).values({
+            userId: recipientUserId,
+            kind: "intro_declined",
+            title: "Your intro request was declined",
+            body: null,
+            href: `/employer/intro-requests?focus=${input.id}`,
+          });
+        } catch {}
+      }
+
+      // Intentional: no email on decline (per spec §6 / Q2 design).
+      return { ok: true };
+    }),
 });
