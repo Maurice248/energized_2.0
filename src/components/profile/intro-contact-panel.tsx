@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import posthog from "posthog-js";
 import { api } from "@/lib/trpc/client";
 import { Icon } from "@/components/shared/icon";
 
@@ -18,7 +19,9 @@ export function IntroContactPanel({
   useEffect(() => {
     if (!fired.current && q.data?.unlocked === true) {
       fired.current = true;
-      // TODO: Task 16 — wire PostHog `intro.contact_unlocked.viewed` event
+      try {
+        posthog.capture("intro.contact_unlocked.viewed", { candidateUserId });
+      } catch {}
     }
   }, [q.data, candidateUserId]);
 

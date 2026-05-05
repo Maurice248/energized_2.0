@@ -15,6 +15,13 @@ import {
   profiles,
   user,
 } from "@/server/db/schema";
+import { safeCapture } from "@/lib/posthog";
+import {
+  EVENT_INTRO_ACCEPTED,
+  EVENT_INTRO_CANCELED,
+  EVENT_INTRO_DECLINED,
+  EVENT_INTRO_REQUESTED,
+} from "@/lib/analytics-events";
 
 type OrgRole = (typeof orgRoleEnum.enumValues)[number];
 
@@ -157,6 +164,16 @@ export const introRequestsRouter = router({
         { introRequestId: inserted.id },
       );
 
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_INTRO_REQUESTED,
+        properties: {
+          orgId,
+          candidateUserId: input.candidateUserId,
+          hasMessage: input.message !== null,
+        },
+      });
+
       return { introRequestId: inserted.id };
     }),
 
@@ -187,6 +204,13 @@ export const introRequestsRouter = router({
           message: "This request is no longer pending.",
         });
       }
+
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_INTRO_CANCELED,
+        properties: { orgId, requestId: input.id },
+      });
+
       return { ok: true };
     }),
 
@@ -258,6 +282,15 @@ export const introRequestsRouter = router({
         { introRequestId: input.id },
       );
 
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_INTRO_ACCEPTED,
+        properties: {
+          orgId: row.orgId,
+          candidateUserId: row.candidateUserId,
+        },
+      });
+
       return { ok: true };
     }),
 
@@ -325,6 +358,16 @@ export const introRequestsRouter = router({
       }
 
       // Intentional: no email on decline (per spec §6 / Q2 design).
+
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_INTRO_DECLINED,
+        properties: {
+          orgId: row.orgId,
+          candidateUserId: row.candidateUserId,
+        },
+      });
+
       return { ok: true };
     }),
 

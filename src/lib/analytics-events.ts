@@ -31,6 +31,13 @@ export const EVENT_APPLICATION_STATUS_CHANGED = "application.status_changed";
 export const EVENT_BILLING_SUBSCRIPTION_STARTED = "billing.subscription.started";
 export const EVENT_BILLING_SUBSCRIPTION_CANCELLED = "billing.subscription.cancelled";
 
+// Intro Requests
+export const EVENT_INTRO_REQUESTED = "intro.requested";
+export const EVENT_INTRO_ACCEPTED = "intro.accepted";
+export const EVENT_INTRO_DECLINED = "intro.declined";
+export const EVENT_INTRO_CANCELED = "intro.canceled";
+export const EVENT_INTRO_CONTACT_UNLOCKED_VIEWED = "intro.contact_unlocked.viewed";
+
 // Profile
 export const EVENT_PROFILE_UPDATED = "profile.updated";
 export const EVENT_RESUME_UPLOADED = "resume.uploaded";
