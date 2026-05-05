@@ -94,6 +94,13 @@ export default async function EmployerDashboardPage({
               Find candidates
             </Link>
             <Link
+              href="/employer/intro-requests"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--v2-ink-700)] transition-colors hover:text-[var(--v2-ink-950)]"
+            >
+              <Icon name="mail" size={16} />
+              Intro requests
+            </Link>
+            <Link
               href="/employer/profile#ep-jobs"
               className="inline-flex items-center gap-2 text-sm font-medium text-[var(--v2-ink-700)] transition-colors hover:text-[var(--v2-ink-950)]"
             >
