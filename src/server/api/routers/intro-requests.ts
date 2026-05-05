@@ -434,4 +434,121 @@ export const introRequestsRouter = router({
         declinedAt: r.declinedAt,
       }));
     }),
+
+  pendingFromMyOrg: protectedProcedure
+    .input(z.object({ candidateUserId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      // Soft gate: if caller has no org, return idle (button hidden client-side anyway)
+      const [member] = await ctx.db
+        .select({ orgId: orgMembers.orgId })
+        .from(orgMembers)
+        .where(
+          and(
+            eq(orgMembers.userId, ctx.session.user.id),
+            eq(orgMembers.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (!member) return { state: "idle" as const };
+
+      const orgId = member.orgId;
+      const rows = await ctx.db
+        .select({
+          id: introRequests.id,
+          status: introRequests.status,
+          createdAt: introRequests.createdAt,
+          acceptedAt: introRequests.acceptedAt,
+          declinedAt: introRequests.declinedAt,
+        })
+        .from(introRequests)
+        .where(
+          and(
+            eq(introRequests.orgId, orgId),
+            eq(introRequests.candidateUserId, input.candidateUserId),
+          ),
+        )
+        .orderBy(desc(introRequests.createdAt));
+
+      const pending = rows.find((r) => r.status === "pending");
+      if (pending) {
+        return {
+          state: "pending" as const,
+          requestId: pending.id,
+          createdAt: pending.createdAt,
+        };
+      }
+      const accepted = rows.find((r) => r.status === "accepted");
+      if (accepted && accepted.acceptedAt) {
+        return {
+          state: "accepted" as const,
+          requestId: accepted.id,
+          acceptedAt: accepted.acceptedAt,
+        };
+      }
+      const declined = rows.find((r) => r.status === "declined");
+      if (declined && declined.declinedAt) {
+        const retryAt = new Date(
+          declined.declinedAt.getTime() + 30 * 24 * 60 * 60 * 1000,
+        );
+        if (retryAt > new Date()) {
+          const daysRemaining = Math.ceil(
+            (retryAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+          );
+          return {
+            state: "declined-cooldown" as const,
+            daysRemaining,
+            retryAt,
+          };
+        }
+        return { state: "declined-can-retry" as const };
+      }
+      return { state: "idle" as const };
+    }),
+
+  contactForCandidate: protectedProcedure
+    .input(z.object({ candidateUserId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const { orgId } = await requireOrgMembership(ctx);
+
+      const [accepted] = await ctx.db
+        .select({
+          id: introRequests.id,
+          acceptedAt: introRequests.acceptedAt,
+        })
+        .from(introRequests)
+        .where(
+          and(
+            eq(introRequests.orgId, orgId),
+            eq(introRequests.candidateUserId, input.candidateUserId),
+            eq(introRequests.status, "accepted"),
+          ),
+        )
+        .orderBy(desc(introRequests.acceptedAt))
+        .limit(1);
+
+      if (!accepted || !accepted.acceptedAt) {
+        return { unlocked: false as const };
+      }
+
+      const [contact] = await ctx.db
+        .select({
+          email: user.email,
+          phone: profiles.phone,
+          resumeUrl: profiles.resumeUrl,
+          resumeFilename: profiles.resumeFilename,
+        })
+        .from(user)
+        .leftJoin(profiles, eq(profiles.userId, user.id))
+        .where(eq(user.id, input.candidateUserId))
+        .limit(1);
+
+      return {
+        unlocked: true as const,
+        email: contact?.email ?? "",
+        phone: contact?.phone ?? null,
+        resumeUrl: contact?.resumeUrl ?? null,
+        resumeFilename: contact?.resumeFilename ?? null,
+        acceptedAt: accepted.acceptedAt,
+      };
+    }),
 });
