@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
@@ -543,10 +543,7 @@ export const interviewsRouter = router({
         .limit(1);
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
-      const now = new Date();
-      const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-      const rows = await ctx.db
+      const ivRows = await ctx.db
         .select({
           interviewId: interviews.id,
           applicationId: interviews.applicationId,
@@ -555,33 +552,34 @@ export const interviewsRouter = router({
           candidateUserId: applications.candidateId,
           candidateName: user.name,
           candidateAvatarUrl: user.image,
-          startsAt: interviewSlots.startsAt,
           durationMin: interviews.durationMin,
           medium: interviews.medium,
           details: interviews.details,
           status: interviews.status,
           cancelReason: interviews.cancelReason,
+          confirmedSlotId: interviews.confirmedSlotId,
         })
         .from(interviews)
-        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
         .innerJoin(applications, eq(applications.id, interviews.applicationId))
         .innerJoin(user, eq(user.id, applications.candidateId))
         .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
         .where(
           and(
             eq(jobListings.orgId, input.orgId),
-            eq(interviews.status, "confirmed"),
-            gte(interviewSlots.startsAt, now),
-            lt(interviewSlots.startsAt, windowEnd),
+            inArray(interviews.status, ["proposed", "confirmed"]),
           ),
-        )
-        .orderBy(asc(interviewSlots.startsAt));
+        );
 
-      return rows;
+      return resolveUpcoming(ctx, ivRows);
     }),
 
   recentForOrg: protectedProcedure
-    .input(z.object({ orgId: z.string(), limit: z.number().int().min(1).max(100).default(30) }))
+    .input(
+      z.object({
+        orgId: z.string(),
+        limit: z.number().int().min(1).max(100).default(50),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const [member] = await ctx.db
         .select({ role: orgMembers.role })
@@ -596,10 +594,7 @@ export const interviewsRouter = router({
         .limit(1);
       if (!member) throw new TRPCError({ code: "FORBIDDEN" });
 
-      const now = new Date();
-      const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      const rows = await ctx.db
+      const ivRows = await ctx.db
         .select({
           interviewId: interviews.id,
           applicationId: interviews.applicationId,
@@ -608,81 +603,66 @@ export const interviewsRouter = router({
           candidateUserId: applications.candidateId,
           candidateName: user.name,
           candidateAvatarUrl: user.image,
-          startsAt: interviewSlots.startsAt,
           durationMin: interviews.durationMin,
           medium: interviews.medium,
           details: interviews.details,
           status: interviews.status,
           cancelReason: interviews.cancelReason,
           updatedAt: interviews.updatedAt,
+          confirmedSlotId: interviews.confirmedSlotId,
         })
         .from(interviews)
-        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
         .innerJoin(applications, eq(applications.id, interviews.applicationId))
         .innerJoin(user, eq(user.id, applications.candidateId))
         .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
         .where(
           and(
             eq(jobListings.orgId, input.orgId),
-            inArray(interviews.status, ["completed", "canceled"]),
-            gte(interviews.updatedAt, windowStart),
-            lte(interviews.updatedAt, now),
-            isNotNull(interviews.confirmedSlotId),
+            inArray(interviews.status, ["completed", "canceled", "expired"]),
           ),
         )
         .orderBy(desc(interviews.updatedAt))
         .limit(input.limit);
 
-      return rows;
+      return resolveRecent(ctx, ivRows);
     }),
 
-  upcomingForCandidate: protectedProcedure
-    .query(async ({ ctx }) => {
-      const now = new Date();
-      const windowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  upcomingForCandidate: protectedProcedure.query(async ({ ctx }) => {
+    const ivRows = await ctx.db
+      .select({
+        interviewId: interviews.id,
+        applicationId: interviews.applicationId,
+        jobId: jobListings.id,
+        jobTitle: jobListings.title,
+        orgId: employerOrgs.id,
+        orgName: employerOrgs.name,
+        orgLogoUrl: employerOrgs.logoUrl,
+        orgLogoColor: employerOrgs.logoColor,
+        durationMin: interviews.durationMin,
+        medium: interviews.medium,
+        details: interviews.details,
+        status: interviews.status,
+        cancelReason: interviews.cancelReason,
+        confirmedSlotId: interviews.confirmedSlotId,
+      })
+      .from(interviews)
+      .innerJoin(applications, eq(applications.id, interviews.applicationId))
+      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+      .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
+      .where(
+        and(
+          eq(applications.candidateId, ctx.session.user.id),
+          inArray(interviews.status, ["proposed", "confirmed"]),
+        ),
+      );
 
-      const rows = await ctx.db
-        .select({
-          interviewId: interviews.id,
-          applicationId: interviews.applicationId,
-          jobId: jobListings.id,
-          jobTitle: jobListings.title,
-          orgId: employerOrgs.id,
-          orgName: employerOrgs.name,
-          orgLogoUrl: employerOrgs.logoUrl,
-          orgLogoColor: employerOrgs.logoColor,
-          startsAt: interviewSlots.startsAt,
-          durationMin: interviews.durationMin,
-          medium: interviews.medium,
-          details: interviews.details,
-          status: interviews.status,
-          cancelReason: interviews.cancelReason,
-        })
-        .from(interviews)
-        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
-        .innerJoin(applications, eq(applications.id, interviews.applicationId))
-        .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
-        .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
-        .where(
-          and(
-            eq(applications.candidateId, ctx.session.user.id),
-            eq(interviews.status, "confirmed"),
-            gte(interviewSlots.startsAt, now),
-            lt(interviewSlots.startsAt, windowEnd),
-          ),
-        )
-        .orderBy(asc(interviewSlots.startsAt));
-
-      return rows;
-    }),
+    return resolveUpcoming(ctx, ivRows);
+  }),
 
   recentForCandidate: protectedProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(100).default(30) }))
+    .input(z.object({ limit: z.number().int().min(1).max(100).default(50) }))
     .query(async ({ ctx, input }) => {
-      const now = new Date();
-      const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      const rows = await ctx.db
+      const ivRows = await ctx.db
         .select({
           interviewId: interviews.id,
           applicationId: interviews.applicationId,
@@ -692,31 +672,122 @@ export const interviewsRouter = router({
           orgName: employerOrgs.name,
           orgLogoUrl: employerOrgs.logoUrl,
           orgLogoColor: employerOrgs.logoColor,
-          startsAt: interviewSlots.startsAt,
           durationMin: interviews.durationMin,
           medium: interviews.medium,
           details: interviews.details,
           status: interviews.status,
           cancelReason: interviews.cancelReason,
           updatedAt: interviews.updatedAt,
+          confirmedSlotId: interviews.confirmedSlotId,
         })
         .from(interviews)
-        .innerJoin(interviewSlots, eq(interviewSlots.id, interviews.confirmedSlotId))
         .innerJoin(applications, eq(applications.id, interviews.applicationId))
         .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
         .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
         .where(
           and(
             eq(applications.candidateId, ctx.session.user.id),
-            inArray(interviews.status, ["completed", "canceled"]),
-            gte(interviews.updatedAt, windowStart),
-            lte(interviews.updatedAt, now),
-            isNotNull(interviews.confirmedSlotId),
+            inArray(interviews.status, ["completed", "canceled", "expired"]),
           ),
         )
         .orderBy(desc(interviews.updatedAt))
         .limit(input.limit);
 
-      return rows;
+      return resolveRecent(ctx, ivRows);
     }),
 });
+
+// --- helpers shared by upcomingFor*/recentFor* ---
+
+type Ctx = { db: typeof import("@/server/db").db };
+
+async function fetchSlots(ctx: Ctx, ivIds: string[]) {
+  if (!ivIds.length) return [];
+  return ctx.db
+    .select({
+      id: interviewSlots.id,
+      interviewId: interviewSlots.interviewId,
+      startsAt: interviewSlots.startsAt,
+    })
+    .from(interviewSlots)
+    .where(inArray(interviewSlots.interviewId, ivIds));
+}
+
+// For upcoming: include proposed + confirmed. Resolve startsAt from
+// confirmedSlotId if confirmed, else from earliest future slot if proposed.
+// Drop rows with no future slot. Sort ascending. Cap 50.
+async function resolveUpcoming<
+  T extends { interviewId: string; status: string; confirmedSlotId: string | null },
+>(ctx: Ctx, ivRows: T[]) {
+  if (!ivRows.length) return [];
+  const slots = await fetchSlots(
+    ctx,
+    ivRows.map((r) => r.interviewId),
+  );
+  const nowMs = Date.now();
+
+  const result = ivRows.flatMap((iv) => {
+    let startsAt: Date | null = null;
+    if (iv.status === "confirmed" && iv.confirmedSlotId) {
+      const cs = slots.find((s) => s.id === iv.confirmedSlotId);
+      startsAt = cs ? new Date(cs.startsAt) : null;
+    } else {
+      const future = slots
+        .filter(
+          (s) =>
+            s.interviewId === iv.interviewId &&
+            new Date(s.startsAt).getTime() > nowMs,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+        );
+      startsAt = future[0] ? new Date(future[0].startsAt) : null;
+    }
+
+    if (!startsAt || startsAt.getTime() <= nowMs) return [];
+
+    const { confirmedSlotId: _drop, ...rest } = iv;
+    return [{ ...rest, startsAt }];
+  });
+
+  result.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  return result.slice(0, 50);
+}
+
+// For recent: include completed/canceled/expired. Resolve startsAt from
+// confirmedSlotId, then earliest slot, then fall back to updatedAt so the
+// row still has a sensible time to render. Already sorted desc by
+// updatedAt at the SQL layer.
+async function resolveRecent<
+  T extends {
+    interviewId: string;
+    confirmedSlotId: string | null;
+    updatedAt: Date;
+  },
+>(ctx: Ctx, ivRows: T[]) {
+  if (!ivRows.length) return [];
+  const slots = await fetchSlots(
+    ctx,
+    ivRows.map((r) => r.interviewId),
+  );
+
+  return ivRows.map((iv) => {
+    let startsAt: Date | null = null;
+    if (iv.confirmedSlotId) {
+      const cs = slots.find((s) => s.id === iv.confirmedSlotId);
+      startsAt = cs ? new Date(cs.startsAt) : null;
+    } else {
+      const candidate = slots
+        .filter((s) => s.interviewId === iv.interviewId)
+        .sort(
+          (a, b) =>
+            new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+        );
+      startsAt = candidate[0] ? new Date(candidate[0].startsAt) : null;
+    }
+
+    const { confirmedSlotId: _drop, ...rest } = iv;
+    return { ...rest, startsAt: startsAt ?? new Date(iv.updatedAt) };
+  });
+}

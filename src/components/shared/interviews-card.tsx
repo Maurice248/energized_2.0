@@ -157,7 +157,18 @@ function StatusChip({
       </span>
     );
   }
+  if (status === "expired") {
+    return <span className="v2-chip">Expired</span>;
+  }
   return null;
+}
+
+function PendingChip({ mode }: { mode: Mode }) {
+  return (
+    <span className="v2-chip">
+      {mode === "employer" ? "Awaiting candidate" : "Awaiting your pick"}
+    </span>
+  );
 }
 
 function InterviewRow({
@@ -247,7 +258,9 @@ function InterviewRow({
         <Icon name={MEDIUM_ICON[row.medium]} size={14} />
       </div>
       {tab === "upcoming" ? (
-        isJoinable ? (
+        row.status === "proposed" ? (
+          <PendingChip mode={mode} />
+        ) : isJoinable ? (
           <button
             type="button"
             onClick={(e) => {
