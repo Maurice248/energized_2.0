@@ -52,6 +52,7 @@ export const sendIntroAcceptedTask = task({
           and(
             eq(orgMembers.orgId, row.orgId),
             eq(orgMembers.role, "owner"),
+            eq(orgMembers.status, "active"),
           ),
         )
         .limit(1);

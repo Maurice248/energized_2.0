@@ -226,6 +226,7 @@ export const introRequestsRouter = router({
             and(
               eq(orgMembers.orgId, row.orgId),
               eq(orgMembers.role, "owner"),
+              eq(orgMembers.status, "active"),
             ),
           )
           .limit(1);
@@ -291,6 +292,7 @@ export const introRequestsRouter = router({
             and(
               eq(orgMembers.orgId, row.orgId),
               eq(orgMembers.role, "owner"),
+              eq(orgMembers.status, "active"),
             ),
           )
           .limit(1);
