@@ -2,7 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { protectedProcedure, router } from "@/server/api/trpc";
+import type { sendIntroRequestedTask } from "../../../../code/trigger/send-intro-requested";
+import type { sendIntroAcceptedTask } from "../../../../code/trigger/send-intro-accepted";
 import {
   employerOrgs,
   introRequests,
@@ -149,6 +152,11 @@ export const introRequestsRouter = router({
         });
       } catch {}
 
+      await tasks.trigger<typeof sendIntroRequestedTask>(
+        "send-intro-requested",
+        { introRequestId: inserted.id },
+      );
+
       return { introRequestId: inserted.id };
     }),
 
@@ -244,6 +252,11 @@ export const introRequestsRouter = router({
           });
         } catch {}
       }
+
+      await tasks.trigger<typeof sendIntroAcceptedTask>(
+        "send-intro-accepted",
+        { introRequestId: input.id },
+      );
 
       return { ok: true };
     }),
