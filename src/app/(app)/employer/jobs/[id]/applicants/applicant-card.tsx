@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/shared/icon";
+import { ScheduleInterviewModal } from "@/components/shared/schedule-interview-modal";
 import { api } from "@/lib/trpc/client";
 
 export type ApplicationStatus =
@@ -290,6 +291,18 @@ export function ApplicantCard({
         }}
       >
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <ScheduleInterviewModal
+            applicationId={applicant.id}
+            trigger={
+              <button
+                type="button"
+                className="v2-btn v2-btn-ghost v2-btn-sm"
+                style={{ fontSize: 12 }}
+              >
+                Schedule interview <Icon name="clock" size={12} />
+              </button>
+            }
+          />
           <Link
             href={`/employer/jobs/${jobId}/applicants/${applicant.id}`}
             className="v2-btn v2-btn-ghost v2-btn-sm"
