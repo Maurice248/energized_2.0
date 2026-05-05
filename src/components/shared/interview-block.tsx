@@ -27,6 +27,20 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  recruiter: "Recruiter",
+  hiring_manager: "Hiring Manager",
+  viewer: "Viewer",
+};
+
+function fmtAttribution(name: string | null, role: string | null): string {
+  if (!name) return "";
+  const roleLabel = role ? ROLE_LABELS[role] ?? role : null;
+  return roleLabel ? `${name} · ${roleLabel}` : name;
+}
+
 export function InterviewBlock({
   applicationId,
   viewer,
@@ -54,6 +68,7 @@ export function InterviewBlock({
   });
   const cancel = api.interviews.cancel.useMutation({ onSuccess: invalidate });
   const requestDifferent = api.interviews.requestDifferentTime.useMutation({ onSuccess: invalidate });
+  const setFeedback = api.interviews.setFeedback.useMutation({ onSuccess: invalidate });
 
   const [requestMessage, setRequestMessage] = useState("");
   const [showRequest, setShowRequest] = useState<string | null>(null); // interviewId
@@ -82,13 +97,18 @@ export function InterviewBlock({
                 borderRadius: 12,
               }}
             >
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--v2-ink-950)" }}>
                   {STATUS_LABELS[iv.status] ?? iv.status}
                   {iv.status === "canceled" && iv.cancelReason ? ` · ${iv.cancelReason}` : ""}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--v2-ink-500)" }}>
-                  {iv.proposedByName ? `proposed by ${iv.proposedByName}` : ""}
+                <div style={{ fontSize: 11, color: "var(--v2-ink-500)", textAlign: "right" }}>
+                  {iv.proposedByName && (
+                    <div>proposed by {fmtAttribution(iv.proposedByName, iv.proposedByRole)}</div>
+                  )}
+                  {iv.status === "canceled" && iv.canceledByName && (
+                    <div>canceled by {fmtAttribution(iv.canceledByName, iv.canceledByRole)}</div>
+                  )}
                 </div>
               </div>
 
@@ -243,10 +263,107 @@ export function InterviewBlock({
                   )}
                 </div>
               )}
+
+              {viewer === "employer" &&
+                (iv.status === "completed" || iv.status === "canceled") && (
+                  <FeedbackSection
+                    initialFeedback={iv.feedback ?? ""}
+                    feedbackByName={iv.feedbackByName ?? null}
+                    feedbackByRole={iv.feedbackByRole ?? null}
+                    onSave={(feedback) =>
+                      setFeedback.mutate({ interviewId: iv.id, feedback })
+                    }
+                    isPending={setFeedback.isPending}
+                  />
+                )}
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function FeedbackSection({
+  initialFeedback,
+  feedbackByName,
+  feedbackByRole,
+  onSave,
+  isPending,
+}: {
+  initialFeedback: string;
+  feedbackByName: string | null;
+  feedbackByRole: string | null;
+  onSave: (feedback: string) => void;
+  isPending: boolean;
+}) {
+  const [draft, setDraft] = useState(initialFeedback);
+  const dirty = draft !== initialFeedback;
+
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: 12,
+        background: "var(--v2-ink-50)",
+        border: "1px solid var(--v2-ink-200)",
+        borderRadius: 10,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: "var(--v2-ink-700)",
+          marginBottom: 6,
+        }}
+      >
+        Internal notes{" "}
+        <span style={{ fontWeight: 400, color: "var(--v2-ink-500)" }}>
+          · Only your team can see this
+        </span>
+      </div>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={3}
+        maxLength={2000}
+        placeholder="Stick to job-related observations: skills, certifications, technical fit."
+        disabled={isPending}
+        style={{
+          width: "100%",
+          padding: 8,
+          border: "1px solid var(--v2-ink-200)",
+          borderRadius: 8,
+          fontSize: 13,
+          fontFamily: "inherit",
+          resize: "vertical",
+          background: "white",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginTop: 8,
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontSize: 11, color: "var(--v2-ink-500)" }}>
+          {feedbackByName
+            ? `Last edited by ${fmtAttribution(feedbackByName, feedbackByRole)}`
+            : "Not yet written."}
+        </div>
+        <Button
+          size="sm"
+          disabled={!dirty || isPending}
+          onClick={() => onSave(draft)}
+        >
+          {isPending ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
   );
 }

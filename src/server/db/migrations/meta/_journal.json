@@ -134,6 +134,13 @@
       "when": 1777906177294,
       "tag": "0018_chunky_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777991305752,
+      "tag": "0019_tearful_venus",
+      "breakpoints": true
     }
   ]
 }

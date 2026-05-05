@@ -25,7 +25,12 @@ async function assertAccess(
   ctx: { db: typeof import("@/server/db").db; session: { user: { id: string } } },
   applicationId: string,
   requirePrivileged = false,
-): Promise<{ orgId: string; jobId: string; candidateId: string }> {
+): Promise<{
+  orgId: string;
+  jobId: string;
+  candidateId: string;
+  viewer: "candidate" | "team";
+}> {
   const [app] = await ctx.db
     .select({
       candidateId: applications.candidateId,
@@ -51,23 +56,28 @@ async function assertAccess(
     if (!member || !(PRIVILEGED_ROLES as readonly string[]).includes(member.role)) {
       throw new TRPCError({ code: "FORBIDDEN" });
     }
-  } else if (!isCandidate) {
+    return { orgId: app.orgId, jobId: app.jobId, candidateId: app.candidateId, viewer: "team" };
+  }
+
+  if (!isCandidate) {
     const [member] = await ctx.db
       .select({ role: orgMembers.role })
       .from(orgMembers)
       .where(and(eq(orgMembers.orgId, app.orgId), eq(orgMembers.userId, userId)))
       .limit(1);
     if (!member) throw new TRPCError({ code: "FORBIDDEN" });
+    return { orgId: app.orgId, jobId: app.jobId, candidateId: app.candidateId, viewer: "team" };
   }
 
-  return { orgId: app.orgId, jobId: app.jobId, candidateId: app.candidateId };
+  return { orgId: app.orgId, jobId: app.jobId, candidateId: app.candidateId, viewer: "candidate" };
 }
 
 export const interviewsRouter = router({
   list: protectedProcedure
     .input(z.object({ applicationId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      await assertAccess(ctx, input.applicationId, false);
+      const access = await assertAccess(ctx, input.applicationId, false);
+      const isPrivileged = access.viewer === "team";
 
       const rows = await ctx.db
         .select({
@@ -81,10 +91,12 @@ export const interviewsRouter = router({
           confirmedSlotId: interviews.confirmedSlotId,
           createdAt: interviews.createdAt,
           expiresAt: interviews.expiresAt,
-          proposedByName: user.name,
+          proposedById: interviews.proposedById,
+          canceledById: interviews.canceledById,
+          feedback: interviews.feedback,
+          feedbackById: interviews.feedbackById,
         })
         .from(interviews)
-        .leftJoin(user, eq(user.id, interviews.proposedById))
         .where(eq(interviews.applicationId, input.applicationId))
         .orderBy(desc(interviews.createdAt));
 
@@ -108,14 +120,82 @@ export const interviewsRouter = router({
         byInterview.set(s.interviewId, arr);
       }
 
-      return rows.map((r) => ({
-        ...r,
-        slots: (byInterview.get(r.id) ?? []).map((s) => ({
-          id: s.id,
-          startsAt: s.startsAt,
-          isConfirmed: s.id === r.confirmedSlotId,
-        })),
-      }));
+      // Resolve names + org-roles for proposed/canceled/feedback team members
+      const memberUserIds = Array.from(
+        new Set(
+          rows
+            .flatMap((r) => [r.proposedById, r.canceledById, r.feedbackById])
+            .filter((id): id is string => Boolean(id)),
+        ),
+      );
+
+      const memberNames = memberUserIds.length
+        ? await ctx.db
+            .select({ id: user.id, name: user.name })
+            .from(user)
+            .where(inArray(user.id, memberUserIds))
+        : [];
+      const memberRoles = memberUserIds.length
+        ? await ctx.db
+            .select({ userId: orgMembers.userId, role: orgMembers.role })
+            .from(orgMembers)
+            .where(
+              and(
+                eq(orgMembers.orgId, access.orgId),
+                inArray(orgMembers.userId, memberUserIds),
+              ),
+            )
+        : [];
+      const nameById = new Map(memberNames.map((m) => [m.id, m.name]));
+      const roleById = new Map(memberRoles.map((m) => [m.userId, m.role]));
+
+      return rows.map((r) => {
+        const proposedByName = r.proposedById
+          ? nameById.get(r.proposedById) ?? null
+          : null;
+        const proposedByRole = r.proposedById
+          ? roleById.get(r.proposedById) ?? null
+          : null;
+        const canceledByName = r.canceledById
+          ? nameById.get(r.canceledById) ?? null
+          : null;
+        const canceledByRole = r.canceledById
+          ? roleById.get(r.canceledById) ?? null
+          : null;
+        const feedbackByName =
+          isPrivileged && r.feedbackById
+            ? nameById.get(r.feedbackById) ?? null
+            : null;
+        const feedbackByRole =
+          isPrivileged && r.feedbackById
+            ? roleById.get(r.feedbackById) ?? null
+            : null;
+
+        const {
+          proposedById: _p,
+          canceledById: _c,
+          feedbackById: _f,
+          feedback,
+          ...rest
+        } = r;
+
+        return {
+          ...rest,
+          proposedByName,
+          proposedByRole,
+          canceledByName,
+          canceledByRole,
+          // Feedback is internal — only employer-team callers receive it.
+          feedback: isPrivileged ? feedback : null,
+          feedbackByName,
+          feedbackByRole,
+          slots: (byInterview.get(r.id) ?? []).map((s) => ({
+            id: s.id,
+            startsAt: s.startsAt,
+            isConfirmed: s.id === r.confirmedSlotId,
+          })),
+        };
+      });
     }),
 
   proposeSlots: protectedProcedure
@@ -525,6 +605,40 @@ export const interviewsRouter = router({
       );
 
       return { interviewId: newId };
+    }),
+
+  setFeedback: protectedProcedure
+    .input(
+      z.object({
+        interviewId: z.string().uuid(),
+        feedback: z.string().max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [iv] = await ctx.db
+        .select({ applicationId: interviews.applicationId })
+        .from(interviews)
+        .where(eq(interviews.id, input.interviewId))
+        .limit(1);
+      if (!iv) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Interview not found" });
+      }
+
+      // Privileged-only: only owner/admin/recruiter can write feedback.
+      await assertAccess(ctx, iv.applicationId, true);
+
+      const trimmed = input.feedback.trim();
+      const value = trimmed.length === 0 ? null : trimmed;
+
+      await ctx.db
+        .update(interviews)
+        .set({
+          feedback: value,
+          feedbackById: value === null ? null : ctx.session.user.id,
+        })
+        .where(eq(interviews.id, input.interviewId));
+
+      return { ok: true };
     }),
 
   upcomingForOrg: protectedProcedure

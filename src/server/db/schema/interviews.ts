@@ -47,6 +47,10 @@ export const interviews = pgTable(
     confirmedSlotId: uuid("confirmed_slot_id"),
     expiresAt: timestamp("expires_at").notNull(),
     remindedAt: timestamp("reminded_at"),
+    feedback: text("feedback"),
+    feedbackById: text("feedback_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
       .notNull()
@@ -96,6 +100,10 @@ export const interviewsRelations = relations(interviews, ({ one, many }) => ({
   }),
   canceledBy: one(user, {
     fields: [interviews.canceledById],
+    references: [user.id],
+  }),
+  feedbackBy: one(user, {
+    fields: [interviews.feedbackById],
     references: [user.id],
   }),
   slots: many(interviewSlots),
