@@ -29,11 +29,15 @@ export function IntroRequestModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const utils = api.useUtils();
 
+  const reset = () => {
+    setMessage("");
+    setErrorMsg(null);
+  };
+
   const create = api.introRequests.create.useMutation({
     onSuccess: () => {
       void utils.introRequests.pendingFromMyOrg.invalidate({ candidateUserId });
-      setMessage("");
-      setErrorMsg(null);
+      reset();
       onClose();
     },
     onError: (err) => {
@@ -42,7 +46,7 @@ export function IntroRequestModal({
   });
 
   return (
-    <Dialog open={open} onOpenChange={(o) => (!o ? onClose() : null)}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Request an intro with {candidateFirstName}</DialogTitle>
@@ -61,7 +65,7 @@ export function IntroRequestModal({
               width: "100%",
               padding: 10,
               borderRadius: 8,
-              border: "1px solid var(--v2-border)",
+              border: "1px solid var(--v2-ink-200)",
               fontFamily: "inherit",
               fontSize: 14,
               resize: "vertical",
@@ -78,7 +82,7 @@ export function IntroRequestModal({
           )}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={create.isPending}>
+          <Button variant="ghost" onClick={() => { reset(); onClose(); }} disabled={create.isPending}>
             Cancel
           </Button>
           <Button
