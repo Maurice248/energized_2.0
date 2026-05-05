@@ -635,6 +635,7 @@ function IntroRequestCta({
         <button
           type="button"
           className="pub-cta-primary"
+          disabled={state.isLoading}
           onClick={() => setRequestModalOpen(true)}
         >
           Request intro <Icon name="arrowRight" size={14} />
@@ -707,7 +708,7 @@ function IntroRequestCta({
         type="button"
         className="pub-cta-primary"
         disabled
-        title={`Available again on ${s.retryAt.toLocaleDateString()}`}
+        title={`Available again on ${s.retryAt.toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" })}`}
       >
         Request unavailable
       </button>
