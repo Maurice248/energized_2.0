@@ -618,7 +618,12 @@ export const interviewsRouter = router({
         .where(
           and(
             eq(jobListings.orgId, input.orgId),
-            inArray(interviews.status, ["completed", "canceled", "expired"]),
+            inArray(interviews.status, [
+              "completed",
+              "canceled",
+              "expired",
+              "confirmed",
+            ]),
           ),
         )
         .orderBy(desc(interviews.updatedAt))
@@ -687,7 +692,12 @@ export const interviewsRouter = router({
         .where(
           and(
             eq(applications.candidateId, ctx.session.user.id),
-            inArray(interviews.status, ["completed", "canceled", "expired"]),
+            inArray(interviews.status, [
+              "completed",
+              "canceled",
+              "expired",
+              "confirmed",
+            ]),
           ),
         )
         .orderBy(desc(interviews.updatedAt))
@@ -755,13 +765,17 @@ async function resolveUpcoming<
   return result.slice(0, 50);
 }
 
-// For recent: include completed/canceled/expired. Resolve startsAt from
-// confirmedSlotId, then earliest slot, then fall back to updatedAt so the
-// row still has a sensible time to render. Already sorted desc by
-// updatedAt at the SQL layer.
+// For recent: include completed/canceled/expired always; include confirmed
+// only when its confirmed slot is already in the past (limbo state — slot
+// has happened but the complete-passed-interviews cron hasn't promoted it
+// to "completed" yet, up to 30 min lag in prod, indefinite in dev).
+// Resolve startsAt from confirmedSlotId, then earliest slot, then fall
+// back to updatedAt so the row still has a sensible time to render.
+// Already sorted desc by updatedAt at the SQL layer.
 async function resolveRecent<
   T extends {
     interviewId: string;
+    status: string;
     confirmedSlotId: string | null;
     updatedAt: Date;
   },
@@ -772,7 +786,9 @@ async function resolveRecent<
     ivRows.map((r) => r.interviewId),
   );
 
-  return ivRows.map((iv) => {
+  const nowMs = Date.now();
+
+  return ivRows.flatMap((iv) => {
     let startsAt: Date | null = null;
     if (iv.confirmedSlotId) {
       const cs = slots.find((s) => s.id === iv.confirmedSlotId);
@@ -787,7 +803,13 @@ async function resolveRecent<
       startsAt = candidate[0] ? new Date(candidate[0].startsAt) : null;
     }
 
+    const resolved = startsAt ?? new Date(iv.updatedAt);
+
+    // Confirmed rows only belong on Past once their slot has actually
+    // passed; future-slot confirmed rows live on Upcoming.
+    if (iv.status === "confirmed" && resolved.getTime() > nowMs) return [];
+
     const { confirmedSlotId: _drop, ...rest } = iv;
-    return { ...rest, startsAt: startsAt ?? new Date(iv.updatedAt) };
+    return [{ ...rest, startsAt: resolved }];
   });
 }

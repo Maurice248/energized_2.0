@@ -160,6 +160,11 @@ function StatusChip({
   if (status === "expired") {
     return <span className="v2-chip">Expired</span>;
   }
+  if (status === "confirmed") {
+    // Confirmed rows on the Past tab are slot-already-happened limbo
+    // (cron hasn't promoted them to Completed yet — up to 30 min lag).
+    return <span className="v2-chip v2-chip-accent">Confirmed</span>;
+  }
   return null;
 }
 
