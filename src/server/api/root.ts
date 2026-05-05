@@ -6,6 +6,7 @@ import { candidatesRouter } from "@/server/api/routers/candidates";
 import { employerRouter } from "@/server/api/routers/employer";
 import { healthRouter } from "@/server/api/routers/health";
 import { interviewsRouter } from "@/server/api/routers/interviews";
+import { introRequestsRouter } from "@/server/api/routers/intro-requests";
 import { jobsRouter } from "@/server/api/routers/jobs";
 import { matchesRouter } from "@/server/api/routers/matches";
 import { notificationsRouter } from "@/server/api/routers/notifications";
@@ -23,6 +24,7 @@ export const appRouter = router({
   employer: employerRouter,
   health: healthRouter,
   interviews: interviewsRouter,
+  introRequests: introRequestsRouter,
   jobs: jobsRouter,
   matches: matchesRouter,
   notifications: notificationsRouter,
