@@ -139,6 +139,7 @@ export function PublicProfileClient({
   viewerIsSelf,
   viewerIsAuthed,
   viewerIsEmployer,
+  viewerHasOrg,
   candidateUserId,
 }: {
   user: PublicUser;
@@ -149,6 +150,7 @@ export function PublicProfileClient({
   viewerIsSelf: boolean;
   viewerIsAuthed: boolean;
   viewerIsEmployer: boolean;
+  viewerHasOrg: boolean;
   candidateUserId: string;
 }) {
   const [firstName, lastName] = splitName(user.name);
@@ -278,6 +280,7 @@ export function PublicProfileClient({
               candidateUserId={candidateUserId}
               firstName={firstName}
               viewerIsEmployer={viewerIsEmployer}
+              viewerHasOrg={viewerHasOrg}
             />
           ) : (
             <div className="pub-cta-stack">
@@ -524,6 +527,7 @@ export function PublicProfileClient({
               candidateUserId={candidateUserId}
               firstName={firstName}
               viewerIsEmployer={viewerIsEmployer}
+              viewerHasOrg={viewerHasOrg}
             />
           ) : (
             <Link
@@ -612,10 +616,12 @@ function IntroRequestCta({
   candidateUserId,
   firstName,
   viewerIsEmployer,
+  viewerHasOrg,
 }: {
   candidateUserId: string;
   firstName: string;
   viewerIsEmployer: boolean;
+  viewerHasOrg: boolean;
 }) {
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const utils = api.useUtils();
@@ -626,6 +632,20 @@ function IntroRequestCta({
       void utils.introRequests.pendingFromMyOrg.invalidate({ candidateUserId });
     },
   });
+
+  if (!viewerHasOrg) {
+    return (
+      <div className="pub-cta-stack">
+        <a
+          href="/employer/onboarding"
+          className="pub-cta-secondary"
+          style={{ textDecoration: "none", textAlign: "center" }}
+        >
+          Hiring on Energized? Sign up as an employer
+        </a>
+      </div>
+    );
+  }
 
   const s = state.data;
 

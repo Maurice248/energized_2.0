@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import {
   certifications,
   education,
+  orgMembers,
   profiles,
   user,
   workHistory,
@@ -120,6 +121,23 @@ export default async function PublicJobseekerProfilePage({
   const viewerIsAuthed = Boolean(session);
   const viewerIsEmployer = session?.user.role === "employer";
 
+  const viewerHasOrg = session
+    ? Boolean(
+        (
+          await db
+            .select({ orgId: orgMembers.orgId })
+            .from(orgMembers)
+            .where(
+              and(
+                eq(orgMembers.userId, session.user.id),
+                eq(orgMembers.status, "active"),
+              ),
+            )
+            .limit(1)
+        )[0],
+      )
+    : false;
+
   await recordJobseekerProfileView({
     subjectUserId: u.id,
     viewerUserId: session?.user.id ?? null,
@@ -177,6 +195,7 @@ export default async function PublicJobseekerProfilePage({
       viewerIsSelf={viewerIsSelf}
       viewerIsAuthed={viewerIsAuthed}
       viewerIsEmployer={viewerIsEmployer}
+      viewerHasOrg={viewerHasOrg}
       candidateUserId={u.id}
     />
     </>
