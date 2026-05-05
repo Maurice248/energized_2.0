@@ -92,6 +92,12 @@ export function InterviewBlock({
                 </div>
               </div>
 
+              {iv.status === "proposed" && viewer === "candidate" && (
+                <div style={{ fontSize: 12, color: "var(--v2-ink-600)", marginTop: 6, marginBottom: 6 }}>
+                  Tap a time below to select it, then confirm to lock it in.
+                </div>
+              )}
+
               <ul style={{ listStyle: "none", padding: 0, margin: "8px 0", display: "flex", flexDirection: "column", gap: 4 }}>
                 {iv.slots.map((s) => (
                   <li key={s.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -104,6 +110,7 @@ export function InterviewBlock({
                           setTentativePicks((p) => ({ ...p, [iv.id]: s.id }))
                         }
                       >
+                        {tentativePicks[iv.id] === s.id ? "✓ " : ""}
                         {fmtSlot(s.startsAt)}
                       </Button>
                     ) : (
@@ -116,9 +123,29 @@ export function InterviewBlock({
               </ul>
 
               {iv.status === "proposed" && viewer === "candidate" && tentativePicks[iv.id] && (
-                <div style={{ marginTop: 8 }}>
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    background: "var(--v2-accent-soft)",
+                    border: "1px solid var(--v2-accent)",
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 200, fontSize: 13, color: "var(--v2-ink-900)" }}>
+                    You picked{" "}
+                    <strong>
+                      {fmtSlot(
+                        iv.slots.find((s) => s.id === tentativePicks[iv.id])!.startsAt,
+                      )}
+                    </strong>
+                    . This locks the interview in for both sides — confirm it below.
+                  </div>
                   <Button
-                    size="sm"
                     disabled={confirm.isPending}
                     onClick={() =>
                       confirm.mutate({
@@ -127,7 +154,21 @@ export function InterviewBlock({
                       })
                     }
                   >
-                    {confirm.isPending ? "Confirming…" : "Confirm time"}
+                    {confirm.isPending ? "Confirming…" : "Confirm this time"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={confirm.isPending}
+                    onClick={() =>
+                      setTentativePicks((p) => {
+                        const next = { ...p };
+                        delete next[iv.id];
+                        return next;
+                      })
+                    }
+                  >
+                    Change pick
                   </Button>
                 </div>
               )}
