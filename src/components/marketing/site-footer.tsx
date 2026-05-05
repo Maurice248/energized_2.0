@@ -70,6 +70,7 @@ export function SiteFooter() {
 
           <div>
             <h5>For candidates</h5>
+            <Link href="/for-seekers">For job seekers</Link>
             <Link href="/jobs">Browse jobs</Link>
             <Link href="/sign-up">Create profile</Link>
             <Link href="/sign-in">Sign in</Link>
@@ -77,6 +78,7 @@ export function SiteFooter() {
 
           <div>
             <h5>For employers</h5>
+            <Link href="/for-employers">Why Energized</Link>
             <Link href="/sign-up?role=employer">Post a job</Link>
             <Link href="/sign-up?role=employer">Search talent</Link>
             <Link href="/employer">Employer dashboard</Link>

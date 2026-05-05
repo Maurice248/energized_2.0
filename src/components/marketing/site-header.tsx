@@ -8,6 +8,7 @@ import { NotificationBell } from "./notification-bell";
 export type SiteHeaderActive =
   | "home"
   | "jobs"
+  | "seekers"
   | "employers"
   | "about"
   | "contact"
@@ -24,7 +25,8 @@ type NavLink = { id: SiteHeaderActive; label: string; href: string };
 const NAV_LINKS: NavLink[] = [
   { id: "home", label: "Home", href: "/" },
   { id: "jobs", label: "Jobs", href: "/jobs" },
-  { id: "employers", label: "For employers", href: "/sign-up?role=employer" },
+  { id: "seekers", label: "For job seekers", href: "/for-seekers" },
+  { id: "employers", label: "For employers", href: "/for-employers" },
   { id: "about", label: "About", href: "/about" },
 ];
 
