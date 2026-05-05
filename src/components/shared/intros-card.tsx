@@ -18,11 +18,17 @@ export function IntrosCard() {
   const utils = api.useUtils();
   const q = api.introRequests.inboxForMe.useQuery({ status: "pending" });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
+  const [pendingDeclineId, setPendingDeclineId] = useState<string | null>(null);
 
   const accept = api.introRequests.acceptForMe.useMutation({
+    onMutate: ({ id }) => setPendingAcceptId(id),
+    onSettled: () => setPendingAcceptId(null),
     onSuccess: () => void utils.introRequests.inboxForMe.invalidate({ status: "pending" }),
   });
   const decline = api.introRequests.declineForMe.useMutation({
+    onMutate: ({ id }) => setPendingDeclineId(id),
+    onSettled: () => setPendingDeclineId(null),
     onSuccess: () => void utils.introRequests.inboxForMe.invalidate({ status: "pending" }),
   });
 
@@ -126,7 +132,7 @@ export function IntrosCard() {
                   e.stopPropagation();
                   decline.mutate({ id: r.id });
                 }}
-                disabled={decline.isPending}
+                disabled={pendingDeclineId === r.id || pendingAcceptId === r.id}
                 className="v2-btn v2-btn-ghost v2-btn-sm"
               >
                 Decline
@@ -137,7 +143,7 @@ export function IntrosCard() {
                   e.stopPropagation();
                   accept.mutate({ id: r.id });
                 }}
-                disabled={accept.isPending}
+                disabled={pendingAcceptId === r.id || pendingDeclineId === r.id}
                 className="v2-btn v2-btn-sm"
               >
                 Accept
