@@ -94,7 +94,7 @@ function ResumeRow({ url, filename }: { url: string; filename: string }) {
         href={url}
         download={filename}
         target="_blank"
-        rel="noopener"
+        rel="noreferrer"
         style={{ color: "#1CAAE2", textDecoration: "none" }}
       >
         {filename}
