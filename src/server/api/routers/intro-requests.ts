@@ -415,6 +415,7 @@ export const introRequestsRouter = router({
           and(
             eq(orgMembers.userId, introRequests.requestedByUserId),
             eq(orgMembers.orgId, introRequests.orgId),
+            eq(orgMembers.status, "active"),
           ),
         )
         .where(and(...conditions))
