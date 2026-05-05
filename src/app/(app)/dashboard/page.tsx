@@ -16,6 +16,7 @@ import { countJobseekerProfileViews30d } from "@/server/services/profile-views";
 import { Icon } from "@/components/shared/icon";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { InterviewsCard } from "@/components/shared/interviews-card";
+import { IntrosCard } from "@/components/shared/intros-card";
 import {
   formatSalary,
   type JobSector,
@@ -295,6 +296,9 @@ export default async function DashboardPage() {
           <div className="v2-dash-grid">
             {/* LEFT COLUMN */}
             <div style={{ display: "grid", gap: 24 }}>
+              {/* Intro requests inbox */}
+              <IntrosCard />
+
               {/* Interviews — Upcoming + Past */}
               <InterviewsCard mode="candidate" />
 
