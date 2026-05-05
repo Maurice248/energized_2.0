@@ -74,6 +74,9 @@ export const introRequestsRouter = router({
       }
 
       // Dedup: any existing pending row for (orgId, candidateUserId)?
+      // TODO: this SELECT-then-INSERT has a TOCTOU gap; proper fix is a unique
+      //       partial index UNIQUE (org_id, candidate_user_id) WHERE status = 'pending',
+      //       which requires a schema migration — deferred.
       const [pending] = await ctx.db
         .select({ id: introRequests.id })
         .from(introRequests)
@@ -152,22 +155,28 @@ export const introRequestsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { orgId } = await requireOrgMembership(ctx);
       const [row] = await ctx.db
-        .select({ orgId: introRequests.orgId, status: introRequests.status })
+        .select({ orgId: introRequests.orgId })
         .from(introRequests)
         .where(eq(introRequests.id, input.id))
         .limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       if (row.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN" });
-      if (row.status !== "pending") {
+      const updated = await ctx.db
+        .update(introRequests)
+        .set({ status: "canceled", canceledAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(introRequests.id, input.id),
+            eq(introRequests.status, "pending"),
+          ),
+        )
+        .returning({ id: introRequests.id });
+      if (updated.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This request is no longer pending.",
         });
       }
-      await ctx.db
-        .update(introRequests)
-        .set({ status: "canceled", canceledAt: new Date(), updatedAt: new Date() })
-        .where(eq(introRequests.id, input.id));
       return { ok: true };
     }),
 
@@ -176,7 +185,6 @@ export const introRequestsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db
         .select({
-          status: introRequests.status,
           candidateUserId: introRequests.candidateUserId,
           requestedByUserId: introRequests.requestedByUserId,
           orgId: introRequests.orgId,
@@ -188,17 +196,22 @@ export const introRequestsRouter = router({
       if (row.candidateUserId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      if (row.status !== "pending") {
+      const updated = await ctx.db
+        .update(introRequests)
+        .set({ status: "accepted", acceptedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(introRequests.id, input.id),
+            eq(introRequests.status, "pending"),
+          ),
+        )
+        .returning({ id: introRequests.id });
+      if (updated.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This request is no longer pending.",
         });
       }
-
-      await ctx.db
-        .update(introRequests)
-        .set({ status: "accepted", acceptedAt: new Date(), updatedAt: new Date() })
-        .where(eq(introRequests.id, input.id));
 
       // Resolve recipient: requester first, org owner fallback
       let recipientUserId: string | null = row.requestedByUserId;
@@ -217,18 +230,12 @@ export const introRequestsRouter = router({
         recipientUserId = owner?.id ?? null;
       }
 
-      const [candidateRow] = await ctx.db
-        .select({ name: user.name })
-        .from(user)
-        .where(eq(user.id, row.candidateUserId))
-        .limit(1);
-
       if (recipientUserId) {
         try {
           await ctx.db.insert(notifications).values({
             userId: recipientUserId,
             kind: "intro_accepted",
-            title: `${candidateRow?.name ?? "A candidate"} accepted your intro request`,
+            title: `${ctx.session.user.name ?? "A candidate"} accepted your intro request`,
             body: null,
             href: `/employer/intro-requests?focus=${input.id}`,
           });
@@ -243,7 +250,6 @@ export const introRequestsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db
         .select({
-          status: introRequests.status,
           candidateUserId: introRequests.candidateUserId,
           requestedByUserId: introRequests.requestedByUserId,
           orgId: introRequests.orgId,
@@ -255,17 +261,22 @@ export const introRequestsRouter = router({
       if (row.candidateUserId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      if (row.status !== "pending") {
+      const updated = await ctx.db
+        .update(introRequests)
+        .set({ status: "declined", declinedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(introRequests.id, input.id),
+            eq(introRequests.status, "pending"),
+          ),
+        )
+        .returning({ id: introRequests.id });
+      if (updated.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This request is no longer pending.",
         });
       }
-
-      await ctx.db
-        .update(introRequests)
-        .set({ status: "declined", declinedAt: new Date(), updatedAt: new Date() })
-        .where(eq(introRequests.id, input.id));
 
       // Same recipient resolution as accept (requester then owner fallback)
       let recipientUserId: string | null = row.requestedByUserId;
