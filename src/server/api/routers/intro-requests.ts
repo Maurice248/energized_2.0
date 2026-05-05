@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, gt } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { protectedProcedure, router } from "@/server/api/trpc";
 import {
@@ -8,6 +9,7 @@ import {
   notifications,
   orgMembers,
   orgRoleEnum,
+  profiles,
   user,
 } from "@/server/db/schema";
 
@@ -309,5 +311,126 @@ export const introRequestsRouter = router({
 
       // Intentional: no email on decline (per spec §6 / Q2 design).
       return { ok: true };
+    }),
+
+  listForOrg: protectedProcedure
+    .input(
+      z.object({
+        status: z
+          .enum(["pending", "accepted", "declined", "canceled", "all"])
+          .default("pending"),
+        limit: z.number().min(1).max(200).default(50),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { orgId } = await requireOrgMembership(ctx);
+
+      const conditions = [eq(introRequests.orgId, orgId)];
+      if (input.status !== "all") {
+        conditions.push(eq(introRequests.status, input.status));
+      }
+
+      const requesterUser = alias(user, "requested_by_user");
+
+      const rows = await ctx.db
+        .select({
+          id: introRequests.id,
+          status: introRequests.status,
+          message: introRequests.message,
+          createdAt: introRequests.createdAt,
+          acceptedAt: introRequests.acceptedAt,
+          declinedAt: introRequests.declinedAt,
+          canceledAt: introRequests.canceledAt,
+          candidateId: user.id,
+          candidateName: user.name,
+          candidateImage: user.image,
+          candidateHeadline: profiles.headline,
+          candidateLocation: profiles.location,
+          requestedByName: requesterUser.name,
+          requestedByUserId: introRequests.requestedByUserId,
+        })
+        .from(introRequests)
+        .innerJoin(user, eq(user.id, introRequests.candidateUserId))
+        .leftJoin(profiles, eq(profiles.userId, introRequests.candidateUserId))
+        .leftJoin(
+          requesterUser,
+          eq(requesterUser.id, introRequests.requestedByUserId),
+        )
+        .where(and(...conditions))
+        .orderBy(desc(introRequests.createdAt))
+        .limit(input.limit);
+
+      return rows.map((r) => ({
+        id: r.id,
+        status: r.status,
+        message: r.message,
+        candidate: {
+          id: r.candidateId,
+          name: r.candidateName,
+          image: r.candidateImage,
+          headline: r.candidateHeadline,
+          location: r.candidateLocation,
+        },
+        requestedBy: r.requestedByUserId
+          ? { id: r.requestedByUserId, name: r.requestedByName ?? "" }
+          : null,
+        createdAt: r.createdAt,
+        acceptedAt: r.acceptedAt,
+        declinedAt: r.declinedAt,
+        canceledAt: r.canceledAt,
+      }));
+    }),
+
+  inboxForMe: protectedProcedure
+    .input(
+      z.object({
+        status: z.enum(["pending", "accepted", "declined", "all"]).default("pending"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const conditions = [eq(introRequests.candidateUserId, ctx.session.user.id)];
+      if (input.status !== "all") {
+        conditions.push(eq(introRequests.status, input.status));
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: introRequests.id,
+          status: introRequests.status,
+          message: introRequests.message,
+          createdAt: introRequests.createdAt,
+          acceptedAt: introRequests.acceptedAt,
+          declinedAt: introRequests.declinedAt,
+          orgId: employerOrgs.id,
+          orgName: employerOrgs.name,
+          orgLogoUrl: employerOrgs.logoUrl,
+          requesterName: user.name,
+          requesterRole: orgMembers.role,
+        })
+        .from(introRequests)
+        .innerJoin(employerOrgs, eq(employerOrgs.id, introRequests.orgId))
+        .leftJoin(user, eq(user.id, introRequests.requestedByUserId))
+        .leftJoin(
+          orgMembers,
+          and(
+            eq(orgMembers.userId, introRequests.requestedByUserId),
+            eq(orgMembers.orgId, introRequests.orgId),
+          ),
+        )
+        .where(and(...conditions))
+        .orderBy(desc(introRequests.createdAt));
+
+      return rows.map((r) => ({
+        id: r.id,
+        status: r.status,
+        message: r.message,
+        org: { id: r.orgId, name: r.orgName, logoUrl: r.orgLogoUrl },
+        requestedBy: r.requesterName
+          ? { name: r.requesterName, role: r.requesterRole ?? "recruiter" }
+          : null,
+        createdAt: r.createdAt,
+        acceptedAt: r.acceptedAt,
+        declinedAt: r.declinedAt,
+      }));
     }),
 });
