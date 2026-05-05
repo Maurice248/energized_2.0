@@ -9,13 +9,16 @@ import {
   introRequests,
   notifications,
   orgMembers,
+  orgRoleEnum,
   profiles,
   user,
 } from "@/server/db/schema";
 
+type OrgRole = (typeof orgRoleEnum.enumValues)[number];
+
 async function requireOrgMembership(
   ctx: { db: typeof import("@/server/db").db; session: { user: { id: string } } },
-): Promise<{ orgId: string; role: "owner" | "admin" | "recruiter" }> {
+): Promise<{ orgId: string; role: OrgRole }> {
   const [row] = await ctx.db
     .select({ orgId: orgMembers.orgId, role: orgMembers.role })
     .from(orgMembers)
@@ -27,7 +30,7 @@ async function requireOrgMembership(
       message: "You must be a member of an employer org.",
     });
   }
-  return { orgId: row.orgId, role: row.role as "owner" | "admin" | "recruiter" };
+  return { orgId: row.orgId, role: row.role };
 }
 
 export const introRequestsRouter = router({
