@@ -13,6 +13,10 @@ import {
   type CertDialogInitial,
   type CertDialogPrefill,
 } from "@/components/shared/add-cert-dialog";
+import {
+  AddEducationDialog,
+  type EducationDialogInitial,
+} from "@/components/shared/add-education-dialog";
 import { api } from "@/lib/trpc/client";
 
 type SectorEnum =
@@ -35,12 +39,34 @@ type AvailabilityEnum =
 const SECTOR_LABEL_TO_ENUM: Record<string, SectorEnum> = {
   "Oil & Gas": "oil_gas",
   "Renewable Energy": "renewables",
-  Midstream: "oil_gas",
-  "Power Utilities": "power",
   Nuclear: "nuclear",
-  Mining: "utilities",
-  Geothermal: "utilities",
+  "Power Utilities": "utilities",
   Hydrogen: "hydrogen",
+  Power: "power",
+};
+
+const ENUM_TO_SECTOR_LABEL: Record<SectorEnum, string> = {
+  oil_gas: "Oil & Gas",
+  renewables: "Renewable Energy",
+  nuclear: "Nuclear",
+  utilities: "Power Utilities",
+  hydrogen: "Hydrogen",
+  power: "Power",
+};
+
+const ENUM_TO_REMOTE_LABEL: Record<RemoteEnum, string> = {
+  on_site: "Onsite",
+  hybrid: "Hybrid",
+  remote: "Remote",
+  flexible: "Flexible",
+};
+
+const ENUM_TO_AVAILABILITY_LABEL: Record<AvailabilityEnum, string> = {
+  immediately: "Immediately",
+  notice_2w: "2 weeks notice",
+  notice_4w: "4 weeks notice",
+  notice_3m: "3+ months",
+  browsing: "Just browsing",
 };
 
 const REMOTE_TO_ENUM: Record<string, RemoteEnum> = {
@@ -58,14 +84,21 @@ const AVAILABILITY_TO_ENUM: Record<string, AvailabilityEnum> = {
   "Just browsing": "browsing",
 };
 
-type StepId = "welcome" | "resume" | "review" | "certs" | "prefs";
+type StepId =
+  | "welcome"
+  | "resume"
+  | "review"
+  | "certs"
+  | "education"
+  | "prefs";
 type Step = { id: StepId; title: string; hint: string };
 
 const STEPS: Step[] = [
   { id: "welcome", title: "Welcome", hint: "What to expect" },
-  { id: "resume", title: "Upload resume", hint: "Ember reads it" },
-  { id: "review", title: "Review work & skills", hint: "Confirm the facts" },
+  { id: "resume", title: "Upload resume", hint: "PDF or DOCX" },
+  { id: "review", title: "Add work & skills", hint: "Roles, sites, projects" },
   { id: "certs", title: "Certifications", hint: "Tickets & expiries" },
+  { id: "education", title: "Education", hint: "Schools & degrees" },
   { id: "prefs", title: "Preferences", hint: "Shape your matches" },
 ];
 
@@ -93,12 +126,10 @@ const WORK_SETUPS = ["Onsite", "Hybrid", "Remote", "Flexible"] as const;
 const SECTOR_OPTIONS = [
   "Oil & Gas",
   "Renewable Energy",
-  "Midstream",
-  "Power Utilities",
   "Nuclear",
-  "Mining",
-  "Geothermal",
+  "Power Utilities",
   "Hydrogen",
+  "Power",
 ];
 const AVAILABILITY = [
   "Immediately",
@@ -124,7 +155,7 @@ const DEFAULT_PREFS: Prefs = {
   relocation: false,
   remote: "Hybrid",
   minComp: 145,
-  sectors: ["Renewable Energy", "Oil & Gas"],
+  sectors: [],
   availability: "4 weeks notice",
 };
 
@@ -160,12 +191,58 @@ export function OnboardingClient({
   const profileQuery = api.profile.get.useQuery();
   const update = api.profile.update.useMutation();
   const markComplete = api.onboarding.markComplete.useMutation();
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate local skill + preference state from the saved profile on first
+  // load. Without this, restarting the wizard ("Restart wizard" on /profile)
+  // shows empty skills/defaults — the user's saved data appears lost.
+  useEffect(() => {
+    if (hydrated) return;
+    const p = profileQuery.data?.profile;
+    if (!p) return;
+    if (Array.isArray(p.skills) && p.skills.length > 0) {
+      setSkills(p.skills);
+    }
+    setPrefs((prev) => {
+      const remoteLabel = p.remotePreference
+        ? ENUM_TO_REMOTE_LABEL[p.remotePreference as RemoteEnum]
+        : null;
+      const remote = (WORK_SETUPS as readonly string[]).includes(
+        remoteLabel ?? "",
+      )
+        ? (remoteLabel as (typeof WORK_SETUPS)[number])
+        : prev.remote;
+      const availability = p.availability
+        ? ENUM_TO_AVAILABILITY_LABEL[p.availability as AvailabilityEnum] ??
+          prev.availability
+        : prev.availability;
+      const sectorLabels = Array.isArray(p.sectors)
+        ? p.sectors
+            .map((s) => ENUM_TO_SECTOR_LABEL[s as SectorEnum] ?? null)
+            .filter((s): s is string => Boolean(s))
+        : [];
+      return {
+        ...prev,
+        openToWork: p.openToWork ?? prev.openToWork,
+        fifo: p.fifoRotational ?? prev.fifo,
+        relocation: p.willingToRelocate ?? prev.relocation,
+        remote,
+        minComp: p.minCompCad ?? prev.minComp,
+        sectors: sectorLabels.length > 0 ? sectorLabels : prev.sectors,
+        availability,
+      };
+    });
+    setHydrated(true);
+  }, [profileQuery.data, hydrated]);
   const [finishError, setFinishError] = useState<string | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleDialogInitial | null>(null);
   const [certDialogOpen, setCertDialogOpen] = useState(false);
   const [editingCert, setEditingCert] = useState<CertDialogInitial | null>(null);
   const [certPrefill, setCertPrefill] = useState<CertDialogPrefill | null>(null);
+  const [educationDialogOpen, setEducationDialogOpen] = useState(false);
+  const [editingEducation, setEditingEducation] =
+    useState<EducationDialogInitial | null>(null);
 
   const finishing = update.isPending || markComplete.isPending;
 
@@ -259,7 +336,11 @@ export function OnboardingClient({
         <main className="ob-main">
           {done ? (
             <Finish
-              onEnter={() => {
+              onGoToMatches={() => {
+                window.localStorage.removeItem(STORAGE_KEY);
+                router.push("/dashboard");
+              }}
+              onReviewProfile={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
                 router.push("/profile");
               }}
@@ -312,6 +393,20 @@ export function OnboardingClient({
                     setEditingCert(null);
                     setCertPrefill(prefill);
                     setCertDialogOpen(true);
+                  }}
+                />
+              )}
+              {stepId === "education" && (
+                <EducationStep
+                  rows={profileQuery.data?.education ?? []}
+                  reload={() => profileQuery.refetch()}
+                  onAddEducation={() => {
+                    setEditingEducation(null);
+                    setEducationDialogOpen(true);
+                  }}
+                  onEditEducation={(row) => {
+                    setEditingEducation(row);
+                    setEducationDialogOpen(true);
                   }}
                 />
               )}
@@ -394,6 +489,16 @@ export function OnboardingClient({
         initial={editingCert ?? undefined}
         prefill={certPrefill ?? undefined}
       />
+      <AddEducationDialog
+        key={`edu-${editingEducation?.id ?? "new"}`}
+        open={educationDialogOpen}
+        onOpenChange={(v) => {
+          setEducationDialogOpen(v);
+          if (!v) setEditingEducation(null);
+        }}
+        onCreated={() => profileQuery.refetch()}
+        initial={editingEducation ?? undefined}
+      />
     </div>
   );
 }
@@ -445,7 +550,7 @@ function StepRail({
         Build your <em>profile</em>
       </div>
       <div className="ob-rail-sub">
-        Five short steps. You can edit anything later.
+        Six short steps. You can edit anything later.
       </div>
 
       <div className="ob-steps">
@@ -496,28 +601,27 @@ function Welcome({ firstName }: { firstName: string }) {
     <>
       <div className="ob-eyebrow-row">
         <Eyebrow>Welcome, {firstName}</Eyebrow>
-        <span className="ob-pagenum">01 / 05</span>
+        <span className="ob-pagenum">01 / 06</span>
       </div>
       <h1 className="ob-hdg">
-        Let&apos;s turn your resume into a profile the <em>industry</em> can
-        find.
+        Let&apos;s build a profile the <em>industry</em> can find.
       </h1>
       <p className="ob-sub">
-        Ember — our matching AI — needs a little bit more than &quot;ten years
-        controls.&quot; She&apos;ll read your resume, confirm a few things, and
-        hand you back real matches in under five minutes.
+        A few quick steps to surface your work, certifications, and what
+        you&rsquo;re looking for &mdash; so we can match you to roles that
+        actually fit.
       </p>
 
       <div className="ob-welcome-grid">
         <WelcomeCard
           n="01"
           title="Upload your resume"
-          body="PDF or DOCX. Ember reads it and extracts your roles, skills, and tickets."
+          body="PDF or DOCX. Stored securely on your profile so employers can see your full story."
         />
         <WelcomeCard
           n="02"
-          title="Confirm the facts"
-          body="Review what she found. Fix anything she misread, add nuance, and flag the work you're proudest of."
+          title="Add your work history"
+          body="Roles, sites, sectors, and the projects you're proudest of."
           featured
         />
         <WelcomeCard
@@ -541,7 +645,7 @@ function Welcome({ firstName }: { firstName: string }) {
             Time needed
           </div>
           <div className="ob-welcome-time-val">
-            About <em>4 minutes</em>
+            About <em>5 minutes</em>
           </div>
         </div>
         <div
@@ -648,15 +752,15 @@ function ResumeStep({
     <>
       <div className="ob-eyebrow-row">
         <Eyebrow>Resume</Eyebrow>
-        <span className="ob-pagenum">02 / 05</span>
+        <span className="ob-pagenum">02 / 06</span>
       </div>
       <h1 className="ob-hdg">
         Upload the <em>one document</em> that does most of the work.
       </h1>
       <p className="ob-sub">
-        Drop your most recent resume. Ember will extract your work history,
-        skills, and certifications — you&apos;ll confirm everything on the next
-        step.
+        Drop your most recent resume. We&rsquo;ll save it to your profile so
+        employers can see your full story &mdash; then you&rsquo;ll add your
+        work history and certifications on the next steps.
       </p>
 
       <div
@@ -748,15 +852,15 @@ function ResumeStep({
           {!uploading && (
             <div className="ob-parse">
               <div className="ob-parse-ico">
-                <Icon name="sparkles" size={22} strokeWidth={2.5} />
+                <Icon name="check" size={22} strokeWidth={2.5} />
               </div>
               <div>
                 <div className="ob-parse-title">
-                  Ember will read your resume next.{" "}
-                  <em>We&apos;ll extract roles, skills, and certifications.</em>
+                  Resume saved.{" "}
+                  <em>Add your work history and certifications next.</em>
                 </div>
                 <div className="ob-parse-sub">
-                  Upload complete · review on next step
+                  Upload complete · continue to step 3
                 </div>
               </div>
             </div>
@@ -823,7 +927,7 @@ function ReviewStep({
     <>
       <div className="ob-eyebrow-row">
         <Eyebrow>Review &amp; confirm</Eyebrow>
-        <span className="ob-pagenum">03 / 05</span>
+        <span className="ob-pagenum">03 / 06</span>
       </div>
       <h1 className="ob-hdg">
         Does this look <em>right</em>?
@@ -1063,7 +1167,7 @@ function CertsStep({
     <>
       <div className="ob-eyebrow-row">
         <Eyebrow>Certifications &amp; tickets</Eyebrow>
-        <span className="ob-pagenum">04 / 05</span>
+        <span className="ob-pagenum">04 / 06</span>
       </div>
       <h1 className="ob-hdg">
         Your <em>tickets</em> open doors.
@@ -1199,6 +1303,107 @@ function expiryState(expiresAt: Date | null): "warn" | "fresh" | "none" {
   return "fresh";
 }
 
+/* ---------- step: education ---------- */
+
+type EducationRow = {
+  id: string;
+  school: string;
+  degree: string | null;
+  startedYear: string | null;
+  endedYear: string | null;
+  details: string | null;
+};
+
+function EducationStep({
+  rows,
+  reload,
+  onAddEducation,
+  onEditEducation,
+}: {
+  rows: EducationRow[];
+  reload: () => void;
+  onAddEducation: () => void;
+  onEditEducation: (row: EducationDialogInitial) => void;
+}) {
+  const remove = api.profile.removeEducation.useMutation({
+    onSuccess: () => reload(),
+  });
+
+  return (
+    <>
+      <div className="ob-eyebrow-row">
+        <Eyebrow>Education</Eyebrow>
+        <span className="ob-pagenum">05 / 06</span>
+      </div>
+      <h1 className="ob-hdg">
+        Where did you <em>study</em>?
+      </h1>
+      <p className="ob-sub">
+        Trade schools, universities, apprenticeships &mdash; whatever shaped
+        the work you do today. Optional, but employers in regulated sectors
+        weigh degree and accreditation heavily.
+      </p>
+
+      <div className="ob-section" style={{ marginTop: 32 }}>
+        <div className="ob-section-head">
+          <div className="ob-section-title">
+            On file <em>· {rows.length}</em>
+          </div>
+          <button className="ob-add-btn" onClick={onAddEducation}>
+            <Icon name="plus" size={14} /> Add education
+          </button>
+        </div>
+        {rows.length === 0 && (
+          <p style={{ color: "var(--v2-ink-500)", fontSize: 14 }}>
+            No education added yet.
+          </p>
+        )}
+        {rows.map((e) => (
+          <div key={e.id} className="ob-cert">
+            <div className="ob-cert-ico">
+              <Icon name="graduationCap" size={20} />
+            </div>
+            <div>
+              <div className="ob-cert-name">{e.school}</div>
+              <div className="ob-cert-meta">
+                {e.degree ?? "Degree TBD"}
+                {(e.startedYear || e.endedYear) &&
+                  ` · ${e.startedYear ?? "—"} – ${e.endedYear ?? "Present"}`}
+              </div>
+            </div>
+            <div />
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                className="ob-icon-btn"
+                onClick={() =>
+                  onEditEducation({
+                    id: e.id,
+                    school: e.school,
+                    degree: e.degree,
+                    startedYear: e.startedYear,
+                    endedYear: e.endedYear,
+                    details: e.details,
+                  })
+                }
+                title="Edit"
+              >
+                <Icon name="settings" size={14} />
+              </button>
+              <button
+                className="ob-icon-btn danger"
+                onClick={() => remove.mutate({ id: e.id })}
+                title="Remove"
+              >
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 /* ---------- step: preferences (UI-only for now) ---------- */
 
 function PreferencesStep({
@@ -1216,7 +1421,7 @@ function PreferencesStep({
     <>
       <div className="ob-eyebrow-row">
         <Eyebrow>Preferences</Eyebrow>
-        <span className="ob-pagenum">05 / 05</span>
+        <span className="ob-pagenum">06 / 06</span>
       </div>
       <h1 className="ob-hdg">
         What does a <em>good role</em> look like?
@@ -1384,10 +1589,12 @@ function ToggleRow({
 /* ---------- finish ---------- */
 
 function Finish({
-  onEnter,
+  onGoToMatches,
+  onReviewProfile,
   counts,
 }: {
-  onEnter: () => void;
+  onGoToMatches: () => void;
+  onReviewProfile: () => void;
   counts: { roles: number; skills: number; certs: number };
 }) {
   return (
@@ -1399,8 +1606,8 @@ function Finish({
         You&apos;re <em>energized</em>.
       </h1>
       <p>
-        Your profile is live. Ember is already looking — you should see your
-        first matches in a few minutes.
+        Your profile is live. We&rsquo;ll surface roles matched to your
+        sectors, certifications, and experience as employers post them.
       </p>
 
       <div className="ob-finish-stats">
@@ -1418,10 +1625,16 @@ function Finish({
           flexWrap: "wrap",
         }}
       >
-        <button className="v2-btn v2-btn-primary v2-btn-lg" onClick={onEnter}>
+        <button
+          className="v2-btn v2-btn-primary v2-btn-lg"
+          onClick={onGoToMatches}
+        >
           Go to my matches <Icon name="arrowRight" size={16} />
         </button>
-        <button className="v2-btn v2-btn-ghost v2-btn-lg" onClick={onEnter}>
+        <button
+          className="v2-btn v2-btn-ghost v2-btn-lg"
+          onClick={onReviewProfile}
+        >
           Review my profile
         </button>
       </div>

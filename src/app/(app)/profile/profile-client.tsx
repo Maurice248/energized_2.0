@@ -282,13 +282,13 @@ export function ProfileClient({
               Redo <em>onboarding</em>?
             </h4>
             <p>
-              Profile feels stale? Walk through the 5-step wizard again —
+              Profile feels stale? Walk through the 6-step wizard again —
               anything you&apos;ve already filled will be pre-filled.
             </p>
             <button
               className="v2-btn v2-btn-accent v2-btn-sm"
               style={{ marginTop: 16 }}
-              onClick={() => router.push("/onboarding")}
+              onClick={() => router.push("/onboarding?retake=1")}
             >
               Restart wizard <Icon name="arrowRight" size={14} />
             </button>
@@ -302,8 +302,8 @@ export function ProfileClient({
                 Your <em>profile</em>.
               </h1>
               <div className="pp-page-sub">
-                Everything employers see — and the bits only Ember uses to
-                match.
+                Everything employers see — and the signals we use to match
+                you to roles.
               </div>
             </div>
             <div

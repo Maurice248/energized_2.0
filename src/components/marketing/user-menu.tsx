@@ -86,7 +86,7 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
         <DropdownMenuItem asChild>
           <Link href={dashboardHref}>Dashboard</Link>
         </DropdownMenuItem>
-        {isEmployer && (
+        {isEmployer ? (
           <>
             <DropdownMenuItem asChild>
               <Link href="/candidates">Find candidates</Link>
@@ -94,14 +94,26 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
             <DropdownMenuItem asChild>
               <Link href="/shortlist">Shortlist</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/saved-searches">Saved searches</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/account">Account</Link>
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/applications">Applications</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/saved">Saved roles</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/saved-searches">Saved searches</Link>
+            </DropdownMenuItem>
           </>
         )}
-        <DropdownMenuItem asChild>
-          <Link href="/saved-searches">Saved searches</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/account">Account</Link>
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void handleSignOut()}>
           Sign out

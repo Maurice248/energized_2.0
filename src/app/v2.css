@@ -1833,10 +1833,28 @@
 .pp-side {
   position: sticky;
   top: 100px;
+  /* Cap the sticky height so a tall sidebar (identity card + 8 nav items +
+     restart CTA) doesn't extend past the viewport. Without this, the bottom
+     of the sidebar only becomes visible once the page approaches its end. */
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  /* Hide the scrollbar — content still scrolls when the cursor is over the
+     sidebar. The page scrolls when the cursor is anywhere else. */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge / IE */
   display: grid;
   gap: 16px;
 }
-@media (max-width: 960px) { .pp-side { position: static; } }
+.pp-side::-webkit-scrollbar {
+  display: none; /* WebKit (Chrome, Safari) */
+}
+@media (max-width: 960px) {
+  .pp-side {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
 
 .pp-identity {
   background: white;

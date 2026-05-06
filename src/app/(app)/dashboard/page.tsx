@@ -561,7 +561,7 @@ function FocusCard({
       <div className="v2-focus-headline">
         {recommendedCount > 0
           ? "Apply to your top match this week."
-          : "Build your profile so Ember can match you."}
+          : "Pick sectors and add a role to unlock matches."}
       </div>
       <div className="v2-focus-actions">
         <Link

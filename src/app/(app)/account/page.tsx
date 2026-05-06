@@ -13,6 +13,12 @@ export default async function AccountPage() {
 
   const isEmployer = session.user.role === "employer";
 
+  // Jobseekers manage account credentials inside /profile's Account & privacy
+  // section, so /account would just duplicate the same form. Send them there.
+  // Employers keep /account because their /employer/profile is the company
+  // page, not personal account credentials.
+  if (!isEmployer) redirect("/profile#pp-account");
+
   return (
     <>
       <SiteHeader />
