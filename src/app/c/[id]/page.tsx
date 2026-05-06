@@ -7,9 +7,10 @@ import { employerOrgs, jobListings } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { recordEmployerOrgView } from "@/server/services/profile-views";
 import { Icon } from "@/components/shared/icon";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import { SiteHeader } from "@/components/marketing/site-header";
 import {
-  SECTOR_LABELS as JOB_SECTOR_LABELS,
+  SECTOR_LABELS,
   WORK_SETUP_LABELS,
   formatSalary,
   type JobSector,
@@ -68,16 +69,6 @@ const COMPANY_SIZE_LABELS: Record<string, string> = {
   "250_500": "250–500",
   "500_1000": "500–1000",
   "1000_plus": "1000+",
-};
-
-const SECTOR_LABELS: Record<string, string> = {
-  oil_gas: "Oil & Gas",
-  renewables: "Renewable Energy",
-  nuclear: "Nuclear",
-  utilities: "Power Utilities",
-  hydrogen: "Hydrogen",
-  power: "Power",
-  other: "Other",
 };
 
 export default async function PublicCompanyPage({
@@ -157,6 +148,39 @@ export default async function PublicCompanyPage({
           gap: 24,
         }}
       >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: -8,
+            flexWrap: "wrap",
+          }}
+        >
+          <Link
+            href="/jobs"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              color: "var(--v2-ink-500)",
+              fontFamily: "var(--v2-font-mono)",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            <Icon
+              name="arrowUpRight"
+              size={12}
+              style={{ transform: "rotate(180deg)" }}
+            />{" "}
+            Back to jobs
+          </Link>
+          <CopyLinkButton variant="button" ariaLabel="Copy company URL" />
+        </div>
+
         {/* Banner */}
         <div
           style={{
@@ -285,7 +309,7 @@ export default async function PublicCompanyPage({
               {org.primarySector && (
                 <span>
                   <Icon name="building" size={14} />{" "}
-                  {SECTOR_LABELS[org.primarySector]}
+                  {SECTOR_LABELS[org.primarySector as JobSector]}
                 </span>
               )}
               {org.founded && (
@@ -437,7 +461,7 @@ export default async function PublicCompanyPage({
                       </div>
                       {j.sector && (
                         <span className="v2-chip v2-chip-accent">
-                          {JOB_SECTOR_LABELS[j.sector as JobSector]}
+                          {SECTOR_LABELS[j.sector as JobSector]}
                         </span>
                       )}
                     </div>

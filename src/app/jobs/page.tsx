@@ -17,6 +17,7 @@ import {
 } from "@/lib/jobs-options";
 import { JobsSearchInput } from "./search-input";
 import { SalarySlider } from "./salary-slider";
+import { CopyLinkButton, LiveTime } from "./jobs-client-bits";
 import { SavedSearchesPanel } from "@/components/jobs/saved-searches-panel";
 
 const PAGE_SIZE = 12;
@@ -311,7 +312,8 @@ export default async function JobsBrowsePage({
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // Server component: reading the wall clock per request is the point.
   // eslint-disable-next-line react-hooks/purity
-  const freshCutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const renderedAt = Date.now();
+  const freshCutoff = renderedAt - 24 * 60 * 60 * 1000;
 
   return (
     <div
@@ -326,7 +328,8 @@ export default async function JobsBrowsePage({
       >
         <div style={{ marginBottom: 32 }}>
           <div className="v2-eyebrow">
-            {total} open {total === 1 ? "role" : "roles"} · updated just now
+            {total} open {total === 1 ? "role" : "roles"} · updated{" "}
+            <LiveTime since={renderedAt} />
           </div>
           <h1
             className="v2-h2"
@@ -511,7 +514,8 @@ export default async function JobsBrowsePage({
                   {total === 1 ? "result" : "results"}
                 </em>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <CopyLinkButton />
                 <span
                   style={{
                     fontFamily: "var(--v2-font-mono)",
@@ -519,6 +523,7 @@ export default async function JobsBrowsePage({
                     color: "var(--v2-ink-500)",
                     letterSpacing: "0.08em",
                     textTransform: "uppercase",
+                    marginLeft: 8,
                   }}
                 >
                   Sort

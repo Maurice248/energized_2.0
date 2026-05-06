@@ -14,6 +14,7 @@ import {
   type ApplyViewerState,
 } from "./apply-modal";
 import { SaveButton, type SaveViewer } from "./save-button";
+import { CopyLinkButton } from "../jobs-client-bits";
 // Ember match scoring is deferred — see commented JSX in the sidebar below.
 // import { EmberCard } from "./ember-card";
 
@@ -292,6 +293,7 @@ export function JobDetailClient({
               signInHref={signInHref}
             />
             <SaveButton jobId={job.id} viewer={saveViewer} />
+            <CopyLinkButton variant="button" ariaLabel="Copy role URL" />
           </div>
         </div>
 

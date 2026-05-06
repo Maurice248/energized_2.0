@@ -38,11 +38,61 @@ export function SavedSearchesPanel({ surface }: { surface: Surface }) {
     },
   });
 
-  // Hide panel for anonymous users (list errors with UNAUTHORIZED)
-  if (list.error) return null;
-
   const currentQs = searchParams.toString();
   const hasFilters = currentQs.length > 0;
+
+  // Anonymous users (list errors with UNAUTHORIZED): show a sign-in teaser
+  // when they have filters applied, otherwise hide entirely.
+  if (list.error) {
+    if (!hasFilters) return null;
+    const target = currentQs
+      ? `${PATHS[surface]}?${currentQs}`
+      : PATHS[surface];
+    const signInHref = `/sign-in?redirect=${encodeURIComponent(target)}`;
+    return (
+      <div
+        style={{
+          marginTop: 16,
+          padding: 14,
+          background: "var(--v2-ink-50)",
+          border: "1px solid var(--v2-ink-200)",
+          borderRadius: 14,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--v2-ink-500)",
+            marginBottom: 8,
+          }}
+        >
+          Save this search
+        </div>
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--v2-ink-700)",
+            lineHeight: 1.45,
+            marginBottom: 10,
+          }}
+        >
+          Sign in to save these filters and get notified when matching roles
+          go live.
+        </p>
+        <Link
+          href={signInHref}
+          className="v2-btn v2-btn-primary v2-btn-sm"
+          style={{ width: "100%" }}
+        >
+          Sign in to save
+        </Link>
+      </div>
+    );
+  }
+
   const items = list.data ?? [];
 
   if (!hasFilters && items.length === 0) return null;

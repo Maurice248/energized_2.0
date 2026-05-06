@@ -286,7 +286,7 @@ export function PublicProfileClient({
             <div className="pub-cta-stack">
               <Link
                 className="pub-cta-primary"
-                href="/sign-in"
+                href={`/sign-in?redirect=${encodeURIComponent(`/p/${candidateUserId}`)}`}
                 style={{ textDecoration: "none", display: "flex", gap: 8, alignItems: "center", justifyContent: "center" }}
               >
                 <Icon name="lock" size={14} /> Sign in to see more
@@ -513,7 +513,7 @@ export function PublicProfileClient({
       {/* footer */}
       <div className="pub-foot">
         <div>
-          Last updated <em>{formatDate(user.memberSince)}</em> · Powered by
+          Member since <em>{formatDate(user.memberSince)}</em> · Powered by
           Energized
         </div>
         <div>Profile id · {profile.id.slice(0, 12)}</div>
@@ -531,7 +531,7 @@ export function PublicProfileClient({
             />
           ) : (
             <Link
-              href="/sign-in"
+              href={`/sign-in?redirect=${encodeURIComponent(`/p/${candidateUserId}`)}`}
               className="pub-cta-primary"
               style={{
                 flex: 1,
