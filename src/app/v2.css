@@ -4507,6 +4507,7 @@
   line-height: 1.5;
 }
 .v2-jsk-story-q strong { color: var(--v2-ink-950); font-weight: 900; }
+.v2-jsk-sec.dark .v2-jsk-story-q strong { color: #fff; }
 .v2-jsk-story-attr {
   margin-top: 10px;
   font-size: 12px;
