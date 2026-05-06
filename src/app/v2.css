@@ -3931,7 +3931,7 @@
   letter-spacing: -0.025em;
 }
 .v2 .v2-emp-cta-h em { font-style: italic; color: var(--v2-accent); font-weight: 900; }
-.v2 .v2-emp-cta-sub { margin-top: 24px; font-size: 18px; color: var(--v2-ink-200); max-width: 580px; margin-left: auto; margin-right: auto; }
+.v2 .v2-emp-cta-sub { margin-top: 24px; font-size: 18px; color: var(--v2-ink-200); max-width: 580px; margin-left: auto; margin-right: auto; text-align: center; }
 .v2-emp-cta-actions { margin-top: 36px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
 /* small chart shapes */
@@ -4819,13 +4819,14 @@
   color: var(--v2-ink-950);
 }
 .v2-jsk-cta-h em { font-style: italic; font-weight: 900; }
-.v2-jsk-cta-sub {
+.v2 .v2-jsk-cta-sub {
   margin-top: 24px;
   font-size: 18px;
   color: var(--v2-ink-800);
   max-width: 580px;
   margin-left: auto;
   margin-right: auto;
+  text-align: center;
 }
 .v2-jsk-cta-actions {
   margin-top: 36px;

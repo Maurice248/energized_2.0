@@ -1,12 +1,21 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { db } from "@/server/db";
+import {
+  certifications,
+  employerOrgs,
+  jobListings,
+  user,
+} from "@/server/db/schema";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
+import { SECTOR_LABELS, type JobSector } from "@/lib/jobs-options";
 
 export const metadata: Metadata = {
   title: "For job seekers — Canadian energy careers",
   description:
-    "Specialized matching for Canadian energy professionals — controls, instrumentation, wind, solar, nuclear, hydrogen. Free forever. Stealth mode by default.",
+    "Specialized matching for Canadian energy professionals — oil & gas, renewables, nuclear, utilities, hydrogen, power. Free forever for job seekers.",
   alternates: { canonical: "/for-seekers" },
 };
 
@@ -17,118 +26,6 @@ type Benefit = {
   stat: string;
   lab: string;
 };
-
-const BENEFITS: Benefit[] = [
-  {
-    n: "01",
-    h: (
-      <>
-        AI matching that <em>reads</em> your work, not your keywords.
-      </>
-    ),
-    d: (
-      <>
-        Our match engine reads project depth, certification depth, and the
-        systems you actually ran.{" "}
-        <strong>
-          A controls engineer who&rsquo;s touched Honeywell DCS surfaces for
-          the right roles
-        </strong>{" "}
-        &mdash; not drowned by keyword filters.
-      </>
-    ),
-    stat: "94%",
-    lab: "Match accuracy on placements",
-  },
-  {
-    n: "02",
-    h: (
-      <>
-        Salary <em>transparency</em>, by default.
-      </>
-    ),
-    d: (
-      <>
-        Every role posts a band &mdash; non-negotiable. We pull comp data from{" "}
-        <strong>22,000 verified placements</strong> across Canadian energy so
-        you negotiate from a real floor, not a recruiter&rsquo;s guess.
-      </>
-    ),
-    stat: "C$2.1B",
-    lab: "Salaries placed via Energized",
-  },
-  {
-    n: "03",
-    h: (
-      <>
-        Skills <em>badges</em> that recruiters actually weigh.
-      </>
-    ),
-    d: (
-      <>
-        PLC, SCADA, GWO, P.Eng track &mdash; verifiable assessments graded by
-        working senior engineers.{" "}
-        <strong>Verified candidates get 3.4&times; more recruiter messages.</strong>
-      </>
-    ),
-    stat: "3.4×",
-    lab: "More recruiter inbound",
-  },
-  {
-    n: "04",
-    h: (
-      <>
-        Apply once, track <em>everything</em>.
-      </>
-    ),
-    d: (
-      <>
-        One profile. Saved searches, application timeline, message history,
-        recruiter ratings &mdash; all in one place that{" "}
-        <strong>belongs to you</strong>, exportable any time, deletable on
-        request.
-      </>
-    ),
-    stat: "47k",
-    lab: "Active members across Canada",
-  },
-  {
-    n: "05",
-    h: (
-      <>
-        Career <em>coaching</em>, not interview prep theater.
-      </>
-    ),
-    d: (
-      <>
-        Pro members get a quarterly mock interview with a working senior in
-        your sector. Career members get a dedicated coach who&rsquo;s placed
-        P.Engs across Alberta and Ontario.{" "}
-        <strong>Real people. Real placements.</strong>
-      </>
-    ),
-    stat: "92%",
-    lab: "Interview-to-offer (coached)",
-  },
-  {
-    n: "06",
-    h: (
-      <>
-        Stealth mode for the <em>currently employed</em>.
-      </>
-    ),
-    d: (
-      <>
-        Browse and message in <strong>Stealth</strong> &mdash; your current
-        employer&rsquo;s email domain is automatically excluded from every
-        search where you appear. No pings, no awkward &ldquo;saw you on a job
-        site&rdquo; calls.
-      </>
-    ),
-    stat: "78%",
-    lab: "Members are passively employed",
-  },
-];
 
 type CareerPath = {
   eye: string;
@@ -191,65 +88,67 @@ const PATHS: CareerPath[] = [
   },
 ];
 
-type Skill = {
+type RealCert = {
   nm: string;
   meta: string;
   mk: string;
   c: string;
-  badge: "verified" | "available" | "coming";
-  label: string;
 };
 
-const SKILLS: Skill[] = [
+const REAL_CERTS: RealCert[] = [
   {
-    nm: "Honeywell Experion DCS",
-    meta: "Verified · 47 questions · 90 min",
-    mk: "HX",
+    nm: "H2S Alive",
+    meta: "Petroleum-industry hydrogen sulfide safety",
+    mk: "H2",
     c: "var(--v2-coral)",
-    badge: "verified",
-    label: "Earn badge",
   },
   {
-    nm: "Allen-Bradley PLC / RSLogix 5000",
-    meta: "Verified · 38 questions · 75 min",
-    mk: "AB",
-    c: "#E66020",
-    badge: "verified",
-    label: "Earn badge",
+    nm: "First Aid · CPR-C",
+    meta: "Standard first aid + CPR-C",
+    mk: "FA",
+    c: "#EF4444",
   },
   {
-    nm: "GWO Basic Safety Training",
-    meta: "Pre-credential prep · field-tested",
-    mk: "GW",
+    nm: "CSTS",
+    meta: "Construction Safety Training System",
+    mk: "CS",
     c: "var(--v2-accent)",
-    badge: "verified",
-    label: "Earn badge",
   },
   {
-    nm: "P.Eng track — Power Systems",
-    meta: "Self-paced · APEGA aligned · 6 weeks",
+    nm: "Red Seal",
+    meta: "Inter-provincial trade qualification",
+    mk: "RS",
+    c: "#E66020",
+  },
+  {
+    nm: "P.Eng",
+    meta: "Provincial professional engineer license",
     mk: "PE",
     c: "var(--v2-ink-950)",
-    badge: "available",
-    label: "Available",
   },
   {
-    nm: "Yokogawa CENTUM VP",
-    meta: "Verified · 32 questions · 60 min",
-    mk: "YO",
+    nm: "NACE",
+    meta: "Corrosion engineering certification",
+    mk: "NA",
     c: "var(--v2-lilac)",
-    badge: "verified",
-    label: "Earn badge",
   },
   {
-    nm: "Geothermal Drilling Ops",
-    meta: "In development · Q3 2026",
-    mk: "GD",
+    nm: "Fall Protection",
+    meta: "Working-at-heights certification",
+    mk: "FP",
     c: "#F59E0B",
-    badge: "coming",
-    label: "Coming soon",
   },
 ];
+
+const SECTOR_THEMES: Record<JobSector, { mk: string; c: string }> = {
+  oil_gas: { mk: "OG", c: "var(--v2-ink-950)" },
+  renewables: { mk: "RN", c: "var(--v2-accent)" },
+  nuclear: { mk: "NU", c: "var(--v2-lilac)" },
+  utilities: { mk: "UT", c: "var(--v2-sky)" },
+  hydrogen: { mk: "HY", c: "var(--v2-accent-deep)" },
+  power: { mk: "PW", c: "var(--v2-coral)" },
+  other: { mk: "—", c: "#666" },
+};
 
 type Story = {
   nm: string;
@@ -328,7 +227,7 @@ const PLANS: Plan[] = [
       "Basic AI match (top 5 / week)",
       "Saved searches & alerts",
       "Public profile + resume hosting",
-      "Stealth mode",
+      "Certifications + work history",
       { text: "Skills assessments", muted: true },
       { text: "Direct recruiter messaging", muted: true },
       { text: "Mock interviews", muted: true },
@@ -374,25 +273,19 @@ const PLANS: Plan[] = [
   },
 ];
 
-const SECTORS = [
-  { mk: "OG", c: "var(--v2-ink-950)", h: "Oil & Gas", count: "742" },
-  { mk: "WD", c: "var(--v2-sky)", h: "Wind", count: "328" },
-  { mk: "SO", c: "#EF4444", h: "Solar", count: "264" },
-  { mk: "GR", c: "var(--v2-accent)", h: "Grid & Utilities", count: "491" },
-  { mk: "GT", c: "#F59E0B", h: "Geothermal", count: "112" },
-  { mk: "NU", c: "var(--v2-lilac)", h: "Nuclear", count: "186" },
-  { mk: "HY", c: "var(--v2-accent-deep)", h: "Hydrogen", count: "94" },
-  { mk: "BS", c: "var(--v2-coral)", h: "Battery & Storage", count: "203" },
+const SECTOR_ORDER: JobSector[] = [
+  "oil_gas",
+  "renewables",
+  "nuclear",
+  "utilities",
+  "hydrogen",
+  "power",
 ];
 
 const FAQ = [
   {
     q: "Is Energized free for job seekers?",
-    a: "Yes — applying to jobs, AI matching, saved searches, and your public profile are free forever. Pro (C$15/mo billed yearly) and Career (C$39/mo) add unlimited matching, recruiter messaging, and coaching.",
-  },
-  {
-    q: "Will my current employer find out I'm browsing?",
-    a: "Not unless you tell them. Stealth mode automatically excludes your current employer's email domain from every search where you appear, and your profile is invisible to them by default.",
+    a: "Yes — applying to jobs, AI matching, saved searches, and your public profile are free forever. Pro and Career plans add optional features like priority matching and coach support.",
   },
   {
     q: "Do you have roles outside Alberta?",
@@ -400,11 +293,11 @@ const FAQ = [
   },
   {
     q: "What if I'm transitioning from oil/gas to renewables?",
-    a: "That's our most common path — about 38% of placements last quarter. Career coaches specialize in re-framing your project history for renewables hiring managers, and our skills library covers both stacks.",
+    a: "Cross-sector transitions are exactly what our match engine is built for. We treat your project history as a portfolio across the full energy stack rather than narrowing you to a single column.",
   },
   {
-    q: "How does Stealth mode work exactly?",
-    a: "Toggle it on, add your current employer's domain, and you become invisible to anyone with that email. Your profile still ranks in matches — recruiters from other companies just see 'Confidential candidate' until you choose to reveal yourself.",
+    q: "How does the AI matching work?",
+    a: "Your profile — projects, certifications, the systems you actually ran — is scored against each live role for contextual fit. We show you the top matches with a plain-English rationale so you can see why a role surfaced.",
   },
   {
     q: "Can I cancel Pro or Career any time?",
@@ -412,20 +305,148 @@ const FAQ = [
   },
 ];
 
-export default function ForSeekersPage() {
+export default async function ForSeekersPage() {
+  const [
+    [{ n: liveRoles } = { n: 0 }],
+    [{ n: candidateCount } = { n: 0 }],
+    [{ n: employerCount } = { n: 0 }],
+    [{ n: certCount } = { n: 0 }],
+    [{ n: salaryDisclosed } = { n: 0 }],
+    sectorRows,
+  ] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(jobListings)
+      .where(eq(jobListings.status, "published")),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(user)
+      .where(eq(user.role, "jobseeker")),
+    db.select({ n: sql<number>`count(*)::int` }).from(employerOrgs),
+    db.select({ n: sql<number>`count(*)::int` }).from(certifications),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(jobListings)
+      .where(
+        and(
+          eq(jobListings.status, "published"),
+          isNotNull(jobListings.salaryMin),
+        ),
+      ),
+    db
+      .select({
+        sector: jobListings.sector,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(jobListings)
+      .where(eq(jobListings.status, "published"))
+      .groupBy(jobListings.sector),
+  ]);
+
+  const salaryPct =
+    liveRoles > 0 ? Math.round((salaryDisclosed / liveRoles) * 100) : 0;
+
+  const sectorCountMap = new Map<JobSector, number>();
+  for (const row of sectorRows) {
+    sectorCountMap.set(row.sector as JobSector, row.n);
+  }
+  const sectorList = SECTOR_ORDER.map((s) => ({
+    enum: s,
+    label: SECTOR_LABELS[s],
+    count: sectorCountMap.get(s) ?? 0,
+    theme: SECTOR_THEMES[s],
+  }));
+
+  const benefits: Benefit[] = [
+    {
+      n: "01",
+      h: (
+        <>
+          AI matching that <em>reads</em> your work, not your keywords.
+        </>
+      ),
+      d: (
+        <>
+          Our match engine reads project depth, certification depth, and the
+          systems you actually ran.{" "}
+          <strong>
+            A controls engineer who&rsquo;s touched Honeywell DCS surfaces for
+            the right roles
+          </strong>{" "}
+          &mdash; not drowned by keyword filters.
+        </>
+      ),
+      stat: liveRoles.toString(),
+      lab: "Live energy roles",
+    },
+    {
+      n: "02",
+      h: (
+        <>
+          Salary <em>transparency</em>, by default.
+        </>
+      ),
+      d: (
+        <>
+          We surface compensation up front so you negotiate from a real floor,
+          not a recruiter&rsquo;s guess. Bands are first-class on every published
+          posting.
+        </>
+      ),
+      stat: `${salaryPct}%`,
+      lab: "Live roles with a posted salary band",
+    },
+    {
+      n: "03",
+      h: (
+        <>
+          Certifications that <em>surface</em>.
+        </>
+      ),
+      d: (
+        <>
+          H2S Alive, First Aid, CSTS, Red Seal, P.Eng, NACE, Fall Protection
+          &mdash; the credentials that actually decide a hire are{" "}
+          <strong>first-class</strong> on your profile, with expiry dates and
+          credential IDs.
+        </>
+      ),
+      stat: certCount.toString(),
+      lab: "Certifications added by members",
+    },
+    {
+      n: "04",
+      h: (
+        <>
+          Apply once, track <em>everything</em>.
+        </>
+      ),
+      d: (
+        <>
+          One profile. Saved searches, application timeline, intro requests
+          from employers &mdash; all in one place that{" "}
+          <strong>belongs to you</strong>, exportable any time, deletable on
+          request.
+        </>
+      ),
+      stat: candidateCount.toString(),
+      lab: "Energy professionals on the network",
+    },
+  ];
+
   return (
     <>
       <SiteHeader active="seekers" />
       <main className="v2-jsk" style={{ flex: 1 }}>
         <Hero />
-        <Benefits />
+        <Benefits benefits={benefits} />
         <CareerPaths />
-        <Skills />
+        <Certifications certCount={certCount} />
         <Testimonial />
-        <Sectors />
+        <Sectors sectorList={sectorList} employerCount={employerCount} />
         <Pricing />
         <Faq />
-        <ClosingCta />
+        <ClosingCta liveRoles={liveRoles} />
       </main>
     </>
   );
@@ -484,7 +505,7 @@ function Hero() {
             >
               <span>· No card required</span>
               <span>· Free forever</span>
-              <span>· Stealth mode default</span>
+              <span>· Sector-specific matching</span>
             </div>
           </div>
 
@@ -498,7 +519,7 @@ function Hero() {
 function HeroMatchCard() {
   return (
     <div className="v2-jsk-mcard" aria-label="Sample top match preview">
-      <div className="v2-jsk-mcard-eye">YOUR TOP MATCH · TODAY</div>
+      <div className="v2-jsk-mcard-eye">EXAMPLE MATCH · ILLUSTRATIVE</div>
       <div className="v2-jsk-mcard-h">
         Lead Automation <em>Engineer</em>
       </div>
@@ -540,7 +561,7 @@ function HeroMatchCard() {
 
 /* ---------- benefits ---------- */
 
-function Benefits() {
+function Benefits({ benefits }: { benefits: Benefit[] }) {
   return (
     <section className="v2-jsk-sec">
       <div className="v2-container">
@@ -548,18 +569,18 @@ function Benefits() {
           <div>
             <div className="v2-eyebrow">What you get</div>
             <h2 className="v2-jsk-sec-h" style={{ marginTop: 16 }}>
-              Six things every job board <em>should</em> do &mdash; and ours
+              Four things every job board <em>should</em> do &mdash; and ours
               actually does.
             </h2>
           </div>
           <p className="v2-jsk-sec-lede">
-            Built by people who&rsquo;ve worked Canadian energy hiring from
-            both sides. No keyword spam, no salary mystery, no recruiter games.
+            Built for Canadian energy hiring. No keyword spam, no salary
+            mystery, no recruiter games.
           </p>
         </div>
 
         <div className="v2-jsk-ben">
-          {BENEFITS.map((b) => (
+          {benefits.map((b) => (
             <div key={b.n} className="v2-jsk-ben-row">
               <div className="v2-jsk-ben-num">/ {b.n}</div>
               <h3 className="v2-jsk-ben-h">{b.h}</h3>
@@ -588,14 +609,15 @@ function CareerPaths() {
       <div className="v2-container">
         <div className="v2-jsk-sec-head">
           <div>
-            <div className="v2-eyebrow">Real moves</div>
+            <div className="v2-eyebrow">Illustrative arcs</div>
             <h2 className="v2-jsk-sec-h" style={{ marginTop: 16 }}>
-              Career arcs that <em>shouldn&rsquo;t</em> work &mdash; but did.
+              Career arcs the match engine is built <em>for</em>.
             </h2>
           </div>
           <p className="v2-jsk-sec-lede">
-            Three placements from the last 90 days. Names changed, comp bands
-            real, timelines real.
+            Three illustrative moves &mdash; not real placements &mdash; that
+            represent the kinds of cross-sector and cross-province paths our
+            match engine is designed to enable.
           </p>
         </div>
 
@@ -605,7 +627,7 @@ function CareerPaths() {
               key={i}
               className={`v2-jsk-path ${p.dark ? "dark" : ""}`}
             >
-              <div className="v2-jsk-path-eye">{p.eye}</div>
+              <div className="v2-jsk-path-eye">{p.eye} · ILLUSTRATIVE</div>
               <h3 className="v2-jsk-path-h">{p.h}</h3>
               <div className="v2-jsk-path-arc">
                 <div className="v2-jsk-path-from">
@@ -640,15 +662,15 @@ function CareerPaths() {
 
 /* ---------- skills ---------- */
 
-function Skills() {
+function Certifications({ certCount }: { certCount: number }) {
   return (
     <section className="v2-jsk-sec">
       <div className="v2-container">
         <div className="v2-jsk-skills">
           <div>
-            <div className="v2-eyebrow">Verified skills</div>
+            <div className="v2-eyebrow">Certifications first</div>
             <h2 className="v2-jsk-sec-h" style={{ marginTop: 16 }}>
-              Earn a <em>badge</em> recruiters actually weigh.
+              The <em>tickets</em> that decide a hire &mdash; front and centre.
             </h2>
             <p
               style={{
@@ -659,10 +681,10 @@ function Skills() {
                 maxWidth: 480,
               }}
             >
-              Each Energized assessment is graded by working senior engineers
-              in your sector &mdash; not generic test banks. Pass it once and
-              the badge sits on your profile, visible to every recruiter you
-              allow.
+              On generalist boards, your H2S Alive sits buried in a PDF nobody
+              opens. On Energized, every certification surfaces with expiry,
+              issuer, and credential ID &mdash; exactly what an energy hiring
+              manager wants to see first.
             </p>
             <div
               style={{
@@ -688,7 +710,7 @@ function Skills() {
                       color: "var(--v2-accent-deep)",
                     }}
                   >
-                    3.4&times;
+                    {certCount}
                   </em>
                 </div>
                 <div
@@ -701,7 +723,7 @@ function Skills() {
                     color: "var(--v2-ink-500)",
                   }}
                 >
-                  Recruiter messages
+                  Certifications on file
                 </div>
               </div>
               <div>
@@ -720,7 +742,7 @@ function Skills() {
                       color: "var(--v2-accent-deep)",
                     }}
                   >
-                    22
+                    {REAL_CERTS.length}
                   </em>
                 </div>
                 <div
@@ -733,23 +755,22 @@ function Skills() {
                     color: "var(--v2-ink-500)",
                   }}
                 >
-                  Live assessments
+                  Recognized credentials
                 </div>
               </div>
             </div>
           </div>
 
           <div className="v2-jsk-skills-list">
-            {SKILLS.map((s) => (
-              <div key={s.nm} className="v2-jsk-skill">
-                <div className="ic" style={{ background: s.c }}>
-                  {s.mk}
+            {REAL_CERTS.map((c) => (
+              <div key={c.nm} className="v2-jsk-skill">
+                <div className="ic" style={{ background: c.c }}>
+                  {c.mk}
                 </div>
                 <div>
-                  <div className="nm">{s.nm}</div>
-                  <div className="meta">{s.meta}</div>
+                  <div className="nm">{c.nm}</div>
+                  <div className="meta">{c.meta}</div>
                 </div>
-                <span className={`badge ${s.badge}`}>{s.label}</span>
               </div>
             ))}
           </div>
@@ -868,7 +889,18 @@ function Testimonial() {
 
 /* ---------- sectors ---------- */
 
-function Sectors() {
+function Sectors({
+  sectorList,
+  employerCount,
+}: {
+  sectorList: {
+    enum: JobSector;
+    label: string;
+    count: number;
+    theme: { mk: string; c: string };
+  }[];
+  employerCount: number;
+}) {
   return (
     <section className="v2-jsk-sec sand">
       <div className="v2-container">
@@ -880,29 +912,31 @@ function Sectors() {
             </h2>
           </div>
           <p className="v2-jsk-sec-lede">
-            We staff oil sands and offshore wind in the same week. The
-            transition is messy &mdash; pretending otherwise helps nobody.
+            One workforce, six sectors, {employerCount}{" "}
+            {employerCount === 1 ? "employer" : "employers"} hiring on
+            Energized today.
           </p>
         </div>
 
         <div className="v2-jsk-sectors">
-          {SECTORS.map((s) => (
+          {sectorList.map((s) => (
             <Link
-              key={s.h}
-              href={`/jobs?sector=${encodeURIComponent(s.h)}`}
+              key={s.enum}
+              href={`/jobs?sector=${s.enum}`}
               className="v2-jsk-sector"
             >
               <div>
                 <div
                   className="v2-jsk-sector-mk"
-                  style={{ background: s.c }}
+                  style={{ background: s.theme.c }}
                 >
-                  {s.mk}
+                  {s.theme.mk}
                 </div>
-                <h3 className="v2-jsk-sector-h">{s.h}</h3>
+                <h3 className="v2-jsk-sector-h">{s.label}</h3>
               </div>
               <div className="v2-jsk-sector-count">
-                <em>{s.count}</em> open roles
+                <em>{s.count}</em>{" "}
+                {s.count === 1 ? "open role" : "open roles"}
                 <Icon name="arrowUpRight" size={12} />
               </div>
             </Link>
@@ -1022,7 +1056,7 @@ function Faq() {
 
 /* ---------- closing CTA ---------- */
 
-function ClosingCta() {
+function ClosingCta({ liveRoles }: { liveRoles: number }) {
   return (
     <section className="v2-jsk-cta">
       <div className="v2-container">
@@ -1033,8 +1067,7 @@ function ClosingCta() {
           Get <em>found</em>.
         </h2>
         <p className="v2-jsk-cta-sub">
-          Takes about six minutes. Free forever, deletable any time. Stealth
-          mode on by default.
+          Takes about six minutes. Free forever, deletable any time.
         </p>
         <div className="v2-jsk-cta-actions">
           <Link href="/sign-up" className="v2-btn v2-btn-lg">
@@ -1042,7 +1075,9 @@ function ClosingCta() {
             <Icon name="arrowRight" size={18} />
           </Link>
           <Link href="/jobs" className="v2-btn v2-btn-ghost v2-btn-lg">
-            Browse 2,400 jobs first
+            {liveRoles > 0
+              ? `Browse ${liveRoles} ${liveRoles === 1 ? "job" : "jobs"} first`
+              : "Browse jobs first"}
           </Link>
         </div>
       </div>

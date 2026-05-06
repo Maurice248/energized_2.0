@@ -11,6 +11,7 @@ import {
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
 import { PricingSection } from "./pricing-section";
+import { TeamGrid } from "./team-grid";
 
 export const metadata: Metadata = {
   title: "About",
@@ -51,7 +52,7 @@ const EMPLOYER_OFFERS = [
   {
     n: "02",
     t: "AI-assisted shortlists",
-    d: "Post a role and surface ranked candidates with rationale within the hour. Hire the ones you actually meet.",
+    d: "Post a role and surface ranked candidates with rationale within 48 hours. Hire the ones you actually meet.",
   },
   {
     n: "03",
@@ -62,77 +63,6 @@ const EMPLOYER_OFFERS = [
     n: "04",
     t: "Stripe billing, no surprises",
     d: "Monthly subscription, cancel any time. No per-hire bounty, no posting volume games — pay only for the cycle you use.",
-  },
-];
-
-// TODO: replace with real team members before public launch.
-// These names/bios come from the reference design (~/Desktop/Energized/v2-about.jsx)
-// and are placeholder content. Shipping fictional names + fictional bios on a
-// public site is a trust/legal risk — swap in real data first.
-const TEAM = [
-  {
-    name: "Hana Reyes",
-    role: "Co-founder & CEO",
-    initials: "HR",
-    color: "#1CAAE2",
-    tag: "Calgary",
-    bio: "12 years building hiring tech for resource industries. Former Head of Talent at PetroLink.",
-  },
-  {
-    name: "Marc-André Boucher",
-    role: "Co-founder & CTO",
-    initials: "MB",
-    color: "#0F2545",
-    tag: "Montréal",
-    bio: "Built the matching engines at three Series-B SaaS companies. Loves grids and graphs.",
-  },
-  {
-    name: "Aisha Olatunji",
-    role: "Head of Talent Network",
-    initials: "AO",
-    color: "#004984",
-    tag: "Toronto",
-    bio: "Spent a decade placing senior energy hires. Now hand-picks our recruiter partners.",
-  },
-  {
-    name: "Jules Tremblay",
-    role: "Head of Design",
-    initials: "JT",
-    color: "#FF7A59",
-    tag: "Halifax",
-    bio: "Editorial obsessive. Believes a job board is a publication first.",
-  },
-  {
-    name: "Karim Diallo",
-    role: "Head of Field Operations",
-    initials: "KD",
-    color: "#F59E0B",
-    tag: "Edmonton",
-    bio: "Former drilling supervisor. Keeps us honest about what techs actually need.",
-  },
-  {
-    name: "Priya Anand",
-    role: "Head of Employer Success",
-    initials: "PA",
-    color: "#B9A8FF",
-    tag: "Vancouver",
-    bio: "Onboarded 600+ employers. Hates a slow applicant pipeline more than anyone.",
-  },
-  {
-    name: "Lin Zhao",
-    role: "Head of Data Science",
-    initials: "LZ",
-    color: "#5B6CFF",
-    tag: "Toronto",
-    bio: "Built our match model. Publishes annual energy comp reports that everyone reads.",
-  },
-  {
-    name: "Daniel Okafor",
-    role: "Head of Policy & Trust",
-    initials: "DO",
-    color: "#1CAAE2",
-    tag: "Ottawa",
-    bio: "Keeps the platform honest, fair, and compliant — across 13 provinces and territories.",
   },
 ];
 
@@ -454,48 +384,7 @@ function Team() {
             hired — or been hired — for tough roles before.
           </p>
         </div>
-
-        <div className="v2-team-grid">
-          {TEAM.map((m) => (
-            <div key={m.name} className="v2-member">
-              <div
-                className="v2-member-photo"
-                style={{ ["--mc" as string]: m.color } as React.CSSProperties}
-              >
-                <div className="v2-member-tag">{m.tag}</div>
-                <div className="v2-member-initials">{m.initials}</div>
-              </div>
-              <div className="v2-member-info">
-                <div className="v2-member-name">{m.name}</div>
-                <div className="v2-member-role">{m.role}</div>
-                <div className="v2-member-bio">{m.bio}</div>
-                <div className="v2-member-links">
-                  <button
-                    type="button"
-                    className="v2-member-link"
-                    aria-label="Website"
-                  >
-                    <Icon name="globe" size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className="v2-member-link"
-                    aria-label="LinkedIn"
-                  >
-                    <Icon name="building" size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className="v2-member-link"
-                    aria-label="Email"
-                  >
-                    <Icon name="mail" size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <TeamGrid />
       </div>
     </section>
   );

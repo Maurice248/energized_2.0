@@ -11,6 +11,7 @@ const TOPICS = [
   { id: "billing", label: "Billing", desc: "Plans, invoices, refunds" },
   { id: "partnerships", label: "Partnerships", desc: "Co-marketing & integrations" },
   { id: "press", label: "Press", desc: "Quotes & briefings" },
+  { id: "data_deletion", label: "Data deletion", desc: "Right-to-be-forgotten" },
 ] as const;
 
 type TopicId = (typeof TOPICS)[number]["id"];
@@ -26,7 +27,7 @@ export function ContactForm() {
   const [size, setSize] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [consent, setConsent] = useState(true);
+  const [consent, setConsent] = useState(false);
   const [website, setWebsite] = useState(""); // honeypot
   const [sent, setSent] = useState(false);
   const [refCode, setRefCode] = useState("");

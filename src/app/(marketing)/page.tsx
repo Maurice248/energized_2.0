@@ -3,7 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
-import { jobListings } from "@/server/db/schema";
+import { jobListings, user } from "@/server/db/schema";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
 
@@ -16,10 +16,19 @@ export const metadata: Metadata = {
 };
 
 export default async function LandingPage() {
-  const [{ n: liveRoles } = { n: 0 }] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(jobListings)
-    .where(eq(jobListings.status, "published"));
+  const [
+    [{ n: liveRoles } = { n: 0 }],
+    [{ n: candidateCount } = { n: 0 }],
+  ] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(jobListings)
+      .where(eq(jobListings.status, "published")),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(user)
+      .where(eq(user.role, "jobseeker")),
+  ]);
 
   return (
     <>
@@ -28,7 +37,7 @@ export default async function LandingPage() {
         <Hero liveRoles={liveRoles} />
         <Marquee />
         <SectorIndex />
-        <AIShowcase />
+        <AIShowcase liveRoles={liveRoles} candidateCount={candidateCount} />
         <HowItWorks />
         <Quotes />
         <PricingTeaser />
@@ -75,12 +84,14 @@ function Hero({ liveRoles }: { liveRoles: number }) {
             </Link>
           </div>
           <div className="v2-hero-meta">
-            <div className="v2-hero-meta-item">
-              <div className="v2-hero-meta-value">{liveRoles}</div>
-              <div className="v2-hero-meta-label">
-                Live roles across Canadian energy
+            {liveRoles >= 5 && (
+              <div className="v2-hero-meta-item">
+                <div className="v2-hero-meta-value">{liveRoles}</div>
+                <div className="v2-hero-meta-label">
+                  Live roles across Canadian energy
+                </div>
               </div>
-            </div>
+            )}
             <div className="v2-hero-meta-item">
               <div className="v2-hero-meta-value">
                 6
@@ -241,7 +252,13 @@ function SectorIndex() {
 
 /* ---------- AI showcase ---------- */
 
-function AIShowcase() {
+function AIShowcase({
+  liveRoles,
+  candidateCount,
+}: {
+  liveRoles: number;
+  candidateCount: number;
+}) {
   return (
     <section>
       <div className="v2-ai">
@@ -262,15 +279,15 @@ function AIShowcase() {
             </p>
             <div className="v2-ai-stat">
               <div>
-                <div className="v2-ai-stat-v">3.2×</div>
+                <div className="v2-ai-stat-v">{liveRoles}</div>
                 <div className="v2-ai-stat-l">
-                  Faster shortlists vs. traditional boards
+                  Live energy roles, AI-mapped by sector
                 </div>
               </div>
               <div>
-                <div className="v2-ai-stat-v">+41%</div>
+                <div className="v2-ai-stat-v">{candidateCount}</div>
                 <div className="v2-ai-stat-l">
-                  Offer acceptance rate improvement
+                  Energy professionals on the network
                 </div>
               </div>
             </div>

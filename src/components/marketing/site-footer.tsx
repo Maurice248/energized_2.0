@@ -3,9 +3,10 @@ import Image from "next/image";
 import { Icon, type IconName } from "@/components/shared/icon";
 
 const SOCIAL: { name: string; href: string; icon: IconName }[] = [
-  { name: "LinkedIn", href: "https://linkedin.com", icon: "building" },
-  { name: "Twitter", href: "https://twitter.com", icon: "globe" },
-  { name: "YouTube", href: "https://youtube.com", icon: "briefcase" },
+  { name: "LinkedIn", href: "https://linkedin.com", icon: "linkedin" },
+  { name: "Facebook", href: "https://facebook.com", icon: "facebook" },
+  { name: "X", href: "https://x.com", icon: "twitterX" },
+  { name: "Instagram", href: "https://instagram.com", icon: "instagram" },
 ];
 
 const socialCircle: React.CSSProperties = {
@@ -81,7 +82,7 @@ export function SiteFooter() {
             <Link href="/for-employers">Why Energized</Link>
             <Link href="/sign-up?role=employer">Post a job</Link>
             <Link href="/sign-up?role=employer">Search talent</Link>
-            <Link href="/employer">Employer dashboard</Link>
+            <Link href="/for-employers">For employers</Link>
           </div>
 
           <div>
@@ -97,13 +98,11 @@ export function SiteFooter() {
         </div>
 
         <div className="v2-footer-bottom">
-          <div>
-            © {new Date().getFullYear()} Energized · Built in Canada
-          </div>
+          <div>© {new Date().getFullYear()} Energized</div>
           <div style={{ display: "flex", gap: 24 }}>
-            <Link href="/contact">Privacy</Link>
-            <Link href="/contact">Terms</Link>
-            <Link href="/contact">Accessibility</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/accessibility">Accessibility</Link>
           </div>
         </div>
       </div>

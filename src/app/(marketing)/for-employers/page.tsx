@@ -1,111 +1,200 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "@/server/db";
+import {
+  applications,
+  certifications,
+  employerOrgs,
+  jobListings,
+  user,
+} from "@/server/db/schema";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
+import { SECTOR_LABELS, type JobSector } from "@/lib/jobs-options";
 import { PricingSection, RoiCalculator } from "./employers-interactive";
 
 export const metadata: Metadata = {
   title: "For employers — hire Canadian energy specialists",
   description:
-    "AI-ranked shortlists of Canadian energy professionals — controls, instrumentation, wind, solar, nuclear, hydrogen — sourced from active members and a 47k passive talent network.",
+    "AI-ranked shortlists of Canadian energy professionals — oil & gas, renewables, nuclear, utilities, hydrogen, power. Built for Canadian energy hiring teams.",
   alternates: { canonical: "/for-employers" },
 };
 
-const TRUST_LOGOS = [
-  { nm: "Ark Energy", mk: "AE", c: "var(--v2-accent)" },
-  { nm: "BrightGrid", mk: "BG", c: "var(--v2-accent-deep)" },
-  { nm: "NorthStar Renewables", mk: "NS", c: "var(--v2-ink-950)" },
-  { nm: "CanFlow Pipeline", mk: "CF", c: "var(--v2-lilac)" },
-  { nm: "Helios Solar", mk: "HS", c: "var(--v2-coral)" },
-  { nm: "Aurora Wind", mk: "AW", c: "var(--v2-sky)" },
+const SECTOR_ORDER: JobSector[] = [
+  "oil_gas",
+  "renewables",
+  "nuclear",
+  "utilities",
+  "hydrogen",
+  "power",
 ];
+
+const SECTOR_THEMES: Record<JobSector, { mk: string; c: string }> = {
+  oil_gas: { mk: "OG", c: "var(--v2-ink-950)" },
+  renewables: { mk: "RN", c: "var(--v2-accent)" },
+  nuclear: { mk: "NU", c: "var(--v2-lilac)" },
+  utilities: { mk: "UT", c: "var(--v2-sky)" },
+  hydrogen: { mk: "HY", c: "var(--v2-accent-deep)" },
+  power: { mk: "PW", c: "var(--v2-coral)" },
+  other: { mk: "—", c: "#666" },
+};
 
 const FLOW = [
   {
     n: "01",
     t: "Post a role",
-    d: "Use our energy-aware templates or paste your existing JD. The AI flags vague requirements and asks the questions a senior recruiter would.",
+    d: "Use our energy-aware templates or paste your existing JD. We capture sector, certifications required, salary band, work setup, and experience level as first-class fields.",
     time: "8 minutes",
   },
   {
     n: "02",
     t: "AI builds a shortlist",
-    d: "25 ranked candidates with rationale, sourced from active members and our passive talent network. Each match comes with three flagged interview questions.",
+    d: "Ranked candidates with plain-English rationale, sourced from active members of the Energized network. Match logic reads project depth, certifications on file, and sector fluency.",
     time: "Within 48h",
   },
   {
     n: "03",
     t: "Interview the right ones",
-    d: "Schedule, video-interview, score, and discuss as a hiring panel — all without leaving the platform. Or sync to your ATS and stay where you live.",
+    d: "Schedule interviews, score candidates, and discuss as a hiring panel — all on the platform. Send intro requests to passive candidates with one click.",
     time: "Days, not weeks",
   },
   {
     n: "04",
-    t: "Hire & onboard",
-    d: "Structured offers, e-sign, reference checks, and onboarding checklists. We hand off cleanly — including DEI funnel data for your board.",
+    t: "Hire & track",
+    d: "Move candidates through your pipeline kanban — submitted, reviewed, interview, offer, hired. Stripe-managed billing, transparent application history.",
     time: "Closed loop",
   },
 ];
 
-const ATS = [
-  { nm: "Greenhouse", stat: "Native", mk: "GH", c: "#249F58" },
-  { nm: "Lever", stat: "Native", mk: "LV", c: "#FF7A59" },
-  { nm: "Workday", stat: "Deep map", mk: "WD", c: "#0875E1" },
-  { nm: "SmartRecruiters", stat: "API", mk: "SR", c: "#0095D5" },
-  { nm: "BambooHR", stat: "API", mk: "BB", c: "#73C41D" },
-  { nm: "Eightfold", stat: "API", mk: "EF", c: "#1A1F36" },
-  { nm: "Ashby", stat: "Native", mk: "AB", c: "#FF5A1F" },
-  { nm: "Custom", stat: "Webhook", mk: "+", c: "var(--v2-ink-950)" },
+const ILLUSTRATIVE_SHORTLIST: {
+  nm: string;
+  ti: string;
+  match: number;
+  c: string;
+  i: string;
+  peng: boolean;
+  gwo: boolean;
+}[] = [
+  {
+    nm: "Maya Reyes",
+    ti: "Controls Eng · 8y · Honeywell DCS",
+    match: 96,
+    c: "var(--v2-sky)",
+    i: "MR",
+    peng: true,
+    gwo: true,
+  },
+  {
+    nm: "Karim Diallo",
+    ti: "Sr. Automation · 11y · Emerson",
+    match: 93,
+    c: "var(--v2-accent-deep)",
+    i: "KD",
+    peng: true,
+    gwo: false,
+  },
+  {
+    nm: "Hana Park",
+    ti: "Process Controls · 6y · Yokogawa",
+    match: 91,
+    c: "var(--v2-coral)",
+    i: "HP",
+    peng: true,
+    gwo: false,
+  },
+  {
+    nm: "Daniel Okafor",
+    ti: "SCADA Lead · 9y · Multi-DCS",
+    match: 88,
+    c: "var(--v2-lilac)",
+    i: "DO",
+    peng: false,
+    gwo: true,
+  },
 ];
+
+const ILLUSTRATIVE_TIME_BARS = [18, 22, 16, 19, 15, 21, 17, 14, 18, 20, 16, 18, 15, 19];
+const ILLUSTRATIVE_PIPELINE_BARS = [40, 55, 70, 52, 68, 45];
 
 const FAQ = [
   {
     q: "How is Energized different from a standard job board?",
-    a: "We're a sourcing engine, not a posting board. We actively rank and surface candidates from a vetted Canadian energy talent pool — and most of our placements come from passive candidates who never applied directly to the role.",
+    a: "We're a sector-specific sourcing engine, not a generalist posting board. We rank and surface candidates by their actual energy-sector experience — projects, certifications, the systems they've run — rather than by keyword density on a CV.",
   },
   {
     q: "What if my company is not in Canada?",
-    a: "We focus on Canadian energy hiring — that's where our match data is sharpest. We do support cross-border roles where the employer has a Canadian entity and FIFO international rotations from Canadian airports.",
+    a: "We focus on Canadian energy hiring — that's where our matching is sharpest. We support cross-border roles where the employer has a Canadian entity and FIFO rotations from Canadian airports.",
   },
   {
     q: "Do you charge per hire or per posting?",
-    a: "No. Flat monthly or annual fees, period. No surprise success fees, no per-applicant cost, no auto-upgrade traps. The price you sign for is the price you pay for the term.",
-  },
-  {
-    q: "How long does ATS integration take?",
-    a: "Greenhouse, Lever, and Ashby are click-to-connect (under 5 minutes). Workday is a 30-minute call with one of our integration engineers — we handle field mapping, EEO codes, and structured offer formats.",
+    a: "No. Flat monthly or annual fees, period. No surprise success fees, no per-applicant cost. The price you sign for is the price you pay for the term.",
   },
   {
     q: "Can I hire contract or rotation roles, not just full-time?",
-    a: "Yes — full-time, fixed-term, FIFO rotations, and contract are all first-class on Energized. We surface candidates with the rotation tolerance and travel availability you need.",
+    a: "Yes — full-time, fixed-term, FIFO rotations, and contract are all first-class on Energized. Filter your shortlist by rotation tolerance, work setup, and experience level.",
   },
   {
-    q: "What kind of DEI reporting do you provide?",
-    a: "Funnel demographics by stage, time-to-hire by group, offer acceptance rates, and 90-day retention. Privacy-first defaults — candidates always control what they share, and aggregate reports require minimum cohort sizes.",
+    q: "What candidate data do you collect?",
+    a: "Profile, work history, certifications (with expiry and credential ID), and applications. Candidates control what they share with each employer; resumes and certification documents are stored on Canadian-aware infrastructure.",
   },
 ];
 
-const SHORTLIST = [
-  { nm: "Maya Reyes", ti: "Controls Eng · 8y · Honeywell DCS", match: 96, c: "var(--v2-sky)", i: "MR", peng: true, gwo: true },
-  { nm: "Karim Diallo", ti: "Sr. Automation · 11y · Emerson", match: 93, c: "var(--v2-accent-deep)", i: "KD", peng: true, gwo: false },
-  { nm: "Hana Park", ti: "Process Controls · 6y · Yokogawa", match: 91, c: "var(--v2-coral)", i: "HP", peng: true, gwo: false },
-  { nm: "Daniel Okafor", ti: "SCADA Lead · 9y · Multi-DCS", match: 88, c: "var(--v2-lilac)", i: "DO", peng: false, gwo: true },
-];
+export default async function ForEmployersPage() {
+  const [
+    [{ n: liveRoles } = { n: 0 }],
+    [{ n: candidateCount } = { n: 0 }],
+    [{ n: employerCount } = { n: 0 }],
+    [{ n: applicationCount } = { n: 0 }],
+    [{ n: certCount } = { n: 0 }],
+    sectorRows,
+  ] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(jobListings)
+      .where(eq(jobListings.status, "published")),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(user)
+      .where(eq(user.role, "jobseeker")),
+    db.select({ n: sql<number>`count(*)::int` }).from(employerOrgs),
+    db.select({ n: sql<number>`count(*)::int` }).from(applications),
+    db.select({ n: sql<number>`count(*)::int` }).from(certifications),
+    db
+      .select({
+        sector: jobListings.sector,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(jobListings)
+      .where(eq(jobListings.status, "published"))
+      .groupBy(jobListings.sector),
+  ]);
 
-const COMPLIANCE = ["PIPEDA", "SOC 2 II", "ISO 27001", "SAML SSO", "SCIM", "GDPR-ready"];
+  const sectorCountMap = new Map<JobSector, number>();
+  for (const row of sectorRows) {
+    sectorCountMap.set(row.sector as JobSector, row.n);
+  }
+  const sectorList = SECTOR_ORDER.map((s) => ({
+    enum: s,
+    label: SECTOR_LABELS[s],
+    count: sectorCountMap.get(s) ?? 0,
+    theme: SECTOR_THEMES[s],
+  }));
 
-const TIME_BARS = [18, 22, 16, 19, 15, 21, 17, 14, 18, 20, 16, 18, 15, 19];
-const PIPELINE_BARS = [40, 55, 70, 52, 68, 45];
-
-export default function ForEmployersPage() {
   return (
     <>
       <SiteHeader active="employers" />
       <main className="v2-emp" style={{ flex: 1 }}>
-        <Hero />
-        <LogoStrip />
+        <Hero candidateCount={candidateCount} employerCount={employerCount} />
+        <LogoStrip sectorList={sectorList} />
         <HowItWorks />
-        <FeatureBento />
+        <FeatureBento
+          liveRoles={liveRoles}
+          candidateCount={candidateCount}
+          applicationCount={applicationCount}
+          certCount={certCount}
+          sectorList={sectorList}
+        />
         <Testimonial />
         <PricingSection />
         <RoiCalculator />
@@ -118,7 +207,13 @@ export default function ForEmployersPage() {
 
 /* ---------- hero ---------- */
 
-function Hero() {
+function Hero({
+  candidateCount,
+  employerCount,
+}: {
+  candidateCount: number;
+  employerCount: number;
+}) {
   return (
     <section className="v2-emp-hero">
       <div className="v2-container">
@@ -134,35 +229,35 @@ function Hero() {
             </h1>
             <p className="v2-emp-hero-sub">
               Posting a job to a board and hoping is over. Tell us the role,
-              and within 48 hours you&rsquo;ll have 25 ranked candidates with
-              rationale &mdash; sourced from active members{" "}
-              <em style={{ fontStyle: "italic", color: "var(--v2-ink-950)" }}>
-                and
-              </em>{" "}
-              our passive talent network of 47k vetted Canadian energy
-              professionals.
+              and we&rsquo;ll surface ranked candidates with plain-English
+              rationale &mdash; drawn from our growing network of vetted
+              Canadian energy professionals.
             </p>
             <div className="v2-emp-hero-actions">
               <Link
-                href="/contact?topic=demo"
+                href="/sign-up?role=employer"
                 className="v2-btn v2-btn-primary v2-btn-lg"
               >
-                Book a 20-min demo
+                Post your first role free
                 <Icon name="arrowRight" size={18} />
               </Link>
               <Link
-                href="/sign-up?role=employer"
+                href="/contact"
                 className="v2-btn v2-btn-ghost v2-btn-lg"
               >
-                Post your first role free
+                Talk to us
               </Link>
             </div>
             <div className="v2-emp-hero-trust">
               <div className="v2-emp-hero-trust-stack" aria-hidden="true">
-                <span style={{ background: "var(--v2-accent)" }}>AE</span>
-                <span style={{ background: "var(--v2-accent-deep)" }}>NS</span>
-                <span style={{ background: "var(--v2-lilac)" }}>CF</span>
-                <span style={{ background: "var(--v2-coral)" }}>AW</span>
+                {SECTOR_ORDER.slice(0, 4).map((s) => (
+                  <span
+                    key={s}
+                    style={{ background: SECTOR_THEMES[s].c }}
+                  >
+                    {SECTOR_THEMES[s].mk}
+                  </span>
+                ))}
                 <span
                   style={{
                     background: "var(--v2-ink-950)",
@@ -170,11 +265,18 @@ function Hero() {
                     fontFamily: "var(--v2-font-mono)",
                   }}
                 >
-                  +1.2k
+                  +{Math.max(0, SECTOR_ORDER.length - 4)}
                 </span>
               </div>
               <div className="v2-emp-hero-trust-text">
-                <strong>1,200 hiring teams</strong> across Canadian energy
+                <strong>
+                  {candidateCount}{" "}
+                  {candidateCount === 1
+                    ? "energy professional"
+                    : "energy professionals"}
+                </strong>{" "}
+                · {employerCount}{" "}
+                {employerCount === 1 ? "employer" : "employers"} hiring
               </div>
             </div>
           </div>
@@ -187,19 +289,22 @@ function Hero() {
 
 function HeroShortlist() {
   return (
-    <div className="v2-emp-shortlist" aria-label="Sample shortlist preview">
+    <div
+      className="v2-emp-shortlist"
+      aria-label="Illustrative shortlist preview"
+    >
       <div className="v2-emp-shortlist-head">
         <div>
           <div className="v2-emp-shortlist-meta">
-            SHORTLIST · SR. CONTROLS ENG · CALGARY
+            EXAMPLE SHORTLIST · ILLUSTRATIVE
           </div>
-          <div className="v2-emp-shortlist-title">25 ranked matches</div>
+          <div className="v2-emp-shortlist-title">Ranked match preview</div>
         </div>
         <div
           className="v2-emp-shortlist-meta"
           style={{ textAlign: "right" }}
         >
-          <div>Generated</div>
+          <div>Sample data</div>
           <div
             style={{
               color: "var(--v2-ink-950)",
@@ -207,12 +312,12 @@ function HeroShortlist() {
               marginTop: 2,
             }}
           >
-            2h 14m ago
+            Not real candidates
           </div>
         </div>
       </div>
 
-      {SHORTLIST.map((p) => (
+      {ILLUSTRATIVE_SHORTLIST.map((p) => (
         <div key={p.nm} className="v2-emp-shortlist-row">
           <div className="av" style={{ background: p.c }}>
             {p.i}
@@ -245,10 +350,10 @@ function HeroShortlist() {
           <Icon name="zap" size={16} />
         </div>
         <div>
-          <div className="t1">21 more ranked candidates ready</div>
+          <div className="t1">Live shortlists arrive within 48 hours</div>
           <div className="t2">
-            Why ranked? Each carries 3 interview questions auto-drafted from CV
-            gaps.
+            Each match carries a plain-English rationale &mdash; what aligns,
+            what doesn&rsquo;t, what to probe in the interview.
           </div>
         </div>
       </div>
@@ -258,21 +363,30 @@ function HeroShortlist() {
 
 /* ---------- logo strip ---------- */
 
-function LogoStrip() {
+function LogoStrip({
+  sectorList,
+}: {
+  sectorList: {
+    enum: JobSector;
+    label: string;
+    count: number;
+    theme: { mk: string; c: string };
+  }[];
+}) {
   return (
-    <section className="v2-emp-logos" aria-label="Customer logos">
+    <section className="v2-emp-logos" aria-label="Energy sectors covered">
       <div className="v2-container">
         <div className="v2-emp-logos-inner">
           <div className="v2-emp-logos-label">
-            Trusted by Canadian energy hiring teams
+            Built for every corner of Canadian energy
           </div>
           <div className="v2-emp-logos-list">
-            {TRUST_LOGOS.map((l) => (
-              <span key={l.nm} className="v2-emp-logo">
-                <span className="mk" style={{ background: l.c }}>
-                  {l.mk}
+            {sectorList.map((s) => (
+              <span key={s.enum} className="v2-emp-logo">
+                <span className="mk" style={{ background: s.theme.c }}>
+                  {s.theme.mk}
                 </span>
-                {l.nm}
+                {s.label}
               </span>
             ))}
           </div>
@@ -323,7 +437,24 @@ function HowItWorks() {
 
 /* ---------- feature bento ---------- */
 
-function FeatureBento() {
+function FeatureBento({
+  liveRoles,
+  candidateCount,
+  applicationCount,
+  certCount,
+  sectorList,
+}: {
+  liveRoles: number;
+  candidateCount: number;
+  applicationCount: number;
+  certCount: number;
+  sectorList: {
+    enum: JobSector;
+    label: string;
+    count: number;
+    theme: { mk: string; c: string };
+  }[];
+}) {
   return (
     <section className="v2-emp-sec sand">
       <div className="v2-container">
@@ -335,7 +466,7 @@ function FeatureBento() {
             </h2>
           </div>
           <p className="v2-emp-sec-lede">
-            Standard ATS filters can&rsquo;t tell a senior controls engineer
+            Generalist filters can&rsquo;t tell a senior controls engineer
             from someone who once name-dropped DCS in a CV. Ours can.
           </p>
         </div>
@@ -345,36 +476,49 @@ function FeatureBento() {
           <div className="v2-emp-feat span-3">
             <span className="v2-emp-feat-eye">AI matching</span>
             <h3 className="v2-emp-feat-h">
-              25 <em>ranked</em> candidates with rationale, in 48 hours.
+              <em>Ranked</em> candidates with plain-English rationale.
             </h3>
             <p className="v2-emp-feat-d">
               Our match engine reads project depth, certification depth, and
-              rotation tolerance &mdash; not just keywords. Each result comes
-              with three interview questions drafted to probe its weakest
-              dimension.
+              sector fluency &mdash; not just keywords. Every match arrives
+              with a written rationale: what aligns, what doesn&rsquo;t, what
+              to probe in the interview.
             </p>
             <div className="v2-emp-feat-art">
               <div className="v2-emp-funnel">
                 <div className="v2-emp-funnel-bar b1">
-                  <div className="num">2,841</div>
+                  <div className="num">{candidateCount}</div>
                   <div className="lab">Eligible pool</div>
                 </div>
                 <div className="v2-emp-funnel-bar b2">
-                  <div className="num">412</div>
+                  <div className="num">~</div>
                   <div className="lab">Skill match</div>
                 </div>
                 <div className="v2-emp-funnel-bar b3">
-                  <div className="num">88</div>
+                  <div className="num">~</div>
                   <div className="lab">Sector fluent</div>
                 </div>
                 <div className="v2-emp-funnel-bar b4">
-                  <div className="num">25</div>
+                  <div className="num">~</div>
                   <div className="lab">Shortlist</div>
                 </div>
                 <div className="v2-emp-funnel-bar b5">
-                  <div className="num">5</div>
-                  <div className="lab">Hired (avg)</div>
+                  <div className="num">~</div>
+                  <div className="lab">Hired</div>
                 </div>
+              </div>
+              <div
+                style={{
+                  marginTop: 12,
+                  fontFamily: "var(--v2-font-mono)",
+                  fontWeight: 700,
+                  fontSize: 10,
+                  color: "var(--v2-ink-500)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Live pool · downstream stages illustrative
               </div>
             </div>
           </div>
@@ -385,33 +529,33 @@ function FeatureBento() {
               Filter by the cuts that <em>matter</em>.
             </h3>
             <p className="v2-emp-feat-d">
-              P.Eng province, GWO level, NCSO, DCS platform, rotation
-              tolerance, language, and field clearance &mdash; all first-class
-              filters, not buried in a &ldquo;free text&rdquo; search.
+              Sector, certifications, work setup, experience level, salary
+              band, and recency &mdash; all first-class filters on the search
+              page, not buried in a &ldquo;free text&rdquo; box.
             </p>
             <div className="v2-emp-feat-art">
               <div className="v2-emp-filters">
                 <span className="v2-emp-filter-chip active">
-                  P.Eng · AB
+                  Sector · Renewables
                   <span className="x">
                     <Icon name="x" size={8} />
                   </span>
                 </span>
                 <span className="v2-emp-filter-chip active">
-                  GWO · BST
+                  Cert · P.Eng
                   <span className="x">
                     <Icon name="x" size={8} />
                   </span>
                 </span>
                 <span className="v2-emp-filter-chip active">
-                  Honeywell DCS
+                  Setup · Remote OK
                   <span className="x">
                     <Icon name="x" size={8} />
                   </span>
                 </span>
-                <span className="v2-emp-filter-chip">14/14 rotation</span>
-                <span className="v2-emp-filter-chip">Bilingual EN/FR</span>
-                <span className="v2-emp-filter-chip">+ 18 more</span>
+                <span className="v2-emp-filter-chip">Level · Senior</span>
+                <span className="v2-emp-filter-chip">Posted · Last 7 days</span>
+                <span className="v2-emp-filter-chip">Salary · C$120k+</span>
               </div>
               <div
                 style={{
@@ -423,25 +567,31 @@ function FeatureBento() {
                 }}
               >
                 <span style={{ color: "var(--v2-accent)", fontWeight: 700 }}>
-                  88 matches
+                  Stack filters
                 </span>{" "}
-                · narrowed from 2,841 in 12 ms
+                · narrow the pool by every cut that decides a hire
               </div>
             </div>
           </div>
 
           {/* row 2 */}
           <div className="v2-emp-feat span-2 accent">
-            <span className="v2-emp-feat-eye">Time to hire</span>
+            <span className="v2-emp-feat-eye">Live network</span>
             <div className="v2-emp-bigstat" style={{ marginTop: 18 }}>
-              <em>18</em>d
+              <em>{candidateCount}</em>
             </div>
             <p className="v2-emp-bigstat-sub">
-              vs. 47-day Canadian average across all sectors
+              {candidateCount === 1
+                ? "energy professional on Energized"
+                : "energy professionals on Energized"}{" "}
+              · {liveRoles} live{" "}
+              {liveRoles === 1 ? "role" : "roles"} · {applicationCount}{" "}
+              {applicationCount === 1 ? "application" : "applications"}{" "}
+              tracked
             </p>
             <div className="v2-emp-feat-art">
               <div className="v2-emp-mini-bars" aria-hidden="true">
-                {TIME_BARS.map((h, i) => (
+                {ILLUSTRATIVE_TIME_BARS.map((h, i) => (
                   <div
                     key={i}
                     className="b f"
@@ -462,116 +612,161 @@ function FeatureBento() {
                   letterSpacing: "0.05em",
                 }}
               >
-                TIME-TO-HIRE · LAST 14 PLACEMENTS
+                NETWORK GROWTH · ILLUSTRATIVE
               </div>
             </div>
           </div>
 
           <div className="v2-emp-feat span-2">
-            <span className="v2-emp-feat-eye">Sourced from</span>
+            <span className="v2-emp-feat-eye">Sectors covered</span>
             <h3 className="v2-emp-feat-h">
-              Active <em>and</em> passive talent.
+              Six <em>energy</em> sectors, one workforce.
             </h3>
             <p className="v2-emp-feat-d">
-              Most placements come from passive candidates who never opened a
-              job board. We surface them anyway.
-            </p>
-            <div className="v2-emp-feat-art">
-              <div style={{ display: "flex", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--v2-font-serif)",
-                      fontWeight: 900,
-                      fontSize: 36,
-                      letterSpacing: "-0.025em",
-                      color: "var(--v2-ink-950)",
-                    }}
-                  >
-                    72
-                    <span style={{ fontSize: 18, color: "var(--v2-ink-500)" }}>
-                      %
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--v2-font-mono)",
-                      fontWeight: 700,
-                      fontSize: 10,
-                      color: "var(--v2-ink-500)",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      marginTop: 4,
-                    }}
-                  >
-                    Passive
-                  </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--v2-font-serif)",
-                      fontWeight: 900,
-                      fontSize: 36,
-                      letterSpacing: "-0.025em",
-                      color: "var(--v2-ink-950)",
-                    }}
-                  >
-                    28
-                    <span style={{ fontSize: 18, color: "var(--v2-ink-500)" }}>
-                      %
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--v2-font-mono)",
-                      fontWeight: 700,
-                      fontSize: 10,
-                      color: "var(--v2-ink-500)",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      marginTop: 4,
-                    }}
-                  >
-                    Active
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="v2-emp-feat span-2">
-            <span className="v2-emp-feat-eye">Diversity &amp; DEI</span>
-            <h3 className="v2-emp-feat-h">
-              Real <em>numbers</em> for real boards.
-            </h3>
-            <p className="v2-emp-feat-d">
-              Funnel demographics by stage, offer acceptance by group, 90-day
-              retention. Privacy-first defaults &mdash; candidates control what
-              they share.
+              Oil &amp; gas, renewables, nuclear, utilities, hydrogen, power
+              &mdash; each treated as first-class with its own taxonomy.
             </p>
             <div className="v2-emp-feat-art">
               <div
                 style={{
-                  display: "flex",
-                  gap: 6,
-                  alignItems: "end",
-                  height: 60,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
                 }}
               >
-                {PIPELINE_BARS.map((h, i) => (
+                {sectorList.map((s) => (
                   <div
-                    key={i}
+                    key={s.enum}
                     style={{
-                      flex: 1,
-                      height: h + "%",
-                      background:
-                        i % 2
-                          ? "var(--v2-ink-950)"
-                          : "var(--v2-accent-deep)",
-                      borderRadius: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 12,
+                      color: "var(--v2-ink-700)",
                     }}
-                  />
+                  >
+                    <span
+                      style={{
+                        background: s.theme.c,
+                        color: "white",
+                        fontFamily: "var(--v2-font-mono)",
+                        fontWeight: 700,
+                        fontSize: 9,
+                        padding: "3px 6px",
+                        borderRadius: 3,
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {s.theme.mk}
+                    </span>
+                    {s.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="v2-emp-feat span-2">
+            <span className="v2-emp-feat-eye">Certifications first</span>
+            <h3 className="v2-emp-feat-h">
+              <em>Tickets</em> that decide a hire.
+            </h3>
+            <p className="v2-emp-feat-d">
+              H2S Alive, First Aid, CSTS, Red Seal, P.Eng, NACE, Fall
+              Protection &mdash; all surfaced with expiry dates and credential
+              IDs on every profile.
+            </p>
+            <div className="v2-emp-feat-art">
+              <div
+                style={{
+                  fontFamily: "var(--v2-font-serif)",
+                  fontWeight: 900,
+                  fontSize: 36,
+                  letterSpacing: "-0.025em",
+                  color: "var(--v2-ink-950)",
+                  lineHeight: 1,
+                }}
+              >
+                {certCount}
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--v2-font-mono)",
+                  fontWeight: 700,
+                  fontSize: 10,
+                  color: "var(--v2-ink-500)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginTop: 6,
+                }}
+              >
+                Certifications on file
+              </div>
+            </div>
+          </div>
+
+          {/* row 3 */}
+          <div className="v2-emp-feat span-3">
+            <span className="v2-emp-feat-eye">Pipeline kanban</span>
+            <h3 className="v2-emp-feat-h">
+              Track every applicant <em>without leaving</em> Energized.
+            </h3>
+            <p className="v2-emp-feat-d">
+              Move candidates through your pipeline &mdash; submitted,
+              reviewed, interview, offer, hired &mdash; with intro requests,
+              interview scheduling, and a clean per-role kanban view for
+              every recruiter on your team.
+            </p>
+            <div className="v2-emp-feat-art">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(5, 1fr)",
+                  gap: 8,
+                }}
+              >
+                {[
+                  { l: "Submitted", n: 12 },
+                  { l: "Reviewed", n: 8 },
+                  { l: "Interview", n: 4 },
+                  { l: "Offer", n: 2 },
+                  { l: "Hired", n: 1 },
+                ].map((s) => (
+                  <div
+                    key={s.l}
+                    style={{
+                      background: "rgba(11,13,18,0.04)",
+                      border: "1px solid rgba(11,13,18,0.08)",
+                      borderRadius: 8,
+                      padding: "10px 8px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "var(--v2-font-serif)",
+                        fontWeight: 900,
+                        fontSize: 24,
+                        color: "var(--v2-ink-950)",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {s.n}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "var(--v2-font-mono)",
+                        fontWeight: 700,
+                        fontSize: 9,
+                        color: "var(--v2-ink-500)",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        marginTop: 4,
+                      }}
+                    >
+                      {s.l}
+                    </div>
+                  </div>
                 ))}
               </div>
               <div
@@ -584,50 +779,31 @@ function FeatureBento() {
                   letterSpacing: "0.05em",
                 }}
               >
-                PIPELINE PARITY · Q1 2026
-              </div>
-            </div>
-          </div>
-
-          {/* row 3 */}
-          <div className="v2-emp-feat span-3">
-            <span className="v2-emp-feat-eye">ATS integrations</span>
-            <h3 className="v2-emp-feat-h">
-              Wires into the system <em>your team already uses</em>.
-            </h3>
-            <p className="v2-emp-feat-d">
-              Native, deep mapping for the platforms your hiring team already
-              lives in. Or take it raw via our public API.
-            </p>
-            <div className="v2-emp-feat-art">
-              <div className="v2-emp-ats-grid">
-                {ATS.map((a) => (
-                  <div key={a.nm} className="v2-emp-ats-tile">
-                    <div className="mk" style={{ background: a.c }}>
-                      {a.mk}
-                    </div>
-                    <div className="nm">{a.nm}</div>
-                    <div className="stat">{a.stat}</div>
-                  </div>
-                ))}
+                PIPELINE STAGES · ILLUSTRATIVE
               </div>
             </div>
           </div>
 
           <div className="v2-emp-feat span-3 dark">
-            <span className="v2-emp-feat-eye">Compliance &amp; security</span>
+            <span className="v2-emp-feat-eye">Privacy &amp; control</span>
             <h3 className="v2-emp-feat-h">
-              Canadian <em>data residency</em>, by default.
+              Candidates control <em>what they share</em>.
             </h3>
             <p className="v2-emp-feat-d">
-              All data stored in AWS ca-central-1 with DR in ca-west-1.
-              PIPEDA-compliant, SOC 2 Type II, SAML SSO, SCIM provisioning, and
-              audit-grade logging. Right-to-be-forgotten honored within 14
-              days.
+              Resumes and certification documents are private by default and
+              only shared via signed URLs when a candidate applies or accepts
+              an intro request. Better Auth-managed sessions, Stripe-managed
+              billing, and a clear data-deletion path on request.
             </p>
             <div className="v2-emp-feat-art">
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {COMPLIANCE.map((b) => (
+                {[
+                  "Candidate-controlled sharing",
+                  "Signed URLs for documents",
+                  "Stripe billing",
+                  "Better Auth sessions",
+                  "Delete on request",
+                ].map((b) => (
                   <span key={b} className="v2-emp-comp-pill">
                     {b}
                   </span>
@@ -647,6 +823,19 @@ function Testimonial() {
   return (
     <section className="v2-emp-sec dark">
       <div className="v2-container">
+        <div
+          style={{
+            fontFamily: "var(--v2-font-mono)",
+            fontWeight: 700,
+            fontSize: 11,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            color: "var(--v2-accent)",
+            marginBottom: 20,
+          }}
+        >
+          Illustrative customer story
+        </div>
         <div className="v2-emp-quote">
           <div>
             <div className="v2-emp-quote-mark" aria-hidden="true">
@@ -670,7 +859,7 @@ function Testimonial() {
               <div>
                 <div className="v2-emp-quote-name">Priya Anand</div>
                 <div className="v2-emp-quote-role">
-                  VP Talent · Ark Energy Inc.
+                  Illustrative VP Talent · sample customer
                 </div>
               </div>
             </div>
@@ -689,7 +878,7 @@ function Testimonial() {
             <div className="v2-emp-quote-stat">
               <div className="n">9 wks</div>
               <div className="l">Kick-off to last offer</div>
-              <div className="s">vs. 6-month prior cycle, $640k saved.</div>
+              <div className="s">vs. 6-month prior cycle.</div>
             </div>
             <div className="v2-emp-quote-stat">
               <div className="n">
@@ -767,22 +956,22 @@ function ClosingCta() {
           Start <em>hiring</em>.
         </h2>
         <p className="v2-emp-cta-sub">
-          20-minute demo. No deck. We&rsquo;ll plug in one of your real open
-          roles and show you a live shortlist by the end of the call.
+          Post your first role free, or send us a note about your hiring
+          plans &mdash; we usually reply within four business hours.
         </p>
         <div className="v2-emp-cta-actions">
           <Link
-            href="/contact?topic=demo"
+            href="/sign-up?role=employer"
             className="v2-btn v2-btn-accent v2-btn-lg"
           >
-            Book a demo
+            Post a role free
             <Icon name="arrowRight" size={18} />
           </Link>
           <Link
-            href="/sign-up?role=employer"
+            href="/contact"
             className="v2-btn v2-btn-invert v2-btn-lg"
           >
-            Post a role free
+            Talk to us
           </Link>
         </div>
       </div>

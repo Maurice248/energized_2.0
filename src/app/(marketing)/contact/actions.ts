@@ -11,6 +11,7 @@ const TOPICS = [
   "billing",
   "partnerships",
   "press",
+  "data_deletion",
 ] as const;
 
 const ContactSchema = z.object({
@@ -40,6 +41,7 @@ const TOPIC_LABEL: Record<(typeof TOPICS)[number], string> = {
   billing: "Billing",
   partnerships: "Partnerships",
   press: "Press",
+  data_deletion: "Data deletion",
 };
 
 export async function sendContactMessage(

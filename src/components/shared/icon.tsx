@@ -45,7 +45,12 @@ export type IconName =
   | "upload"
   | "download"
   | "shield"
-  | "send";
+  | "send"
+  | "share"
+  | "linkedin"
+  | "facebook"
+  | "twitterX"
+  | "instagram";
 
 type Props = {
   name: IconName;
@@ -195,6 +200,33 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="m22 2-7 20-4-9-9-4z" />
       <path d="M22 2 11 13" />
+    </>
+  ),
+  share: (
+    <>
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <path d="M16 6l-4-4-4 4" />
+      <path d="M12 2v13" />
+    </>
+  ),
+  linkedin: (
+    <>
+      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z" />
+      <rect x="2" y="9" width="4" height="12" />
+      <circle cx="4" cy="4" r="2" />
+    </>
+  ),
+  facebook: (
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  ),
+  twitterX: (
+    <path d="M4 4l16 16M20 4 4 20" />
+  ),
+  instagram: (
+    <>
+      <rect x="2" y="2" width="20" height="20" rx="5" />
+      <path d="M16 11.37a4 4 0 1 1-7.914 1.123 4 4 0 0 1 7.914-1.123z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
     </>
   ),
 };
