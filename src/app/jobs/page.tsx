@@ -1,8 +1,24 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { and, arrayOverlaps, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import {
+  and,
+  arrayOverlaps,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/server/db";
-import { employerOrgs, jobListings } from "@/server/db/schema";
+import {
+  applications,
+  employerOrgs,
+  jobListings,
+  savedJobs,
+} from "@/server/db/schema";
+import { getSession } from "@/server/auth";
 import { Icon } from "@/components/shared/icon";
 import { SiteHeader } from "@/components/marketing/site-header";
 import {
@@ -314,6 +330,39 @@ export default async function JobsBrowsePage({
   // eslint-disable-next-line react-hooks/purity
   const renderedAt = Date.now();
   const freshCutoff = renderedAt - 24 * 60 * 60 * 1000;
+
+  // Per-row "Applied" / "Saved" badges for logged-in jobseekers.
+  // Two small reads scoped to the visible page, joined into Sets for O(1)
+  // lookup during render.
+  const session = await getSession();
+  const isJobseeker = session?.user.role === "jobseeker";
+  const visibleJobIds = rows.map((r) => r.id);
+  const appliedJobIds = new Set<string>();
+  const savedJobIds = new Set<string>();
+  if (isJobseeker && session && visibleJobIds.length > 0) {
+    const [appliedRows, savedRows] = await Promise.all([
+      db
+        .select({ jobId: applications.jobId })
+        .from(applications)
+        .where(
+          and(
+            eq(applications.candidateId, session.user.id),
+            inArray(applications.jobId, visibleJobIds),
+          )!,
+        ),
+      db
+        .select({ jobId: savedJobs.jobId })
+        .from(savedJobs)
+        .where(
+          and(
+            eq(savedJobs.userId, session.user.id),
+            inArray(savedJobs.jobId, visibleJobIds),
+          )!,
+        ),
+    ]);
+    for (const row of appliedRows) appliedJobIds.add(row.jobId);
+    for (const row of savedRows) savedJobIds.add(row.jobId);
+  }
 
   return (
     <div
@@ -672,6 +721,29 @@ export default async function JobsBrowsePage({
                                 Fresh
                               </span>
                             )}
+                            {appliedJobIds.has(r.id) && (
+                              <span
+                                className="v2-chip"
+                                style={{
+                                  background: "var(--v2-ink-950)",
+                                  color: "white",
+                                  borderColor: "var(--v2-ink-950)",
+                                }}
+                              >
+                                <Icon name="check" size={11} /> Applied
+                              </span>
+                            )}
+                            {!appliedJobIds.has(r.id) &&
+                              savedJobIds.has(r.id) && (
+                                <span
+                                  className="v2-chip v2-chip-outline"
+                                  style={{
+                                    color: "var(--v2-ink-700)",
+                                  }}
+                                >
+                                  <Icon name="bookmark" size={11} /> Saved
+                                </span>
+                              )}
                           </div>
                           <div
                             style={{

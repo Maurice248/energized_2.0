@@ -4,6 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/trpc/client";
 import { Icon } from "@/components/shared/icon";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/api/root";
 
@@ -37,8 +45,18 @@ export function NotificationsList({ initial }: { initial: NotificationRow[] }) {
     void utils.notifications.unreadCount.invalidate();
   };
   const markRead = api.notifications.markRead.useMutation({ onSuccess: invalidate });
+  const markUnread = api.notifications.markUnread.useMutation({ onSuccess: invalidate });
   const markAllRead = api.notifications.markAllRead.useMutation({ onSuccess: invalidate });
-  const remove = api.notifications.delete.useMutation({ onSuccess: invalidate });
+  const remove = api.notifications.delete.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setPendingDelete(null);
+    },
+  });
+
+  const [pendingDelete, setPendingDelete] = useState<NotificationRow | null>(
+    null,
+  );
 
   const all = list.data ?? [];
   const unreadCount = all.filter((n) => !n.readAt).length;
@@ -204,34 +222,112 @@ export function NotificationsList({ initial }: { initial: NotificationRow[] }) {
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!window.confirm("Delete this notification?")) return;
-                  remove.mutate({ id: n.id });
-                }}
-                disabled={remove.isPending}
-                aria-label="Delete notification"
+              <div
                 style={{
+                  display: "flex",
                   flexShrink: 0,
-                  width: 28,
-                  height: 28,
-                  display: "grid",
-                  placeItems: "center",
-                  borderRadius: 999,
-                  border: "1px solid var(--v2-ink-200)",
-                  background: "white",
-                  color: "var(--v2-ink-500)",
-                  cursor: remove.isPending ? "default" : "pointer",
+                  gap: 6,
+                  alignItems: "center",
                 }}
               >
-                <Icon name="x" size={12} />
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (n.readAt) {
+                      markUnread.mutate({ id: n.id });
+                    } else {
+                      markRead.mutate({ id: n.id });
+                    }
+                  }}
+                  disabled={markRead.isPending || markUnread.isPending}
+                  aria-label={
+                    n.readAt ? "Mark as unread" : "Mark as read"
+                  }
+                  title={n.readAt ? "Mark as unread" : "Mark as read"}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 999,
+                    border: "1px solid var(--v2-ink-200)",
+                    background: "white",
+                    color: "var(--v2-ink-500)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Icon
+                    name={n.readAt ? "eyeOff" : "check"}
+                    size={12}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPendingDelete(n);
+                  }}
+                  disabled={remove.isPending}
+                  aria-label="Delete notification"
+                  title="Delete notification"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 999,
+                    border: "1px solid var(--v2-ink-200)",
+                    background: "white",
+                    color: "var(--v2-ink-500)",
+                    cursor: remove.isPending ? "default" : "pointer",
+                  }}
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      <Dialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(o) => {
+          if (!o && !remove.isPending) setPendingDelete(null);
+        }}
+      >
+        <DialogContent className="v2 sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle style={{ fontStyle: "italic", fontSize: 22 }}>
+              Delete this notification?
+            </DialogTitle>
+            <DialogDescription>
+              {pendingDelete?.title ?? ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              className="v2-btn v2-btn-ghost v2-btn-sm"
+              onClick={() => setPendingDelete(null)}
+              disabled={remove.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="v2-btn v2-btn-primary v2-btn-sm"
+              onClick={() => {
+                if (pendingDelete) remove.mutate({ id: pendingDelete.id });
+              }}
+              disabled={remove.isPending}
+            >
+              {remove.isPending ? "Deleting…" : "Delete"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

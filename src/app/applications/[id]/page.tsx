@@ -28,6 +28,7 @@ export default async function ApplicationDetailPage({
       candidateId: applications.candidateId,
       statusDb: applications.status,
       coverNote: applications.coverNote,
+      screeningAnswers: applications.screeningAnswers,
       createdAt: applications.createdAt,
       jobId: jobListings.id,
       jobTitle: jobListings.title,
@@ -110,6 +111,72 @@ export default async function ApplicationDetailPage({
               style={{ fontSize: 14, color: "var(--v2-ink-900)", whiteSpace: "pre-wrap", lineHeight: 1.6 }}
             >
               {app.coverNote}
+            </div>
+          </section>
+        )}
+
+        {app.screeningAnswers.length > 0 && (
+          <section
+            style={{
+              padding: 16,
+              background: "white",
+              border: "1px solid var(--v2-ink-200)",
+              borderRadius: "var(--v2-r-xl)",
+              marginBottom: 20,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--v2-ink-700)",
+                marginBottom: 12,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Your answers to {app.orgName}
+            </div>
+            <div style={{ display: "grid", gap: 14 }}>
+              {app.screeningAnswers.map((sa, i) => (
+                <div key={i}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--v2-ink-700)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {sa.q}
+                    {sa.required && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          fontSize: 10,
+                          color: "var(--v2-ink-500)",
+                          fontFamily: "var(--v2-font-mono)",
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Required
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      color: sa.a ? "var(--v2-ink-900)" : "var(--v2-ink-400)",
+                      whiteSpace: "pre-wrap",
+                      lineHeight: 1.5,
+                      fontStyle: sa.a ? "normal" : "italic",
+                    }}
+                  >
+                    {sa.a || "— Not answered —"}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}

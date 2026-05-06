@@ -55,6 +55,21 @@ export const notificationsRouter = router({
       return { ok: true };
     }),
 
+  markUnread: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(notifications)
+        .set({ readAt: null })
+        .where(
+          and(
+            eq(notifications.id, input.id),
+            eq(notifications.userId, ctx.session.user.id),
+          ),
+        );
+      return { ok: true };
+    }),
+
   markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
     await ctx.db
       .update(notifications)
