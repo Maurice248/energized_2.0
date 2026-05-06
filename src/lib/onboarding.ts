@@ -3,10 +3,10 @@ import { z } from "zod";
 export const SECTOR_LABELS = [
   "Oil & Gas",
   "Renewable Energy",
-  "Midstream",
-  "Power Utilities",
   "Nuclear",
-  "Mining",
+  "Power Utilities",
+  "Hydrogen",
+  "Power",
 ] as const;
 
 export type SectorLabel = (typeof SECTOR_LABELS)[number];
@@ -28,15 +28,13 @@ export type EnergySector =
   | "hydrogen"
   | "power";
 
-// Midstream and Mining don't map cleanly to the current enum; bucket them into
-// the closest sector we do model. Revisit when those get first-class enum values.
 const SECTOR_TO_ENUM: Record<SectorLabel, EnergySector> = {
   "Oil & Gas": "oil_gas",
   "Renewable Energy": "renewables",
-  Midstream: "oil_gas",
-  "Power Utilities": "power",
   Nuclear: "nuclear",
-  Mining: "utilities",
+  "Power Utilities": "utilities",
+  Hydrogen: "hydrogen",
+  Power: "power",
 };
 
 const LEVEL_TO_YEARS: Record<LevelLabel, number> = {

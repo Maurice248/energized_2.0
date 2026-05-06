@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { PasswordInput } from "@/components/shared/password-input";
+import { PasswordStrength } from "@/components/shared/password-strength";
 
 type Status =
   | "idle"
@@ -108,6 +109,26 @@ function ResetPasswordInner() {
         >
           Request a new link <ArrowRight size={16} />
         </Link>
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: 14,
+            color: "var(--v2-ink-500)",
+            marginTop: 20,
+          }}
+        >
+          <Link
+            href="/sign-in"
+            style={{
+              color: "var(--v2-ink-900)",
+              fontWeight: 500,
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+            }}
+          >
+            Back to sign in
+          </Link>
+        </div>
       </>
     );
   }
@@ -137,15 +158,20 @@ function ResetPasswordInner() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
-          <div
-            style={{
-              fontSize: 12,
-              color: "var(--v2-ink-500)",
-              marginTop: 6,
-            }}
-          >
-            At least 8 characters.
-          </div>
+          {newPassword ? (
+            <PasswordStrength value={newPassword} />
+          ) : (
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--v2-ink-500)",
+                marginTop: 6,
+              }}
+            >
+              At least 8 characters. Mix cases, digits, and symbols for a
+              stronger password.
+            </div>
+          )}
         </div>
         <div>
           <label className="v2-field-label" htmlFor="confirm-password">
@@ -242,6 +268,26 @@ function NoTokenView() {
       >
         Request a reset link <ArrowRight size={16} />
       </Link>
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 14,
+          color: "var(--v2-ink-500)",
+          marginTop: 20,
+        }}
+      >
+        <Link
+          href="/sign-in"
+          style={{
+            color: "var(--v2-ink-900)",
+            fontWeight: 500,
+            textDecoration: "underline",
+            textUnderlineOffset: 3,
+          }}
+        >
+          Back to sign in
+        </Link>
+      </div>
     </>
   );
 }

@@ -132,21 +132,38 @@ export function AcceptInviteClient({ token }: { token: string }) {
       )}
 
       {signedIn && !emailMatches && (
-        <div
-          style={{
-            marginTop: 28,
-            padding: 16,
-            background: "var(--v2-coral-soft, #FBEBE4)",
-            border: "1px solid rgba(166,58,32,0.2)",
-            borderRadius: 12,
-            fontSize: 14,
-            color: "#A63A20",
-          }}
-        >
-          You&rsquo;re signed in as <strong>{signedInEmail}</strong>, but this
-          invite was sent to <strong>{invitedEmail}</strong>. Sign out and sign
-          in with that address to accept.
-        </div>
+        <>
+          <div
+            style={{
+              marginTop: 28,
+              padding: 16,
+              background: "var(--v2-coral-soft, #FBEBE4)",
+              border: "1px solid rgba(166,58,32,0.2)",
+              borderRadius: 12,
+              fontSize: 14,
+              color: "#A63A20",
+            }}
+          >
+            You&rsquo;re signed in as <strong>{signedInEmail}</strong>, but
+            this invite was sent to <strong>{invitedEmail}</strong>. Sign out
+            and sign in with that address to accept.
+          </div>
+          <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="v2-btn v2-btn-primary"
+              onClick={async () => {
+                await authClient.signOut();
+                router.push(
+                  `/sign-in?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`,
+                );
+              }}
+            >
+              Sign out and switch accounts
+              <Icon name="arrowRight" size={14} />
+            </button>
+          </div>
+        </>
       )}
 
       {!signedIn && (
@@ -160,7 +177,7 @@ export function AcceptInviteClient({ token }: { token: string }) {
           </Link>
           <Link
             className="v2-btn v2-btn-ghost v2-btn-lg"
-            href={`/sign-in?next=${encodeURIComponent(`/accept-invite?token=${token}`)}`}
+            href={`/sign-in?redirect=${encodeURIComponent(`/accept-invite?token=${token}`)}`}
           >
             I already have an account
           </Link>

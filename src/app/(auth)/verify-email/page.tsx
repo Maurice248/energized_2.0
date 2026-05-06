@@ -1,11 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Mail } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+
+const RESEND_COOLDOWN_MS = 30_000;
 
 function VerifyEmailInner() {
   const params = useSearchParams();
@@ -16,8 +18,37 @@ function VerifyEmailInner() {
     "idle",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (cooldownEndsAt == null) return;
+    setNow(Date.now());
+    tickRef.current = setInterval(() => {
+      const next = Date.now();
+      setNow(next);
+      if (next >= cooldownEndsAt) {
+        if (tickRef.current) clearInterval(tickRef.current);
+        tickRef.current = null;
+        setCooldownEndsAt(null);
+        setStatus("idle");
+      }
+    }, 1000);
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+      tickRef.current = null;
+    };
+  }, [cooldownEndsAt]);
+
+  const cooldownLeft =
+    cooldownEndsAt != null
+      ? Math.max(0, Math.ceil((cooldownEndsAt - now) / 1000))
+      : 0;
+  const onCooldown = cooldownLeft > 0;
 
   async function handleResend() {
+    if (onCooldown || status === "sending") return;
     if (!email) {
       setStatus("error");
       setErrorMessage("We don't have an email on file. Return to sign-up.");
@@ -35,6 +66,7 @@ function VerifyEmailInner() {
       return;
     }
     setStatus("sent");
+    setCooldownEndsAt(Date.now() + RESEND_COOLDOWN_MS);
   }
 
   return (
@@ -138,16 +170,38 @@ function VerifyEmailInner() {
               type="button"
               className="v2-btn v2-btn-ghost"
               onClick={handleResend}
-              disabled={status === "sending" || status === "sent"}
+              disabled={status === "sending" || onCooldown}
             >
               {status === "sending"
                 ? "Resending…"
-                : status === "sent"
-                  ? "Link resent"
+                : onCooldown
+                  ? `Link resent · resend in ${cooldownLeft}s`
                   : "Resend link"}
             </button>
             <Link href="/sign-in" className="v2-btn v2-btn-primary">
               Back to sign in
+            </Link>
+          </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              fontSize: 13,
+              color: "var(--v2-ink-500)",
+              textAlign: "center",
+            }}
+          >
+            Wrong email?{" "}
+            <Link
+              href="/sign-up"
+              style={{
+                color: "var(--v2-ink-900)",
+                fontWeight: 500,
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              Sign up again
             </Link>
           </div>
 

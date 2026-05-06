@@ -3,13 +3,25 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { PasswordInput } from "@/components/shared/password-input";
 
+// Only allow same-origin internal paths so an attacker can't craft a
+// /sign-in?redirect=//evil.com link that bounces newly-authed users away.
+function safeRedirect(raw: string | null): string {
+  if (!raw) return "/";
+  if (!raw.startsWith("/")) return "/";
+  if (raw.startsWith("//")) return "/";
+  if (raw.startsWith("/\\")) return "/";
+  return raw;
+}
+
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = safeRedirect(searchParams.get("redirect"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -30,7 +42,7 @@ export default function SignInPage() {
       setError(authError.message ?? "Sign-in failed. Check your credentials.");
       return;
     }
-    router.push("/");
+    router.push(redirectTarget);
     router.refresh();
   }
 
@@ -52,19 +64,20 @@ export default function SignInPage() {
         </Link>
         <div style={{ flex: 1 }} />
         <div>
-          <div className="v2-eyebrow v2-eyebrow-light">Good to see you</div>
+          <div className="v2-eyebrow v2-eyebrow-light">Welcome back</div>
           <h2 style={{ marginTop: 20 }}>
-            Three <em>new</em> matches since your last visit.
+            Your applications, saved searches, and intros are <em>waiting</em>.
           </h2>
           <p>
-            Including a Sr. Controls role at Ark Energy (96% match) and a hybrid
-            solar PM at Helios.
+            Pick up where you left off. We&rsquo;ll surface new matches as soon
+            as you&rsquo;re back in.
           </p>
         </div>
         <div className="v2-auth-testimonial">
-          <div className="v2-eyebrow v2-eyebrow-light">Trending this week</div>
+          <div className="v2-eyebrow v2-eyebrow-light">On Energized</div>
           <p style={{ fontSize: 18 }}>
-            Wind Turbine Technicians — 42 new roles across Atlantic Canada.
+            Six energy sectors. Tickets that surface. Pay bands posted by
+            default.
           </p>
         </div>
       </aside>

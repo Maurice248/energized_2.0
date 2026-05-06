@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, User } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { PasswordInput } from "@/components/shared/password-input";
+import { PasswordStrength } from "@/components/shared/password-strength";
 import {
   ONBOARDING_DRAFT_KEY,
   type OnboardingDraft,
@@ -40,10 +41,10 @@ const ROLE_OPTIONS: {
 const SECTORS = [
   "Oil & Gas",
   "Renewable Energy",
-  "Midstream",
-  "Power Utilities",
   "Nuclear",
-  "Mining",
+  "Power Utilities",
+  "Hydrogen",
+  "Power",
 ];
 
 const LEVELS = [
@@ -152,7 +153,7 @@ export default function SignUpPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
-  const [agreed, setAgreed] = useState(true);
+  const [agreed, setAgreed] = useState(false);
   const [sector, setSector] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
@@ -447,6 +448,7 @@ export default function SignUpPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
                   />
+                  {password && <PasswordStrength value={password} />}
                 </div>
                 <label
                   style={{
@@ -466,7 +468,35 @@ export default function SignUpPage() {
                       accentColor: "var(--v2-ink-950)",
                     }}
                   />
-                  I agree to the Terms of Service and Privacy Policy.
+                  <span>
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        color: "var(--v2-ink-900)",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 3,
+                      }}
+                    >
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/privacy"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        color: "var(--v2-ink-900)",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 3,
+                      }}
+                    >
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
                 </label>
               </div>
             </>

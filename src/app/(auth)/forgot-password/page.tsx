@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
       setStatus("error");
       setErrorMsg(
         error.message ??
-          "Couldn't send the reset email. Try again or contact hello@energized.biz.",
+          "Couldn't send the reset email. Try again or contact dev@energized.biz.",
       );
       return;
     }
