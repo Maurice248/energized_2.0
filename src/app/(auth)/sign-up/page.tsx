@@ -214,6 +214,7 @@ export default function SignUpPage() {
       name,
       email,
       password,
+      role,
       callbackURL: postVerifyPath,
     });
 

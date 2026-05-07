@@ -7,12 +7,25 @@ import { EmployerOnboardingClient } from "./employer-onboarding-client";
 
 export const metadata = { title: "Employer onboarding — Energized" };
 
-export default async function EmployerOnboardingPage() {
+export default async function EmployerOnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getSession();
   if (!session) redirect("/sign-in");
 
+  const params = await searchParams;
+  const retakeRaw = params.retake;
+  const retake =
+    (Array.isArray(retakeRaw) ? retakeRaw[0] : retakeRaw) === "1";
+
   // If the user already belongs to an org, they're past the onboarding
-  // wizard — bounce them to the dashboard instead of re-running it.
+  // wizard — bounce them to the dashboard instead of re-running it. The
+  // OnboardingPersister silently auto-creates an org from the localStorage
+  // draft on first visit, so users land here even right after signup;
+  // ?retake=1 lets them re-walk the wizard explicitly (e.g. via a
+  // "Restart setup" link on /employer/profile).
   const userId = session.user.id;
   const email = session.user.email.toLowerCase();
   const [byUser] = await db
@@ -32,7 +45,7 @@ export default async function EmployerOnboardingPage() {
         .limit(1)
     )[0]?.orgId ??
     null;
-  if (existingOrgId) redirect("/employer");
+  if (existingOrgId && !retake) redirect("/employer");
 
   return (
     <EmployerOnboardingClient

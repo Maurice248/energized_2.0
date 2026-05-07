@@ -63,7 +63,11 @@ export const auth = betterAuth({
         type: "string",
         defaultValue: "jobseeker",
         required: true,
-        input: false,
+        // Allow the sign-up form to pass role so an employer signup is
+        // role: "employer" from creation rather than briefly being
+        // "jobseeker" until the OnboardingPersister flips it client-side.
+        // databaseHooks.user.create below clamps the value to a safe enum.
+        input: true,
       },
       onboardedAt: {
         type: "date",
@@ -101,6 +105,21 @@ export const auth = betterAuth({
     // runs to completion in the background. Without this, Better Auth `await`s
     // each callback and the user sees a long "Sending…" delay.
     backgroundTasks: { handler: waitUntil },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Clamp `role` to a safe enum on signup. Without this, opening
+        // additionalFields.role.input lets a signup body set arbitrary
+        // strings (e.g. "admin"), so any future role-gated route would be
+        // bypassable via crafted requests.
+        before: async (data) => {
+          const incoming = (data as { role?: unknown }).role;
+          const role = incoming === "employer" ? "employer" : "jobseeker";
+          return { data: { ...data, role } };
+        },
+      },
+    },
   },
   plugins: [nextCookies()],
 });

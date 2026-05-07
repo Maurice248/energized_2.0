@@ -152,7 +152,7 @@ export function VerifyDomainClient({ token }: { token: string }) {
             <div style={{ marginTop: 24 }}>
               <Link
                 className="v2-btn v2-btn-primary v2-btn-lg"
-                href="/employer/onboarding"
+                href="/employer/onboarding?retake=1"
               >
                 Back to onboarding <Icon name="arrowRight" size={14} />
               </Link>
@@ -192,7 +192,7 @@ export function VerifyDomainClient({ token }: { token: string }) {
             <div style={{ marginTop: 24 }}>
               <Link
                 className="v2-btn v2-btn-ghost v2-btn-lg"
-                href="/employer/onboarding"
+                href="/employer/onboarding?retake=1"
               >
                 Back to onboarding
               </Link>

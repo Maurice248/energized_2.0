@@ -572,8 +572,8 @@ export function EmployerProfileClient({
               Post a <em>new role</em>.
             </h4>
             <p>
-              Ember will surface strong matches from your talent pool within
-              the hour.
+              We&rsquo;ll surface ranked candidates from your talent pool
+              within 48 hours.
             </p>
             <button
               className="v2-btn v2-btn-accent v2-btn-sm"
@@ -581,6 +581,27 @@ export function EmployerProfileClient({
               onClick={() => router.push("/employer/jobs/new")}
             >
               New job <Icon name="plus" size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/employer/onboarding?retake=1")}
+              style={{
+                marginTop: 14,
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "rgba(255,255,255,0.75)",
+                fontSize: 12,
+                fontFamily: "var(--v2-font-mono)",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              Restart setup wizard
             </button>
           </div>
         </aside>

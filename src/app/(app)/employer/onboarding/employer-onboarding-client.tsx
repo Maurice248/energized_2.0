@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
+
+// Imperative handle each form step exposes so the wizard's "Continue"
+// button can save the current draft before advancing — without making
+// the user click the step's own "Save" button first.
+type StepHandle = { save: () => Promise<void> };
 
 type StepId = "welcome" | "company" | "verify" | "team" | "prefs";
 type Step = { id: StepId; title: string; hint: string };
@@ -135,24 +146,32 @@ export function EmployerOnboardingClient({
   const updatePrefs = api.employer.updatePrefs.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
+
+  // Refs into form-shaped steps so Continue saves before advancing.
+  const companyStepRef = useRef<StepHandle>(null);
+  const prefsStepRef = useRef<StepHandle>(null);
+  const [advanceError, setAdvanceError] = useState<string | null>(null);
   const invite = api.employer.inviteMember.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
   const removeMember = api.employer.removeMember.useMutation({
     onSuccess: () => void orgQuery.refetch(),
   });
-  const markVerified = api.employer.markVerified.useMutation({
-    onSuccess: () => void orgQuery.refetch(),
-  });
   const sendDomainVerifyEmail = api.employer.sendDomainVerifyEmail.useMutation();
 
-  const [current, setCurrent] = useState<number>(() => {
-    if (typeof window === "undefined") return 0;
+  // Server has no localStorage — start at 0 so SSR HTML matches the
+  // client's first render. The useEffect below post-mount syncs to the
+  // saved step (avoids React's hydration-mismatch warning).
+  const [current, setCurrent] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     const n = saved ? parseInt(saved, 10) : NaN;
-    return !Number.isNaN(n) && n >= 0 && n < STEPS.length ? n : 0;
-  });
-  const [done, setDone] = useState(false);
+    if (!Number.isNaN(n) && n >= 0 && n < STEPS.length) {
+      setCurrent(n);
+    }
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(current));
@@ -165,16 +184,44 @@ export function EmployerOnboardingClient({
     updateBasics.isPending ||
     updatePrefs.isPending ||
     invite.isPending ||
-    removeMember.isPending ||
-    markVerified.isPending;
+    removeMember.isPending;
 
   const go = async (next: number) => {
     if (next < 0) return;
     if (next >= STEPS.length) {
       setDone(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setCurrent(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Continue handler: save the current step's draft (if it's form-shaped)
+  // before advancing. If the save fails we surface an error and stay put.
+  const handleAdvance = async () => {
+    setAdvanceError(null);
+    try {
+      if (stepId === "company" && companyStepRef.current) {
+        await companyStepRef.current.save();
+      } else if (stepId === "prefs" && prefsStepRef.current) {
+        await prefsStepRef.current.save();
+      }
+    } catch (err) {
+      setAdvanceError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't save this step — try again.",
+      );
+      return;
+    }
+    await go(current + 1);
+  };
+
+  // Skip without saving — for users who want to come back and fill it later.
+  const handleSkip = async () => {
+    setAdvanceError(null);
+    await go(current + 1);
   };
 
   const stepId = STEPS[current]?.id ?? "welcome";
@@ -230,7 +277,7 @@ export function EmployerOnboardingClient({
               teamCount={members.length}
               onEnter={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
-                router.push("/employer");
+                router.push("/employer/profile");
               }}
             />
           ) : (
@@ -240,6 +287,7 @@ export function EmployerOnboardingClient({
               )}
               {stepId === "company" && (
                 <CompanyStep
+                  ref={companyStepRef}
                   initial={org ?? null}
                   onSave={async (input) => {
                     if (!org) {
@@ -253,7 +301,6 @@ export function EmployerOnboardingClient({
               {stepId === "verify" && (
                 <VerifyStep
                   org={org ?? null}
-                  onMarkVerified={() => markVerified.mutate()}
                   onSendEmail={(emailTo) =>
                     sendDomainVerifyEmail.mutateAsync({ email: emailTo })
                   }
@@ -276,17 +323,36 @@ export function EmployerOnboardingClient({
               )}
               {stepId === "prefs" && (
                 <PrefsStep
+                  ref={prefsStepRef}
                   initial={org ?? null}
-                  onSave={(input) => updatePrefs.mutate(input)}
+                  onSave={async (input) =>
+                    void (await updatePrefs.mutateAsync(input))
+                  }
                   saving={saving}
                 />
+              )}
+
+              {advanceError && (
+                <div
+                  role="alert"
+                  style={{
+                    marginTop: 16,
+                    padding: "10px 14px",
+                    background: "var(--v2-coral-soft)",
+                    color: "#A63A20",
+                    borderRadius: "var(--v2-r-md)",
+                    fontSize: 13,
+                  }}
+                >
+                  {advanceError}
+                </div>
               )}
 
               <div className="ob-actions">
                 <button
                   className="v2-btn v2-btn-link"
                   onClick={() => go(current - 1)}
-                  disabled={current === 0}
+                  disabled={current === 0 || saving}
                 >
                   ← Previous
                 </button>
@@ -294,18 +360,22 @@ export function EmployerOnboardingClient({
                   {current > 0 && current < STEPS.length - 1 && (
                     <button
                       className="v2-btn v2-btn-ghost"
-                      onClick={() => go(current + 1)}
+                      onClick={handleSkip}
+                      disabled={saving}
                     >
                       Skip step
                     </button>
                   )}
                   <button
                     className="v2-btn v2-btn-primary v2-btn-lg"
-                    onClick={() => go(current + 1)}
+                    onClick={handleAdvance}
+                    disabled={saving}
                   >
-                    {current === STEPS.length - 1
-                      ? "Finish & go live"
-                      : "Continue"}
+                    {saving
+                      ? "Saving…"
+                      : current === STEPS.length - 1
+                        ? "Finish & go live"
+                        : "Continue"}
                     <Icon name="arrowRight" size={16} />
                   </button>
                 </div>
@@ -429,8 +499,8 @@ function WelcomeStep({
           <div className="ob-welcome-num">02</div>
           <h4>Verify the domain</h4>
           <p>
-            DNS record or a confirmation email from a @company address. Unlocks
-            posting &amp; outreach.
+            We email a confirmation link to an address at your company domain.
+            Click it to unlock posting &amp; outreach.
           </p>
         </div>
         <div className="ob-welcome-card">
@@ -469,8 +539,8 @@ function WelcomeStep({
             color: "var(--v2-ink-500)",
           }}
         >
-          <Icon name="shield" size={16} /> SOC 2 · encrypted at rest · role-based
-          access
+          <Icon name="shield" size={16} /> Verified employers · role-based
+          team access · candidate-controlled sharing
         </div>
       </div>
     </>
@@ -507,15 +577,14 @@ type CompanyInput = {
   subSectors: string[];
 };
 
-function CompanyStep({
-  initial,
-  onSave,
-  saving,
-}: {
-  initial: OrgRow | null;
-  onSave: (input: CompanyInput) => Promise<void>;
-  saving: boolean;
-}) {
+const CompanyStep = forwardRef<
+  StepHandle,
+  {
+    initial: OrgRow | null;
+    onSave: (input: CompanyInput) => Promise<void>;
+    saving: boolean;
+  }
+>(function CompanyStep({ initial, onSave, saving }, ref) {
   const [name, setName] = useState(initial?.name ?? "");
   const [domain, setDomain] = useState(initial?.domain ?? "");
   const [website, setWebsite] = useState(initial?.website ?? "");
@@ -552,8 +621,9 @@ function CompanyStep({
           : curr,
     );
 
-  const save = () =>
-    onSave({
+  const save = async () => {
+    if (!name.trim() || !dirty) return;
+    await onSave({
       name: name.trim(),
       domain: domain.trim() || null,
       website: website.trim() || null,
@@ -566,6 +636,9 @@ function CompanyStep({
       primarySector: sector,
       subSectors,
     });
+  };
+
+  useImperativeHandle(ref, () => ({ save }), [save]);
 
   return (
     <>
@@ -706,38 +779,26 @@ function CompanyStep({
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <button
-          className="v2-btn v2-btn-primary v2-btn-sm"
-          onClick={save}
-          disabled={!dirty || !name.trim() || saving}
-        >
-          {saving ? "Saving…" : "Save company details"}
-        </button>
-      </div>
     </>
   );
-}
+});
 
 /* ---------- step: verify ---------- */
 
 function VerifyStep({
   org,
-  onMarkVerified,
   onSendEmail,
   sendError,
   sendPending,
   sentTo,
 }: {
   org: (OrgRow & { verified: boolean; verificationToken: string | null }) | null;
-  onMarkVerified: () => void;
   onSendEmail: (email: string) => Promise<unknown>;
   sendError: string | null;
   sendPending: boolean;
   sentTo: string | null;
 }) {
   const domain = org?.domain ?? "your-company.ca";
-  const token = org?.verificationToken ?? "energized-verify=pending";
   const [verifyEmail, setVerifyEmail] = useState(
     org?.domain ? `hr@${org.domain}` : "",
   );
@@ -785,7 +846,7 @@ function VerifyStep({
           <div className="ep-verify-desc">
             {org.verified
               ? "Your domain is linked. You can post roles and message candidates."
-              : "Pick a method below. Most domains verify in under 15 minutes."}
+              : `We'll send a confirmation link to an address at @${domain}. Click the link in your inbox to verify.`}
           </div>
         </div>
         <span
@@ -797,121 +858,99 @@ function VerifyStep({
 
       {!org.verified && (
         <>
-          <div className="ep-method-grid">
-            <div className="ep-method recommended">
-              <div className="ep-method-badge">Recommended</div>
-              <div className="ep-method-ico">
-                <Icon name="globe" size={20} />
-              </div>
-              <div className="ep-method-title">DNS TXT record</div>
-              <div className="ep-method-desc">
-                Add a single TXT record to <strong>{domain}</strong>. We check
-                every 60 seconds and flip you live automatically.
-              </div>
-              <ul className="ep-method-steps">
-                <li>Log in to your DNS provider</li>
-                <li>Add the record below</li>
-                <li>Click &ldquo;Check now&rdquo;</li>
-              </ul>
-              <div className="ep-dns">
-                <div className="ep-dns-row">
-                  <span className="ep-dns-label">Type</span>
-                  <span className="ep-dns-val">TXT</span>
-                  <span />
-                </div>
-                <div className="ep-dns-row">
-                  <span className="ep-dns-label">Host</span>
-                  <span className="ep-dns-val">_energized.{domain}</span>
-                  <button
-                    type="button"
-                    className="ep-dns-copy"
-                    onClick={() =>
-                      navigator.clipboard.writeText(`_energized.${domain}`)
-                    }
-                  >
-                    Copy
-                  </button>
-                </div>
-                <div className="ep-dns-row">
-                  <span className="ep-dns-label">Value</span>
-                  <span className="ep-dns-val">{token}</span>
-                  <button
-                    type="button"
-                    className="ep-dns-copy"
-                    onClick={() => navigator.clipboard.writeText(token)}
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="v2-btn v2-btn-primary v2-btn-sm"
-                style={{ marginTop: 18 }}
-                onClick={onMarkVerified}
-              >
-                Mark as verified <Icon name="arrowRight" size={14} />
-              </button>
+          <div
+            style={{
+              marginTop: 16,
+              padding: 24,
+              background: "white",
+              border: "1px solid var(--v2-ink-200)",
+              borderRadius: 16,
+              maxWidth: 520,
+            }}
+          >
+            <div
+              style={{
+                display: "inline-flex",
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "var(--v2-ink-50)",
+                color: "var(--v2-ink-700)",
+                placeItems: "center",
+                marginBottom: 14,
+              }}
+            >
+              <Icon name="mail" size={20} />
             </div>
-
-            <div className="ep-method">
-              <div className="ep-method-ico">
-                <Icon name="mail" size={20} />
-              </div>
-              <div className="ep-method-title">Email confirmation</div>
-              <div className="ep-method-desc">
-                We send a verification link to an address at{" "}
-                <strong>@{domain}</strong>. Good when you don&rsquo;t control
-                DNS.
-              </div>
-              <div className="ob-field" style={{ marginTop: 16 }}>
-                <label>Send to</label>
-                <input
-                  className="v2-input-block"
-                  value={verifyEmail}
-                  onChange={(e) => setVerifyEmail(e.target.value)}
-                  type="email"
-                  placeholder={`hr@${domain}`}
-                />
-              </div>
-              <button
-                type="button"
-                className="v2-btn v2-btn-primary v2-btn-sm"
-                style={{ marginTop: 14 }}
-                onClick={() => onSendEmail(verifyEmail.trim().toLowerCase())}
-                disabled={!verifyEmail.trim() || sendPending}
-              >
-                {sendPending ? "Sending…" : "Send verification email"}
-              </button>
-              {sentTo && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 12px",
-                    background: "var(--v2-accent-soft, #E7FBD0)",
-                    color: "var(--v2-ink-900)",
-                    borderRadius: 10,
-                    fontSize: 13,
-                  }}
-                >
-                  Sent. Check <strong>{sentTo}</strong> for the link.
-                </div>
-              )}
-              {sendError && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 12px",
-                    background: "var(--v2-coral-soft, #FBEBE4)",
-                    color: "#A63A20",
-                    borderRadius: 10,
-                    fontSize: 13,
-                  }}
-                >
-                  {sendError}
-                </div>
-              )}
+            <div
+              style={{
+                fontFamily: "var(--v2-font-serif)",
+                fontWeight: 900,
+                fontSize: 20,
+                color: "var(--v2-ink-950)",
+                marginBottom: 6,
+              }}
+            >
+              Email confirmation
             </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "var(--v2-ink-600)",
+                lineHeight: 1.5,
+              }}
+            >
+              We send a verification link to an address at{" "}
+              <strong>@{domain}</strong>. Click the link to confirm you work
+              there.
+            </div>
+            <div className="ob-field" style={{ marginTop: 16 }}>
+              <label>Send to</label>
+              <input
+                className="v2-input-block"
+                value={verifyEmail}
+                onChange={(e) => setVerifyEmail(e.target.value)}
+                type="email"
+                placeholder={`hr@${domain}`}
+              />
+            </div>
+            <button
+              type="button"
+              className="v2-btn v2-btn-primary v2-btn-sm"
+              style={{ marginTop: 14 }}
+              onClick={() => onSendEmail(verifyEmail.trim().toLowerCase())}
+              disabled={!verifyEmail.trim() || sendPending}
+            >
+              {sendPending ? "Sending…" : "Send verification email"}
+            </button>
+            {sentTo && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 12px",
+                  background: "var(--v2-accent-soft, #E7FBD0)",
+                  color: "var(--v2-ink-900)",
+                  borderRadius: 10,
+                  fontSize: 13,
+                }}
+              >
+                Sent. Check <strong>{sentTo}</strong> for the link.
+              </div>
+            )}
+            {sendError && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 12px",
+                  background: "var(--v2-coral-soft, #FBEBE4)",
+                  color: "#A63A20",
+                  borderRadius: 10,
+                  fontSize: 13,
+                }}
+              >
+                {sendError}
+              </div>
+            )}
           </div>
 
           <div
@@ -1100,15 +1139,14 @@ type OrgPrefsRow = {
   prioritizeDiverse: boolean;
 };
 
-function PrefsStep({
-  initial,
-  onSave,
-  saving,
-}: {
-  initial: OrgPrefsRow | null;
-  onSave: (input: PrefsInput) => void;
-  saving: boolean;
-}) {
+const PrefsStep = forwardRef<
+  StepHandle,
+  {
+    initial: OrgPrefsRow | null;
+    onSave: (input: PrefsInput) => Promise<void>;
+    saving: boolean;
+  }
+>(function PrefsStep({ initial, onSave, saving }, ref) {
   const [setup, setSetup] = useState<WorkSetup | null>(
     initial?.defaultWorkSetup ?? null,
   );
@@ -1130,6 +1168,19 @@ function PrefsStep({
     JSON.stringify(focus) !== JSON.stringify(initial?.focusRoles ?? []) ||
     autoMatch !== (initial?.autoMatch ?? true) ||
     dei !== (initial?.prioritizeDiverse ?? false);
+
+  const save = async () => {
+    if (!dirty) return;
+    await onSave({
+      defaultWorkSetup: setup,
+      hiringPace: pace,
+      focusRoles: focus,
+      autoMatch,
+      prioritizeDiverse: dei,
+    });
+  };
+
+  useImperativeHandle(ref, () => ({ save }), [save]);
 
   return (
     <>
@@ -1236,26 +1287,9 @@ function PrefsStep({
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <button
-          className="v2-btn v2-btn-primary v2-btn-sm"
-          onClick={() =>
-            onSave({
-              defaultWorkSetup: setup,
-              hiringPace: pace,
-              focusRoles: focus,
-              autoMatch,
-              prioritizeDiverse: dei,
-            })
-          }
-          disabled={!dirty || saving}
-        >
-          {saving ? "Saving…" : "Save preferences"}
-        </button>
-      </div>
     </>
   );
-}
+});
 
 /* ---------- finish ---------- */
 
