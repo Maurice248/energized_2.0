@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
+
+const VALID_SUBSCRIBE_TIERS = new Set([
+  "package_a",
+  "package_b",
+  "package_c",
+] as const);
 
 function formatPriceCents(cents: number): string {
   return new Intl.NumberFormat("en-CA", {
@@ -71,6 +78,40 @@ export function BillingSection({ id }: { id?: string }) {
     },
     onError: (e) => setError(e.message),
   });
+
+  // When arriving from a marketing card or sign-up with ?subscribe=<tier>,
+  // surface a "Continue to payment / Pay later" confirmation instead of
+  // auto-firing — the user might have picked the plan by mistake. They can
+  // always subscribe later from this same page.
+  const router = useRouter();
+  const params = useSearchParams();
+  const [pendingTier, setPendingTier] = useState<
+    "package_a" | "package_b" | "package_c" | null
+  >(null);
+  const seenSubscribeRef = useRef(false);
+  useEffect(() => {
+    if (seenSubscribeRef.current) return;
+    if (current.isLoading) return;
+    const wanted = params.get("subscribe");
+    if (
+      !wanted ||
+      !VALID_SUBSCRIBE_TIERS.has(
+        wanted as "package_a" | "package_b" | "package_c",
+      )
+    )
+      return;
+    seenSubscribeRef.current = true;
+    if (current.data?.tier === wanted) return; // already on this tier
+    setPendingTier(wanted as "package_a" | "package_b" | "package_c");
+  }, [current.isLoading, current.data?.tier, params]);
+
+  function dismissPending() {
+    setPendingTier(null);
+    const next = new URLSearchParams(params.toString());
+    next.delete("subscribe");
+    const qs = next.toString();
+    router.replace(`/employer/profile${qs ? `?${qs}` : ""}#ep-billing`);
+  }
 
   if (current.isLoading || tiers.isLoading) {
     return (
@@ -140,6 +181,96 @@ export function BillingSection({ id }: { id?: string }) {
           )}
         </div>
       </div>
+
+      {pendingTier &&
+        (() => {
+          const t = tierList.find((x) => x.id === pendingTier);
+          if (!t) return null;
+          return (
+            <div
+              style={{
+                padding: 22,
+                marginBottom: 16,
+                background: "var(--v2-ink-950)",
+                color: "white",
+                borderRadius: "var(--v2-r-xl)",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 16,
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+                <div
+                  style={{
+                    fontFamily: "var(--v2-font-mono)",
+                    fontSize: 11,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--v2-accent)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Confirm subscription
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  Ready to subscribe to {t.label}?
+                </div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: 13,
+                    color: "var(--v2-ink-300)",
+                  }}
+                >
+                  {formatPriceCents(t.priceCents)} / mo &middot; cancel any time.
+                  No charge until you confirm in Stripe.
+                  {!canManage && (
+                    <>
+                      {" "}Only owners and admins can subscribe — ask your
+                      org admin to continue.
+                    </>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="v2-btn v2-btn-accent v2-btn-sm"
+                  onClick={() => checkout.mutate({ tier: pendingTier })}
+                  disabled={
+                    checkout.isPending ||
+                    !stripeReady ||
+                    !t.configured ||
+                    !canManage
+                  }
+                  title={
+                    !canManage
+                      ? "Only owners and admins can subscribe."
+                      : !stripeReady
+                        ? "Stripe not configured."
+                        : !t.configured
+                          ? `${t.label} price id not set in env.`
+                          : undefined
+                  }
+                >
+                  {checkout.isPending
+                    ? "Loading…"
+                    : `Continue to payment for ${t.label} →`}
+                </button>
+                <button
+                  type="button"
+                  className="v2-btn v2-btn-ghost-dark v2-btn-sm"
+                  onClick={dismissPending}
+                  disabled={checkout.isPending}
+                >
+                  Pay later
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
       {error && (
         <div
@@ -412,7 +543,8 @@ export function BillingSection({ id }: { id?: string }) {
                           }}
                         >
                           {t.jobsPerCycle} job
-                          {t.jobsPerCycle === 1 ? "" : "s"} per cycle
+                          {t.jobsPerCycle === 1 ? "" : "s"} per cycle ·{" "}
+                          {t.seats} seat{t.seats === 1 ? "" : "s"}
                         </div>
                         <button
                           type="button"

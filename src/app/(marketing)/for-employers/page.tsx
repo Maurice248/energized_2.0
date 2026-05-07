@@ -12,6 +12,8 @@ import {
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
 import { SECTOR_LABELS, type JobSector } from "@/lib/jobs-options";
+import { EMPLOYER_DISPLAY_PLANS, TIERS } from "@/lib/billing-tiers";
+import { getViewerContext } from "@/lib/viewer-context";
 import { PricingSection, RoiCalculator } from "./employers-interactive";
 
 export const metadata: Metadata = {
@@ -196,8 +198,27 @@ export default async function ForEmployersPage() {
           sectorList={sectorList}
         />
         <Testimonial />
-        <PricingSection />
-        <RoiCalculator />
+        <PricingSection
+          plans={EMPLOYER_DISPLAY_PLANS.filter((p) => p.priceCents > 0)}
+          viewer={await getViewerContext()}
+        />
+        <RoiCalculator
+          tierA={{
+            label: TIERS.package_a.label,
+            priceCents: TIERS.package_a.priceCents,
+            jobsPerCycle: TIERS.package_a.jobsPerCycle,
+          }}
+          tierB={{
+            label: TIERS.package_b.label,
+            priceCents: TIERS.package_b.priceCents,
+            jobsPerCycle: TIERS.package_b.jobsPerCycle,
+          }}
+          tierC={{
+            label: TIERS.package_c.label,
+            priceCents: TIERS.package_c.priceCents,
+            jobsPerCycle: TIERS.package_c.jobsPerCycle,
+          }}
+        />
         <Faq />
         <ClosingCta />
       </main>

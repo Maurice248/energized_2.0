@@ -15,6 +15,8 @@ const schema = z.object({
   STRIPE_PRICE_PACKAGE_A: z.string().optional(),
   STRIPE_PRICE_PACKAGE_B: z.string().optional(),
   STRIPE_PRICE_PACKAGE_C: z.string().optional(),
+  STRIPE_PRICE_PACKAGE_GOLD: z.string().optional(),
+  STRIPE_PRICE_PACKAGE_PLATINUM: z.string().optional(),
 });
 
 export const env = schema.parse({
@@ -32,4 +34,6 @@ export const env = schema.parse({
   STRIPE_PRICE_PACKAGE_A: process.env.STRIPE_PRICE_PACKAGE_A,
   STRIPE_PRICE_PACKAGE_B: process.env.STRIPE_PRICE_PACKAGE_B,
   STRIPE_PRICE_PACKAGE_C: process.env.STRIPE_PRICE_PACKAGE_C,
+  STRIPE_PRICE_PACKAGE_GOLD: process.env.STRIPE_PRICE_PACKAGE_GOLD,
+  STRIPE_PRICE_PACKAGE_PLATINUM: process.env.STRIPE_PRICE_PACKAGE_PLATINUM,
 });

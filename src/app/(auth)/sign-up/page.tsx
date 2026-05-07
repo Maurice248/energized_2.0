@@ -13,10 +13,23 @@ import {
   type OnboardingDraft,
   type StoredDraft,
 } from "@/lib/onboarding";
+import {
+  JOBSEEKER_DISPLAY_PLANS,
+  EMPLOYER_DISPLAY_PLANS,
+} from "@/lib/billing-display";
 
 type Role = "jobseeker" | "employer";
-type Plan = "free" | "pro" | "placement";
-type EmployerPlan = "starter" | "growth" | "scale";
+type Plan = "jobseeker_free" | "jobseeker_gold" | "jobseeker_platinum";
+type EmployerPlan =
+  | "employer_free"
+  | "package_a"
+  | "package_b"
+  | "package_c";
+
+function formatMonthly(priceCents: number): string {
+  if (priceCents === 0) return "Free";
+  return `C$${Math.round(priceCents / 100)} / mo`;
+}
 
 const ROLE_OPTIONS: {
   id: Role;
@@ -69,34 +82,21 @@ const SKILL_OPTIONS = [
   "Instrumentation",
 ];
 
-const PLAN_OPTIONS: {
+type SignUpPlanOption = {
   id: Plan;
   title: string;
   price: string;
   description: string;
   recommended?: boolean;
-}[] = [
-  {
-    id: "free",
-    title: "Starter",
-    price: "Free",
-    description: "AI matches · Profile · Save jobs",
-  },
-  {
-    id: "pro",
-    title: "Pro",
-    price: "C$12 / mo",
-    description:
-      "Priority matches · Ember unlimited · Direct messages · Resume tailoring",
-    recommended: true,
-  },
-  {
-    id: "placement",
-    title: "Placement concierge",
-    price: "Free — paid by employer",
-    description: "Dedicated talent partner for senior roles",
-  },
-];
+};
+
+const PLAN_OPTIONS: SignUpPlanOption[] = JOBSEEKER_DISPLAY_PLANS.map((p) => ({
+  id: p.id as Plan,
+  title: p.label,
+  price: formatMonthly(p.priceCents),
+  description: p.tagline,
+  recommended: p.featured,
+}));
 
 const COMPANY_SIZES = [
   "1–10",
@@ -108,33 +108,22 @@ const COMPANY_SIZES = [
   "1000+",
 ];
 
-const EMPLOYER_PLAN_OPTIONS: {
+type SignUpEmployerPlanOption = {
   id: EmployerPlan;
   title: string;
   price: string;
   description: string;
   recommended?: boolean;
-}[] = [
-  {
-    id: "starter",
-    title: "Starter",
-    price: "Free",
-    description: "1 active posting · Basic candidate search",
-  },
-  {
-    id: "growth",
-    title: "Growth",
-    price: "C$299 / mo",
-    description: "5 active postings · Boost credits · Priority matching",
-    recommended: true,
-  },
-  {
-    id: "scale",
-    title: "Scale",
-    price: "C$899 / mo",
-    description: "Unlimited postings · 3 recruiter seats · Priority support",
-  },
-];
+};
+
+const EMPLOYER_PLAN_OPTIONS: SignUpEmployerPlanOption[] =
+  EMPLOYER_DISPLAY_PLANS.map((p) => ({
+    id: p.id as EmployerPlan,
+    title: p.label,
+    price: formatMonthly(p.priceCents),
+    description: p.tagline,
+    recommended: p.featured,
+  }));
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -157,12 +146,12 @@ export default function SignUpPage() {
   const [sector, setSector] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
-  const [plan, setPlan] = useState<Plan>("pro");
+  const [plan, setPlan] = useState<Plan>("jobseeker_gold");
   const [company, setCompany] = useState("");
   const [companySize, setCompanySize] = useState<string | null>(null);
   const [hiringSectors, setHiringSectors] = useState<string[]>([]);
   const [location, setLocation] = useState("");
-  const [employerPlan, setEmployerPlan] = useState<EmployerPlan>("growth");
+  const [employerPlan, setEmployerPlan] = useState<EmployerPlan>("package_b");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

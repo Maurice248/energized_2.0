@@ -61,6 +61,7 @@ export const billingRouter = router({
 
     const tier = isPlanTier(org.plan) ? org.plan : null;
     const quota = tier ? TIERS[tier].jobsPerCycle : 0;
+    const seatLimit = tier ? TIERS[tier].seats : 0;
 
     let publishedThisCycle = 0;
     if (tier && org.currentPeriodStart && org.planRenewsAt) {
@@ -97,6 +98,7 @@ export const billingRouter = router({
       cancellationDisposition: org.cancellationDisposition,
       publishedThisCycle,
       quota,
+      seatLimit,
       activeSeats: seats?.active ?? 0,
       pendingSeats: seats?.pending ?? 0,
     };
@@ -159,7 +161,7 @@ export const billingRouter = router({
         success_url: `${env.NEXT_PUBLIC_APP_URL}/employer/profile?billing=success`,
         cancel_url: `${env.NEXT_PUBLIC_APP_URL}/employer/profile?billing=cancelled`,
         subscription_data: {
-          metadata: { orgId: org.id },
+          metadata: { orgId: org.id, audience: "employer" },
         },
       });
 
@@ -375,6 +377,7 @@ export const billingRouter = router({
       label: TIERS[t].label,
       priceCents: TIERS[t].priceCents,
       jobsPerCycle: TIERS[t].jobsPerCycle,
+      seats: TIERS[t].seats,
       features: TIERS[t].features,
       configured: Boolean(TIERS[t].stripePriceId),
     }));

@@ -24,6 +24,7 @@ import {
 import { LOCATION_SUGGESTIONS } from "@/components/shared/add-role-dialog";
 import { api } from "@/lib/trpc/client";
 import { authClient, signOut } from "@/lib/auth/client";
+import { JobseekerBillingSection } from "./jobseeker-billing-section";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: "user" as IconName },
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { id: "certs", label: "Certifications", icon: "shield" as IconName },
   { id: "skills", label: "Skills", icon: "sparkles" as IconName },
   { id: "preferences", label: "Preferences", icon: "sliders" as IconName },
+  { id: "billing", label: "Plan & billing", icon: "dollar" as IconName },
   { id: "account", label: "Account & privacy", icon: "lock" as IconName },
 ];
 
@@ -763,6 +765,9 @@ export function ProfileClient({
               }
             />
           )}
+
+          {/* Plan & billing */}
+          <JobseekerBillingSection id="pp-billing" />
 
           {/* Account & privacy */}
           <div id="pp-account" style={{ scrollMarginTop: 100 }} />

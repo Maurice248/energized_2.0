@@ -51,6 +51,12 @@ export const onboardingRouter = router({
         const companyName = input.company.trim() || "Untitled company";
         const verificationToken = `energized-verify=${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
+        // Free tier = no Stripe subscription. Store "none" in the DB so the
+        // billing column matches the established "none" | "package_a" | ...
+        // shape (see employerOrgs schema comment).
+        const dbPlan =
+          input.plan === "employer_free" ? "none" : input.plan;
+
         const [org] = await ctx.db
           .insert(employerOrgs)
           .values({
@@ -58,7 +64,7 @@ export const onboardingRouter = router({
             hq: input.location || null,
             primarySector: mappedSectors[0] ?? null,
             size: companySizeLabelToEnum(input.companySize),
-            plan: input.plan,
+            plan: dbPlan,
             verificationToken,
           })
           .returning();

@@ -62,7 +62,7 @@ export async function PlanQuotaCard() {
               <strong className="text-[var(--v2-ink-950)]">
                 {data.activeSeats}
               </strong>{" "}
-              active seat{data.activeSeats === 1 ? "" : "s"}
+              of {data.seatLimit} seat{data.seatLimit === 1 ? "" : "s"} active
               {data.pendingSeats > 0 && (
                 <span> · {data.pendingSeats} pending</span>
               )}

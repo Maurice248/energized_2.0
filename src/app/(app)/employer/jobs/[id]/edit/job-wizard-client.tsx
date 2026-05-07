@@ -16,6 +16,27 @@ import {
   type WizardDraft,
 } from "./wizard-steps";
 import { JobPreviewCard } from "@/components/jobs/job-preview-card";
+import { EMPLOYER_DISPLAY_PLANS } from "@/lib/billing-display";
+
+// Quota (jobs/cycle) → tier label, derived from the canonical employer plans.
+// Lets the paywall message name the user's current tier without a server hop.
+const QUOTA_TO_LABEL: Record<number, string> = {
+  1: "Package A",
+  2: "Package B",
+  3: "Package C",
+};
+
+function nextTierName(currentQuota: number): string | null {
+  // Find the cheapest paid tier strictly above the user's current quota.
+  const paid = EMPLOYER_DISPLAY_PLANS.filter((p) => p.priceCents > 0);
+  const next = paid.find((p) => {
+    const label = p.label;
+    if (label === "Package B") return currentQuota < 2;
+    if (label === "Package C") return currentQuota < 3;
+    return false;
+  });
+  return next?.label ?? null;
+}
 
 type JobRow = inferRouterOutputs<AppRouter>["jobs"]["getById"];
 
@@ -228,9 +249,13 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
           );
         } else if (quotaMatch) {
           const used = quotaMatch[1];
-          const quota = quotaMatch[2];
+          const quota = Number(quotaMatch[2]);
+          const currentLabel = QUOTA_TO_LABEL[quota] ?? "your plan";
+          const next = nextTierName(quota);
           setPublishError(
-            `You've used ${used} of ${quota} job slots this billing cycle. Upgrade to a higher tier in your company profile to publish more.`,
+            next
+              ? `You've used ${used} of ${quota} job slot${quota === 1 ? "" : "s"} on ${currentLabel} this billing cycle. Upgrade to ${next} to publish more.`
+              : `You've used ${used} of ${quota} job slots on ${currentLabel} this billing cycle — that's the highest tier we offer. Reach out about a custom plan.`,
           );
         } else {
           setPublishError(e.message);

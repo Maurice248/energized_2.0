@@ -11,6 +11,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
+import {
+  consumePendingBillingRedirect,
+  parsePendingBillingChoice,
+  peekPendingBillingRedirect,
+  type PendingBillingChoice,
+} from "@/components/shared/onboarding-persister";
 
 // Imperative handle each form step exposes so the wizard's "Continue"
 // button can save the current draft before advancing — without making
@@ -277,6 +283,14 @@ export function EmployerOnboardingClient({
               teamCount={members.length}
               onEnter={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
+                // If the user picked a paid plan at sign-up, route to the
+                // billing surface (which shows the Confirm-subscription panel)
+                // before letting them into the employer dashboard.
+                const billing = consumePendingBillingRedirect();
+                if (billing) {
+                  window.location.href = billing;
+                  return;
+                }
                 router.push("/employer/profile");
               }}
             />
@@ -1293,6 +1307,15 @@ const PrefsStep = forwardRef<
 
 /* ---------- finish ---------- */
 
+const EMPLOYER_PRICE_LABELS: Record<
+  "package_a" | "package_b" | "package_c",
+  string
+> = {
+  package_a: "C$299 / mo",
+  package_b: "C$549 / mo",
+  package_c: "C$749 / mo",
+};
+
 function Finish({
   verified,
   teamCount,
@@ -1302,6 +1325,28 @@ function Finish({
   teamCount: number;
   onEnter: () => void;
 }) {
+  const [pending, setPending] = useState<PendingBillingChoice | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPending(parsePendingBillingChoice(peekPendingBillingRedirect()));
+  }, []);
+
+  const checkout = api.billing.createCheckoutSession.useMutation({
+    onSuccess: ({ url }) => {
+      consumePendingBillingRedirect();
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.location.href = url;
+    },
+    onError: (e) => setError(e.message),
+  });
+
+  function handlePayLater() {
+    consumePendingBillingRedirect();
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.location.href = "/employer/profile";
+  }
+
   return (
     <div className="ob-finish">
       <div className="ob-finish-medal">
@@ -1338,19 +1383,104 @@ function Finish({
         </div>
       </div>
 
-      <div
-        style={{
-          marginTop: 40,
-          display: "flex",
-          justifyContent: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <button className="v2-btn v2-btn-primary v2-btn-lg" onClick={onEnter}>
-          Go to company profile <Icon name="arrowRight" size={16} />
-        </button>
-      </div>
+      {pending && pending.audience === "employer" && (
+        <div
+          style={{
+            marginTop: 32,
+            padding: 22,
+            background: "var(--v2-ink-950)",
+            color: "white",
+            borderRadius: "var(--v2-r-xl)",
+            textAlign: "left",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 16,
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+            <div
+              style={{
+                fontFamily: "var(--v2-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--v2-accent)",
+                marginBottom: 6,
+              }}
+            >
+              Confirm subscription
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>
+              You picked <em>{pending.label}</em> at sign-up — not paid yet.
+            </div>
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                color: "var(--v2-ink-300)",
+              }}
+            >
+              {EMPLOYER_PRICE_LABELS[pending.tier]} &middot; cancel any time.
+              No charge until you confirm in Stripe.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="v2-btn v2-btn-accent v2-btn-sm"
+              onClick={() => checkout.mutate({ tier: pending.tier })}
+              disabled={checkout.isPending}
+            >
+              {checkout.isPending
+                ? "Loading…"
+                : `Continue to payment for ${pending.label} →`}
+            </button>
+            <button
+              type="button"
+              className="v2-btn v2-btn-ghost-dark v2-btn-sm"
+              onClick={handlePayLater}
+              disabled={checkout.isPending}
+            >
+              Pay later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 16,
+            padding: "10px 14px",
+            background: "var(--v2-coral-soft)",
+            color: "#A63A20",
+            borderRadius: 10,
+            fontSize: 13,
+            textAlign: "left",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {!pending && (
+        <div
+          style={{
+            marginTop: 40,
+            display: "flex",
+            justifyContent: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <button className="v2-btn v2-btn-primary v2-btn-lg" onClick={onEnter}>
+            Go to company profile <Icon name="arrowRight" size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -44,13 +44,16 @@
 /* Anchors styled as buttons set their own color/bg; the :not() chain
    below prevents the global color-reset from clobbering them. Add new
    button-styled-anchor class names here when introducing them. */
-.v2 a:not(.v2-btn):not(.v2-filter-chip):not(.v2-offer-cta):not(.v2-prof-cta):not(.v2-pricing-cta):not(.v2-btn-ghost-dark):not(.v2-prof-ring) { color: inherit; text-decoration: none; cursor: pointer; }
+.v2 a:not(.v2-btn):not(.v2-filter-chip):not(.v2-offer-cta):not(.v2-prof-cta):not(.v2-pricing-cta):not(.v2-btn-ghost-dark):not(.v2-prof-ring):not(.v2-jsk-price-cta):not(.v2-emp-price-cta):not(.v2-plan-cta) { color: inherit; text-decoration: none; cursor: pointer; }
 .v2 a.v2-filter-chip { text-decoration: none; cursor: pointer; }
 .v2 a.v2-btn,
 .v2 a.v2-offer-cta,
 .v2 a.v2-prof-cta,
 .v2 a.v2-pricing-cta,
-.v2 a.v2-btn-ghost-dark { text-decoration: none; cursor: pointer; }
+.v2 a.v2-btn-ghost-dark,
+.v2 a.v2-jsk-price-cta,
+.v2 a.v2-emp-price-cta,
+.v2 a.v2-plan-cta { text-decoration: none; cursor: pointer; }
 .v2 svg { display: block; flex-shrink: 0; }
 
 .v2-container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 32px; }
@@ -963,6 +966,8 @@
   background: white;
   position: relative;
   transition: border-color .15s, transform .15s;
+  display: flex;
+  flex-direction: column;
 }
 .v2-plan:hover { border-color: var(--v2-ink-900); transform: translateY(-2px); }
 .v2-plan.featured { background: var(--v2-ink-950); color: white; border-color: var(--v2-ink-950); }
@@ -972,10 +977,31 @@
 .v2-plan h4 { font-family: var(--v2-font-serif); font-size: 20px; font-weight: 900; letter-spacing: -0.015em; }
 .v2-plan-price { font-family: var(--v2-font-serif); font-size: 40px; line-height: 1; letter-spacing: -0.03em; margin-top: 12px; }
 .v2-plan-period { font-size: 13px; color: var(--v2-ink-500); }
-.v2-plan ul { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 6px; }
+.v2-plan ul { list-style: none; padding: 0; margin: 16px 0 0; display: grid; align-content: start; gap: 6px; flex: 1; }
 .v2-plan ul li { font-size: 13px; display: flex; gap: 8px; align-items: center; }
 .v2-plan ul li::before { content: '→'; color: var(--v2-accent-deep); font-weight: 700; }
 .v2-plan.featured ul li::before { color: var(--v2-accent); }
+.v2-plan-cta {
+  margin-top: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: var(--v2-r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--v2-ink-950);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  transition: background .15s, transform .15s;
+}
+.v2-plan-cta:hover { background: var(--v2-accent-deep); transform: translateY(-1px); }
+.v2-plan.featured .v2-plan-cta { background: var(--v2-accent); color: var(--v2-ink-950); }
+.v2-plan.featured .v2-plan-cta:hover { background: white; }
 @media (max-width: 700px) { .v2-plans { grid-template-columns: 1fr; } }
 
 /* ============ Onboarding & Profile (appended from design handoff) ============ */
@@ -3802,7 +3828,7 @@
 .v2-emp-price.featured .v2-emp-price-cost .pre { color: var(--v2-ink-300); }
 .v2-emp-price-billing { margin-top: 4px; font-size: 12px; color: var(--v2-ink-500); font-family: var(--v2-font-mono); font-weight: 700; }
 .v2-emp-price.featured .v2-emp-price-billing { color: var(--v2-ink-300); }
-.v2-emp-price-feat { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--v2-ink-200); flex: 1; display: grid; gap: 12px; list-style: none; padding-left: 0; }
+.v2-emp-price-feat { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--v2-ink-200); flex: 1; display: grid; align-content: start; gap: 12px; list-style: none; padding-left: 0; }
 .v2-emp-price.featured .v2-emp-price-feat { border-top-color: rgba(255, 255, 255, 0.1); }
 .v2-emp-price-feat li { display: flex; gap: 12px; font-size: 14px; color: var(--v2-ink-700); line-height: 1.45; }
 .v2-emp-price.featured .v2-emp-price-feat li { color: var(--v2-ink-200); }
@@ -4698,6 +4724,7 @@
   border-top: 1px solid var(--v2-ink-200);
   flex: 1;
   display: grid;
+  align-content: start;
   gap: 12px;
   list-style: none;
   padding-left: 0;

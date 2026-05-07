@@ -18,6 +18,12 @@ import {
   type EducationDialogInitial,
 } from "@/components/shared/add-education-dialog";
 import { api } from "@/lib/trpc/client";
+import {
+  consumePendingBillingRedirect,
+  parsePendingBillingChoice,
+  peekPendingBillingRedirect,
+  type PendingBillingChoice,
+} from "@/components/shared/onboarding-persister";
 
 type SectorEnum =
   | "oil_gas"
@@ -338,11 +344,16 @@ export function OnboardingClient({
             <Finish
               onGoToMatches={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
-                router.push("/dashboard");
+                // If the user picked a paid plan at sign-up, route to the
+                // billing surface (which shows the Confirm-subscription panel)
+                // before letting them into the dashboard.
+                const billing = consumePendingBillingRedirect();
+                window.location.href = billing ?? "/dashboard";
               }}
               onReviewProfile={() => {
                 window.localStorage.removeItem(STORAGE_KEY);
-                router.push("/profile");
+                const billing = consumePendingBillingRedirect();
+                window.location.href = billing ?? "/profile";
               }}
               counts={{
                 roles: profileQuery.data?.workHistory.length ?? 0,
@@ -1588,6 +1599,11 @@ function ToggleRow({
 
 /* ---------- finish ---------- */
 
+const JOBSEEKER_PRICE_LABELS: Record<"gold" | "platinum", string> = {
+  gold: "C$59 / mo",
+  platinum: "C$149 / mo",
+};
+
 function Finish({
   onGoToMatches,
   onReviewProfile,
@@ -1597,6 +1613,28 @@ function Finish({
   onReviewProfile: () => void;
   counts: { roles: number; skills: number; certs: number };
 }) {
+  const [pending, setPending] = useState<PendingBillingChoice | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPending(parsePendingBillingChoice(peekPendingBillingRedirect()));
+  }, []);
+
+  const checkout = api.jobseekerBilling.createCheckoutSession.useMutation({
+    onSuccess: ({ url }) => {
+      consumePendingBillingRedirect();
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.location.href = url;
+    },
+    onError: (e) => setError(e.message),
+  });
+
+  function handlePayLater() {
+    consumePendingBillingRedirect();
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.location.href = "/dashboard";
+  }
+
   return (
     <div className="ob-finish">
       <div className="ob-finish-medal">
@@ -1616,28 +1654,113 @@ function Finish({
         <FinishStat v={counts.certs} label="Certifications" />
       </div>
 
-      <div
-        style={{
-          marginTop: 40,
-          display: "flex",
-          justifyContent: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          className="v2-btn v2-btn-primary v2-btn-lg"
-          onClick={onGoToMatches}
+      {pending && pending.audience === "jobseeker" && (
+        <div
+          style={{
+            marginTop: 32,
+            padding: 22,
+            background: "var(--v2-ink-950)",
+            color: "white",
+            borderRadius: "var(--v2-r-xl)",
+            textAlign: "left",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 16,
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          Go to my matches <Icon name="arrowRight" size={16} />
-        </button>
-        <button
-          className="v2-btn v2-btn-ghost v2-btn-lg"
-          onClick={onReviewProfile}
+          <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+            <div
+              style={{
+                fontFamily: "var(--v2-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--v2-accent)",
+                marginBottom: 6,
+              }}
+            >
+              Confirm subscription
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>
+              You picked <em>{pending.label}</em> at sign-up — not paid yet.
+            </div>
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: 13,
+                color: "var(--v2-ink-300)",
+              }}
+            >
+              {JOBSEEKER_PRICE_LABELS[pending.tier]} &middot; cancel any time.
+              No charge until you confirm in Stripe.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="v2-btn v2-btn-accent v2-btn-sm"
+              onClick={() => checkout.mutate({ tier: pending.tier })}
+              disabled={checkout.isPending}
+            >
+              {checkout.isPending
+                ? "Loading…"
+                : `Continue to payment for ${pending.label} →`}
+            </button>
+            <button
+              type="button"
+              className="v2-btn v2-btn-ghost-dark v2-btn-sm"
+              onClick={handlePayLater}
+              disabled={checkout.isPending}
+            >
+              Pay later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 16,
+            padding: "10px 14px",
+            background: "var(--v2-coral-soft)",
+            color: "#A63A20",
+            borderRadius: 10,
+            fontSize: 13,
+            textAlign: "left",
+          }}
         >
-          Review my profile
-        </button>
-      </div>
+          {error}
+        </div>
+      )}
+
+      {!pending && (
+        <div
+          style={{
+            marginTop: 40,
+            display: "flex",
+            justifyContent: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            className="v2-btn v2-btn-primary v2-btn-lg"
+            onClick={onGoToMatches}
+          >
+            Go to my matches <Icon name="arrowRight" size={16} />
+          </button>
+          <button
+            className="v2-btn v2-btn-ghost v2-btn-lg"
+            onClick={onReviewProfile}
+          >
+            Review my profile
+          </button>
+        </div>
+      )}
     </div>
   );
 }

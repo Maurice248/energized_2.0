@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { subscriptionStatusEnum } from "./enums";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -14,6 +15,24 @@ export const user = pgTable("user", {
     .notNull(),
   role: text("role").default("jobseeker").notNull(),
   onboardedAt: timestamp("onboarded_at"),
+  // Jobseeker subscription state — mirrors employerOrgs billing columns,
+  // namespaced. "none" = free tier (no Stripe subscription).
+  jobseekerPlan: text("jobseeker_plan").notNull().default("none"),
+  jobseekerStripeCustomerId: text("jobseeker_stripe_customer_id").unique(),
+  jobseekerStripeSubscriptionId: text("jobseeker_stripe_subscription_id"),
+  jobseekerSubscriptionStatus: subscriptionStatusEnum(
+    "jobseeker_subscription_status",
+  )
+    .notNull()
+    .default("none"),
+  jobseekerCurrentPeriodStart: timestamp("jobseeker_current_period_start"),
+  jobseekerCurrentPeriodEnd: timestamp("jobseeker_current_period_end"),
+  jobseekerCancelAtPeriodEnd: boolean("jobseeker_cancel_at_period_end")
+    .notNull()
+    .default(false),
+  jobseekerCancellationDisposition: text(
+    "jobseeker_cancellation_disposition",
+  ),
 });
 
 export const session = pgTable(

@@ -10,6 +10,7 @@ import {
 } from "@/server/db/schema";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
+import { getViewerContext } from "@/lib/viewer-context";
 import { PricingSection } from "./pricing-section";
 import { TeamGrid } from "./team-grid";
 
@@ -114,7 +115,7 @@ export default async function AboutPage() {
         <Hero stats={stats} />
         <Story />
         <Offers />
-        <PricingSection />
+        <PricingSection viewer={await getViewerContext()} />
         <Values />
         <Team />
         <FinalCta />

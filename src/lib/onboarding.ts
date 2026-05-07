@@ -93,7 +93,7 @@ const jobseekerDraft = z.object({
   sector: z.string().nullable(),
   level: z.string().nullable(),
   skills: z.array(z.string()).max(6),
-  plan: z.enum(["free", "pro", "placement"]),
+  plan: z.enum(["jobseeker_free", "jobseeker_gold", "jobseeker_platinum"]),
 });
 
 const employerDraft = z.object({
@@ -102,7 +102,7 @@ const employerDraft = z.object({
   companySize: z.string().nullable(),
   hiringSectors: z.array(z.string()),
   location: z.string(),
-  plan: z.enum(["starter", "growth", "scale"]),
+  plan: z.enum(["employer_free", "package_a", "package_b", "package_c"]),
 });
 
 export const onboardingDraftSchema = z.discriminatedUnion("role", [

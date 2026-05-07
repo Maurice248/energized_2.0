@@ -11,6 +11,13 @@ import {
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
 import { SECTOR_LABELS, type JobSector } from "@/lib/jobs-options";
+import { JOBSEEKER_DISPLAY_PLANS } from "@/lib/billing-tiers";
+import { getViewerContext } from "@/lib/viewer-context";
+import {
+  computeCardCta,
+  type CardCta,
+  type ViewerContext,
+} from "@/lib/card-cta";
 
 export const metadata: Metadata = {
   title: "For job seekers — Canadian energy careers",
@@ -207,6 +214,7 @@ const STORIES: Story[] = [
 ];
 
 type Plan = {
+  id: string;
   name: string;
   tagline: string;
   cost: number;
@@ -217,61 +225,22 @@ type Plan = {
   tag?: string;
 };
 
-const PLANS: Plan[] = [
-  {
-    name: "Free",
-    tagline: "Get on the radar",
-    cost: 0,
-    features: [
-      "Unlimited applications",
-      "Basic AI match (top 5 / week)",
-      "Saved searches & alerts",
-      "Public profile + resume hosting",
-      "Certifications + work history",
-      { text: "Skills assessments", muted: true },
-      { text: "Direct recruiter messaging", muted: true },
-      { text: "Mock interviews", muted: true },
-    ],
-    cta: "Sign up free",
-    href: "/sign-up",
-  },
-  {
-    name: "Pro",
-    tagline: "Find the right one, faster",
-    cost: 15,
-    featured: true,
-    tag: "Most popular",
-    features: [
-      "Everything in Free",
-      "Unlimited AI matches with rationale",
-      "Direct recruiter messaging",
-      "Resume review by an energy specialist",
-      "Salary insights & comp comparator",
-      "Verified skills badges",
-      "1 mock interview / quarter",
-      "Application analytics",
-    ],
-    cta: "Try Pro free for 14 days",
-    href: "/sign-up?plan=pro",
-  },
-  {
-    name: "Career",
-    tagline: "White-glove placement",
-    cost: 39,
-    features: [
-      "Everything in Pro",
-      "Dedicated career coach",
-      "Resume + LinkedIn rewrite",
-      "Negotiation playbook + live support",
-      "Priority recruiter inbound",
-      "Quarterly market briefings",
-      "Network introductions on request",
-      "90-day satisfaction guarantee",
-    ],
-    cta: "Talk to a coach",
-    href: "/contact?topic=career",
-  },
-];
+const PLANS: Plan[] = JOBSEEKER_DISPLAY_PLANS.map((p) => ({
+  id: p.id,
+  name: p.label,
+  tagline: p.tagline,
+  cost: p.priceCents / 100,
+  features: [
+    ...p.features,
+    ...(p.futureFeatures?.map(
+      (text) => ({ text, muted: true }) as const,
+    ) ?? []),
+  ],
+  cta: p.cta,
+  href: p.href,
+  featured: p.featured,
+  tag: p.tag,
+}));
 
 const SECTOR_ORDER: JobSector[] = [
   "oil_gas",
@@ -285,7 +254,7 @@ const SECTOR_ORDER: JobSector[] = [
 const FAQ = [
   {
     q: "Is Energized free for job seekers?",
-    a: "Yes — applying to jobs, AI matching, saved searches, and your public profile are free forever. Pro and Career plans add optional features like priority matching and coach support.",
+    a: "Yes — applying to jobs, browsing every role with full filters, saved searches, and your public profile are free forever. Gold and Platinum add optional features like featured profile placement and access to the Trainings library.",
   },
   {
     q: "Do you have roles outside Alberta?",
@@ -300,8 +269,8 @@ const FAQ = [
     a: "Your profile — projects, certifications, the systems you actually ran — is scored against each live role for contextual fit. We show you the top matches with a plain-English rationale so you can see why a role surfaced.",
   },
   {
-    q: "Can I cancel Pro or Career any time?",
-    a: "Yes. Cancel from your account settings — no calls, no friction. Annual subscriptions are prorated back to your card. We'll save your profile in case you come back.",
+    q: "Can I cancel Gold or Platinum any time?",
+    a: "Yes. Cancel from your account settings — no calls, no friction. Subscriptions are billed monthly. We'll save your profile in case you come back.",
   },
 ];
 
@@ -444,7 +413,7 @@ export default async function ForSeekersPage() {
         <Certifications certCount={certCount} />
         <Testimonial />
         <Sectors sectorList={sectorList} employerCount={employerCount} />
-        <Pricing />
+        <Pricing viewer={await getViewerContext()} />
         <Faq />
         <ClosingCta liveRoles={liveRoles} />
       </main>
@@ -949,7 +918,29 @@ function Sectors({
 
 /* ---------- pricing ---------- */
 
-function Pricing() {
+function JskPlanCta({ cta }: { cta: CardCta }) {
+  if (cta.disabled) {
+    return (
+      <button
+        type="button"
+        className="v2-jsk-price-cta"
+        disabled
+        title={cta.tooltip}
+        style={{ opacity: 0.55, cursor: "not-allowed" }}
+      >
+        {cta.label}
+      </button>
+    );
+  }
+  return (
+    <Link href={cta.href} className="v2-jsk-price-cta">
+      {cta.label}
+      {!cta.isCurrentPlan && <Icon name="arrowRight" size={14} />}
+    </Link>
+  );
+}
+
+function Pricing({ viewer }: { viewer: ViewerContext }) {
   return (
     <section className="v2-jsk-sec">
       <div className="v2-container">
@@ -957,65 +948,70 @@ function Pricing() {
           <div>
             <div className="v2-eyebrow">Membership</div>
             <h2 className="v2-jsk-sec-h" style={{ marginTop: 16 }}>
-              Free <em>forever</em>. Pro when you need it.
+              Free <em>forever</em>. Gold when you&rsquo;re serious.
             </h2>
           </div>
           <p className="v2-jsk-sec-lede">
             The free tier is genuinely free &mdash; not a trial. Most members
-            stay on it their entire job search.
+            stay on it their entire job search. Upgrade only when you want more
+            visibility.
           </p>
         </div>
 
         <div className="v2-jsk-price-grid">
-          {PLANS.map((p) => (
-            <div
-              key={p.name}
-              className={`v2-jsk-price ${p.featured ? "featured" : ""}`}
-            >
-              {p.tag && <div className="v2-jsk-price-tag">{p.tag}</div>}
-              <div className="v2-jsk-price-eye">
-                {p.cost === 0 ? "Always free" : "Billed annually"}
-              </div>
-              <div className="v2-jsk-price-name">
-                {p.name === "Pro" ? (
-                  <>
-                    P<em>ro</em>
-                  </>
-                ) : (
-                  p.name
-                )}
-              </div>
-              <div className="v2-jsk-price-tagline">{p.tagline}</div>
-
-              <div className="v2-jsk-price-cost">
-                <span className="pre">C$</span>
-                <span className="n">{p.cost}</span>
-                <span className="per">/ mo</span>
-              </div>
-              <div className="v2-jsk-price-billing">
-                {p.cost === 0
-                  ? "No card required"
-                  : `Billed C$${p.cost * 12} yearly · cancel any time`}
-              </div>
-
-              <ul className="v2-jsk-price-feat">
-                {p.features.map((f, i) =>
-                  typeof f === "string" ? (
-                    <li key={i}>{f}</li>
+          {PLANS.map((p) => {
+            const cta = computeCardCta({
+              audience: "jobseeker",
+              planId: p.id,
+              defaultHref: p.href,
+              defaultLabel: p.cta,
+              viewer,
+            });
+            return (
+              <div
+                key={p.name}
+                className={`v2-jsk-price ${p.featured ? "featured" : ""}`}
+              >
+                {p.tag && <div className="v2-jsk-price-tag">{p.tag}</div>}
+                <div className="v2-jsk-price-eye">
+                  {p.cost === 0 ? "Always free" : "Billed monthly"}
+                </div>
+                <div className="v2-jsk-price-name">
+                  {p.name === "Gold" ? (
+                    <>
+                      G<em>old</em>
+                    </>
                   ) : (
-                    <li key={i} className="muted">
-                      {f.text}
-                    </li>
-                  )
-                )}
-              </ul>
+                    p.name
+                  )}
+                </div>
+                <div className="v2-jsk-price-tagline">{p.tagline}</div>
 
-              <Link href={p.href} className="v2-jsk-price-cta">
-                {p.cta}
-                <Icon name="arrowRight" size={14} />
-              </Link>
-            </div>
-          ))}
+                <div className="v2-jsk-price-cost">
+                  <span className="pre">C$</span>
+                  <span className="n">{p.cost}</span>
+                  <span className="per">/ mo</span>
+                </div>
+                <div className="v2-jsk-price-billing">
+                  {p.cost === 0 ? "No card required" : "Cancel any time"}
+                </div>
+
+                <ul className="v2-jsk-price-feat">
+                  {p.features.map((f, i) =>
+                    typeof f === "string" ? (
+                      <li key={i}>{f}</li>
+                    ) : (
+                      <li key={i} className="muted">
+                        {f.text}
+                      </li>
+                    )
+                  )}
+                </ul>
+
+                <JskPlanCta cta={cta} />
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

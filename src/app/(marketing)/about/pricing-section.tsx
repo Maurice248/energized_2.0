@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/shared/icon";
+import {
+  EMPLOYER_DISPLAY_PLANS,
+  JOBSEEKER_DISPLAY_PLANS,
+  type DisplayPlan,
+} from "@/lib/billing-display";
+import {
+  computeCardCta,
+  type CardCta,
+  type ViewerContext,
+} from "@/lib/card-cta";
 
 type Feature = string | { text: string; muted: boolean };
 
@@ -18,102 +29,44 @@ type Plan = {
   features: Feature[];
 };
 
-const SEEKER_PLANS: Plan[] = [
-  {
-    id: "free",
-    name: "Free",
-    tagline: "Get on the radar",
-    priceLabel: "0",
-    priceSuffix: "always",
-    cta: { label: "Create profile", href: "/sign-up" },
-    tone: "",
-    features: [
-      "Unlimited applications",
-      "AI-assisted match scoring on every role",
-      "Saved searches & bookmarks",
-      "Public profile with tickets surfaced",
-      { text: "Skills assessments", muted: true },
-      { text: "Recruiter messaging", muted: true },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    tagline: "Coming soon",
-    priceLabel: "—",
-    priceSuffix: "early access",
-    cta: { label: "Join waitlist", href: "/contact" },
-    tone: "featured",
-    tag: "On the roadmap",
-    features: [
-      "Everything in Free",
-      "Skills assessments + verified badges",
-      "Priority placement in employer searches",
-      "Resume review by an energy specialist",
-      "Salary insights & comp comparator",
-      "1-on-1 mock interview / quarter",
-    ],
-  },
-];
+function toPlan(p: DisplayPlan): Plan {
+  const isFree = p.priceCents === 0;
+  const features: Feature[] = [
+    ...p.features,
+    ...(p.futureFeatures?.map((t) => ({ text: t, muted: true })) ?? []),
+  ];
+  return {
+    id: p.id,
+    name: p.label,
+    tagline: p.tagline,
+    priceLabel: isFree ? "0" : Math.round(p.priceCents / 100).toString(),
+    priceSuffix: isFree ? "always" : "/ month · billed monthly",
+    cta: { label: p.cta, href: p.href },
+    tone: p.featured ? "featured" : "",
+    tag: p.tag,
+    features,
+  };
+}
 
-const EMPLOYER_PLANS: Plan[] = [
-  {
-    id: "package_a",
-    name: "Package A",
-    tagline: "Single-role hiring",
-    priceLabel: "299",
-    priceSuffix: "/ month · billed monthly",
-    cta: { label: "Start hiring", href: "/sign-up?role=employer" },
-    tone: "",
-    features: [
-      "1 published role per billing cycle",
-      "Full applicant pipeline + email delivery",
-      "Branded company page",
-      "Recruiter seats (invites)",
-      { text: "Multi-role posting", muted: true },
-    ],
-  },
-  {
-    id: "package_b",
-    name: "Package B",
-    tagline: "Building a team",
-    priceLabel: "549",
-    priceSuffix: "/ month · billed monthly",
-    cta: { label: "Start hiring", href: "/sign-up?role=employer" },
-    tone: "featured",
-    tag: "Most popular",
-    features: [
-      "3 published roles per billing cycle",
-      "Everything in Package A",
-      "Pipeline kanban for each role",
-      "AI-assisted match scoring",
-    ],
-  },
-  {
-    id: "package_c",
-    name: "Package C",
-    tagline: "Hiring at pace",
-    priceLabel: "749",
-    priceSuffix: "/ month · billed monthly",
-    cta: { label: "Start hiring", href: "/sign-up?role=employer" },
-    tone: "primary",
-    features: [
-      "5 published roles per billing cycle",
-      "Everything in Package B",
-      "Priority support",
-      "Quarterly hiring market briefings",
-    ],
-  },
-];
+const SEEKER_PLANS: Plan[] = JOBSEEKER_DISPLAY_PLANS.map(toPlan);
 
-export function PricingSection() {
-  const [audience, setAudience] = useState<"seekers" | "employers">(
-    "employers",
-  );
+// Skip the employer free tier on /about — paid tiers carry the page narrative.
+// "Free" is mentioned in the foot copy + accessible from /sign-up.
+const EMPLOYER_PLANS: Plan[] = EMPLOYER_DISPLAY_PLANS.filter(
+  (p) => p.priceCents > 0,
+).map(toPlan);
+
+export function PricingSection({ viewer }: { viewer: ViewerContext }) {
+  // Honor ?plans=seekers|employers from inbound homepage CTAs.
+  // Defaults to "employers" for direct visits.
+  const params = useSearchParams();
+  const initial: "seekers" | "employers" =
+    params.get("plans") === "seekers" ? "seekers" : "employers";
+  const [audience, setAudience] = useState<"seekers" | "employers">(initial);
   const plans = audience === "seekers" ? SEEKER_PLANS : EMPLOYER_PLANS;
 
   return (
-    <section className="v2-pricing">
+    <section id="plans" className="v2-pricing">
       <div className="v2-container">
         <div className="v2-pricing-head">
           <div className="v2-eyebrow" style={{ justifyContent: "center" }}>
@@ -151,7 +104,12 @@ export function PricingSection() {
 
         <div className="v2-pricing-grid">
           {plans.map((p) => (
-            <PlanCard key={p.id} plan={p} audience={audience} />
+            <PlanCard
+              key={p.id}
+              plan={p}
+              audience={audience}
+              viewer={viewer}
+            />
           ))}
         </div>
 
@@ -164,15 +122,46 @@ export function PricingSection() {
   );
 }
 
+function PlanCardCta({ cta }: { cta: CardCta }) {
+  if (cta.disabled) {
+    return (
+      <button
+        type="button"
+        className="v2-pricing-cta"
+        disabled
+        title={cta.tooltip}
+        style={{ opacity: 0.55, cursor: "not-allowed" }}
+      >
+        {cta.label}
+      </button>
+    );
+  }
+  return (
+    <Link href={cta.href} className="v2-pricing-cta">
+      {cta.label}
+      {!cta.isCurrentPlan && <Icon name="arrowRight" size={14} />}
+    </Link>
+  );
+}
+
 function PlanCard({
   plan,
   audience,
+  viewer,
 }: {
   plan: Plan;
   audience: "seekers" | "employers";
+  viewer: ViewerContext;
 }) {
   const isFreeJobSeeker = audience === "seekers" && plan.priceLabel === "0";
   const isComingSoon = plan.priceLabel === "—";
+  const cta = computeCardCta({
+    audience: audience === "seekers" ? "jobseeker" : "employer",
+    planId: plan.id,
+    defaultHref: plan.cta.href,
+    defaultLabel: plan.cta.label,
+    viewer,
+  });
   return (
     <div className={`v2-pricing-card ${plan.tone}`}>
       {plan.tag && <span className="v2-pricing-tag">{plan.tag}</span>}
@@ -207,10 +196,7 @@ function PlanCard({
           );
         })}
       </ul>
-      <Link href={plan.cta.href} className="v2-pricing-cta">
-        {plan.cta.label}
-        <Icon name="arrowRight" size={14} />
-      </Link>
+      <PlanCardCta cta={cta} />
     </div>
   );
 }

@@ -6,6 +6,35 @@ import { db } from "@/server/db";
 import { jobListings, user } from "@/server/db/schema";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { Icon } from "@/components/shared/icon";
+import { TIERS, JOBSEEKER_TIERS } from "@/lib/billing-tiers";
+import { getViewerContext } from "@/lib/viewer-context";
+import {
+  computeCardCta,
+  type CardCta,
+  type ViewerContext,
+} from "@/lib/card-cta";
+
+function PlanCardButton({ cta }: { cta: CardCta }) {
+  if (cta.disabled) {
+    return (
+      <button
+        type="button"
+        className="v2-plan-cta"
+        disabled
+        title={cta.tooltip}
+        style={{ opacity: 0.55, cursor: "not-allowed" }}
+      >
+        {cta.label}
+      </button>
+    );
+  }
+  return (
+    <Link href={cta.href} className="v2-plan-cta">
+      {cta.label}
+      {!cta.isCurrentPlan && <Icon name="arrowRight" size={13} />}
+    </Link>
+  );
+}
 
 export const metadata: Metadata = {
   // Override the title template since the landing IS "Energized — …".
@@ -40,7 +69,7 @@ export default async function LandingPage() {
         <AIShowcase liveRoles={liveRoles} candidateCount={candidateCount} />
         <HowItWorks />
         <Quotes />
-        <PricingTeaser />
+        <PricingTeaser viewer={await getViewerContext()} />
         <FinalCta />
       </main>
     </>
@@ -476,7 +505,76 @@ function Quotes() {
 
 /* ---------- pricing teaser ---------- */
 
-function PricingTeaser() {
+function PricingTeaser({ viewer }: { viewer: ViewerContext }) {
+  const fmtPrice = (cents: number) => `C$${Math.round(cents / 100)}`;
+  const a = TIERS.package_a;
+  const b = TIERS.package_b;
+  const c = TIERS.package_c;
+  const gold = JOBSEEKER_TIERS.gold;
+  const platinum = JOBSEEKER_TIERS.platinum;
+
+  const ctaJsFree = computeCardCta({
+    audience: "jobseeker",
+    planId: "jobseeker_free",
+    defaultHref: "/sign-up",
+    defaultLabel: "Sign up free",
+    viewer,
+  });
+  const ctaJsGold = computeCardCta({
+    audience: "jobseeker",
+    planId: "jobseeker_gold",
+    defaultHref: "/sign-up?plan=gold",
+    defaultLabel: "Get Gold",
+    viewer,
+  });
+  const ctaJsPlatinum = computeCardCta({
+    audience: "jobseeker",
+    planId: "jobseeker_platinum",
+    defaultHref: "/sign-up?plan=platinum",
+    defaultLabel: "Get Platinum",
+    viewer,
+  });
+  const ctaEmpA = computeCardCta({
+    audience: "employer",
+    planId: "package_a",
+    defaultHref: "/sign-up?plan=package_a&role=employer",
+    defaultLabel: "Choose Package A",
+    viewer,
+  });
+  const ctaEmpB = computeCardCta({
+    audience: "employer",
+    planId: "package_b",
+    defaultHref: "/sign-up?plan=package_b&role=employer",
+    defaultLabel: "Choose Package B",
+    viewer,
+  });
+  const ctaEmpC = computeCardCta({
+    audience: "employer",
+    planId: "package_c",
+    defaultHref: "/sign-up?plan=package_c&role=employer",
+    defaultLabel: "Choose Package C",
+    viewer,
+  });
+
+  const sectionLabelStyle: React.CSSProperties = {
+    fontFamily: "var(--v2-font-mono)",
+    fontWeight: 700,
+    fontSize: 12,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: "var(--v2-ink-500)",
+    marginBottom: 18,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  };
+  const labelDot: React.CSSProperties = {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    background: "var(--v2-accent)",
+  };
+
   return (
     <section className="v2-section" style={{ paddingTop: 0 }}>
       <div className="v2-container">
@@ -484,46 +582,117 @@ function PricingTeaser() {
           <div>
             <div className="v2-eyebrow">Plans</div>
             <h2 className="v2-h2" style={{ marginTop: 16 }}>
-              Free for candidates.
-              <br />
-              Subscriptions for employers.
+              Plans for both <em>sides</em> of the network.
             </h2>
           </div>
         </div>
-        <div className="v2-plans">
-          <div className="v2-plan">
-            <h4>Candidate</h4>
-            <div className="v2-plan-price">Free</div>
-            <div className="v2-plan-period">always</div>
-            <ul>
-              <li>AI matching + Ember chat</li>
-              <li>Profile + ticket showcase</li>
-              <li>Anonymous browsing</li>
-              <li>Save searches and roles</li>
-            </ul>
+
+        {/* For Job Seekers */}
+        <div style={{ marginTop: 40 }}>
+          <div style={sectionLabelStyle}>
+            <span style={labelDot} />
+            For Job Seekers
           </div>
-          <div className="v2-plan featured">
-            <div className="v2-plan-tag">Most popular</div>
-            <h4>Growth employer</h4>
-            <div className="v2-plan-price">Subscription</div>
-            <div className="v2-plan-period">monthly · cancel anytime</div>
-            <ul>
-              <li>Up to 5 active postings</li>
-              <li>AI pre-screening &amp; shortlists</li>
-              <li>Recruiter seats &amp; pipeline kanban</li>
-              <li>Stripe-managed billing</li>
-            </ul>
+          <div className="v2-plans">
+            <div className="v2-plan">
+              <h4>Free</h4>
+              <div className="v2-plan-price">Free</div>
+              <div className="v2-plan-period">always</div>
+              <ul>
+                <li>Unlimited applications</li>
+                <li>Full profile + certifications</li>
+                <li>Browse every role with all filters</li>
+                <li>Email alerts for new matches</li>
+              </ul>
+              <PlanCardButton cta={ctaJsFree} />
+            </div>
+            <div className="v2-plan featured">
+              <div className="v2-plan-tag">Most popular</div>
+              <h4>{gold.label}</h4>
+              <div className="v2-plan-price">
+                {fmtPrice(gold.priceCents)}
+                <span style={{ fontSize: 14, fontWeight: 400 }}> / mo</span>
+              </div>
+              <div className="v2-plan-period">cancel anytime</div>
+              <ul>
+                <li>Featured profile in employer searches</li>
+                <li>&ldquo;Open to work&rdquo; badge with sector preferences</li>
+                <li>See who viewed your profile</li>
+                <li>48-hour early access to new postings</li>
+              </ul>
+              <PlanCardButton cta={ctaJsGold} />
+            </div>
+            <div className="v2-plan">
+              <h4>{platinum.label}</h4>
+              <div className="v2-plan-price">
+                {fmtPrice(platinum.priceCents)}
+                <span style={{ fontSize: 14, fontWeight: 400 }}> / mo</span>
+              </div>
+              <div className="v2-plan-period">cancel anytime</div>
+              <ul>
+                <li>Everything in Gold</li>
+                <li>Trainings library (coming soon)</li>
+                <li>Ticket renewal tracking + reminders</li>
+                <li>Priority placement above Gold</li>
+              </ul>
+              <PlanCardButton cta={ctaJsPlatinum} />
+            </div>
           </div>
-          <div className="v2-plan">
-            <h4>Enterprise</h4>
-            <div className="v2-plan-price">Custom</div>
-            <div className="v2-plan-period">50+ hires / year</div>
-            <ul>
-              <li>API + ATS integrations</li>
-              <li>Private talent pools</li>
-              <li>Branded career pages</li>
-              <li>Success manager</li>
-            </ul>
+        </div>
+
+        {/* For Employers */}
+        <div style={{ marginTop: 56 }}>
+          <div style={sectionLabelStyle}>
+            <span style={labelDot} />
+            For Employers
+          </div>
+          <div className="v2-plans">
+            <div className="v2-plan">
+              <h4>{a.label}</h4>
+              <div className="v2-plan-price">
+                {fmtPrice(a.priceCents)}
+                <span style={{ fontSize: 14, fontWeight: 400 }}> / mo</span>
+              </div>
+              <div className="v2-plan-period">monthly · cancel anytime</div>
+              <ul>
+                <li>{a.jobsPerCycle} active job posting · {a.seats} recruiter seat</li>
+                <li>Full applicant pipeline + emails</li>
+                <li>Branded company profile</li>
+                <li>Screening questions + standard placement</li>
+              </ul>
+              <PlanCardButton cta={ctaEmpA} />
+            </div>
+            <div className="v2-plan featured">
+              <div className="v2-plan-tag">Most popular</div>
+              <h4>{b.label}</h4>
+              <div className="v2-plan-price">
+                {fmtPrice(b.priceCents)}
+                <span style={{ fontSize: 14, fontWeight: 400 }}> / mo</span>
+              </div>
+              <div className="v2-plan-period">monthly · cancel anytime</div>
+              <ul>
+                <li>{b.jobsPerCycle} active postings · {b.seats} recruiter seats</li>
+                <li>1 featured slot per cycle</li>
+                <li>Basic hiring analytics</li>
+                <li>Enhanced company profile</li>
+              </ul>
+              <PlanCardButton cta={ctaEmpB} />
+            </div>
+            <div className="v2-plan">
+              <h4>{c.label}</h4>
+              <div className="v2-plan-price">
+                {fmtPrice(c.priceCents)}
+                <span style={{ fontSize: 14, fontWeight: 400 }}> / mo</span>
+              </div>
+              <div className="v2-plan-period">for scaling teams</div>
+              <ul>
+                <li>{c.jobsPerCycle} active postings · {c.seats} recruiter seats</li>
+                <li>3 featured slots · priority placement</li>
+                <li>Advanced analytics + premium profile</li>
+                <li>Priority support</li>
+              </ul>
+              <PlanCardButton cta={ctaEmpC} />
+            </div>
           </div>
         </div>
       </div>

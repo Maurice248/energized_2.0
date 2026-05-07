@@ -3,86 +3,48 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/shared/icon";
+import type { DisplayPlan } from "@/lib/billing-tiers";
+import {
+  computeCardCta,
+  type CardCta,
+  type ViewerContext,
+} from "@/lib/card-cta";
 
-type Plan = {
-  name: string;
-  tagline: string;
-  monthly: number | null;
-  yearly: number | null;
-  cost?: string;
-  billing?: string;
-  featured?: boolean;
-  tag?: string;
-  features: (string | { text: string; muted: true })[];
-  cta: string;
-  href: string;
+const TIER_EYEBROWS: Record<string, string> = {
+  package_a: "For occasional hires",
+  package_b: "For active hiring teams",
+  package_c: "For scaling hiring teams",
 };
 
-const PLANS: Plan[] = [
-  {
-    name: "Starter",
-    tagline: "For occasional hires",
-    monthly: 0,
-    yearly: 0,
-    cost: "Free",
-    billing: "No card required",
-    features: [
-      "Up to 2 active job posts",
-      "Basic AI matching (top 10 picks)",
-      "50 candidate views per month",
-      "Standard messaging",
-      "Email support",
-      { text: "ATS integrations", muted: true },
-      { text: "Team seats", muted: true },
-    ],
-    cta: "Start free",
-    href: "/sign-up?role=employer&plan=starter",
-  },
-  {
-    name: "Growth",
-    tagline: "For active hiring teams",
-    monthly: 599,
-    yearly: 479,
-    featured: true,
-    tag: "Most popular",
-    features: [
-      "Unlimited job posts",
-      "AI shortlist with rationale (25 ranked / role)",
-      "Unlimited candidate views & messaging",
-      "Native ATS integrations (Greenhouse, Lever, Ashby)",
-      "5 team seats included · $39 each after",
-      "Funnel & DEI analytics",
-      "Branded careers page",
-      "Phone & chat support",
-    ],
-    cta: "Start 14-day trial",
-    href: "/sign-up?role=employer&plan=growth",
-  },
-  {
-    name: "Enterprise",
-    tagline: "For 50+ hires per year",
-    monthly: null,
-    yearly: null,
-    cost: "Custom",
-    billing: "Annual contract",
-    features: [
-      "Everything in Growth",
-      "Dedicated talent engineer",
-      "Workday & custom ATS deep map",
-      "SAML SSO + SCIM provisioning",
-      "API access & data residency options",
-      "Quarterly market briefings",
-      "SLA-backed sourcing guarantees",
-      "99.95% uptime, SOC 2 Type II",
-    ],
-    cta: "Talk to sales",
-    href: "/contact?topic=enterprise",
-  },
-];
+function EmpPlanCta({ cta }: { cta: CardCta }) {
+  if (cta.disabled) {
+    return (
+      <button
+        type="button"
+        className="v2-emp-price-cta"
+        disabled
+        title={cta.tooltip}
+        style={{ opacity: 0.55, cursor: "not-allowed" }}
+      >
+        {cta.label}
+      </button>
+    );
+  }
+  return (
+    <Link href={cta.href} className="v2-emp-price-cta">
+      {cta.label}
+      {!cta.isCurrentPlan && <Icon name="arrowRight" size={14} />}
+    </Link>
+  );
+}
 
-export function PricingSection() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
-
+export function PricingSection({
+  plans,
+  viewer,
+}: {
+  plans: DisplayPlan[];
+  viewer: ViewerContext;
+}) {
   return (
     <section className="v2-emp-sec">
       <div className="v2-container">
@@ -94,106 +56,78 @@ export function PricingSection() {
             </h2>
           </div>
           <p className="v2-emp-sec-lede">
-            We charge a predictable monthly or annual rate. Hire one engineer
-            or fifty &mdash; your bill is the same.
+            Predictable monthly billing. Hire one engineer or three from a
+            single posting &mdash; your bill is the same for the tier.
           </p>
         </div>
 
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div className="v2-emp-price-toggle" role="tablist" aria-label="Billing cadence">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={billing === "monthly"}
-              className={billing === "monthly" ? "active" : ""}
-              onClick={() => setBilling("monthly")}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={billing === "yearly"}
-              className={billing === "yearly" ? "active" : ""}
-              onClick={() => setBilling("yearly")}
-            >
-              Annual <span className="save">SAVE 20%</span>
-            </button>
-          </div>
-        </div>
-
         <div className="v2-emp-price-grid">
-          {PLANS.map((p) => {
-            const price = billing === "yearly" ? p.yearly : p.monthly;
-            const billingLabel =
-              price === null
-                ? p.billing
-                : price === 0
-                ? p.billing
-                : billing === "yearly"
-                ? `Billed C$${(price * 12).toLocaleString()} yearly`
-                : "Billed monthly · cancel anytime";
+          {plans.map((p) => {
+            const cost = Math.round(p.priceCents / 100);
+            const letter = p.label.replace("Package ", "");
+            const cta = computeCardCta({
+              audience: "employer",
+              planId: p.id,
+              defaultHref: p.href,
+              defaultLabel: p.cta,
+              viewer,
+            });
 
             return (
               <div
-                key={p.name}
+                key={p.id}
                 className={`v2-emp-price ${p.featured ? "featured" : ""}`}
               >
                 {p.tag && <div className="v2-emp-price-tag">{p.tag}</div>}
                 <div className="v2-emp-price-eye">
-                  For{" "}
-                  {p.name === "Starter"
-                    ? "small teams"
-                    : p.name === "Growth"
-                    ? "growing teams"
-                    : "hiring at scale"}
+                  {TIER_EYEBROWS[p.id] ?? "For hiring teams"}
                 </div>
                 <div className="v2-emp-price-name">
-                  {p.name === "Growth" ? (
-                    <>
-                      Grow<em>th</em>
-                    </>
-                  ) : (
-                    p.name
-                  )}
+                  Package <em>{letter}</em>
                 </div>
                 <div className="v2-emp-price-tagline">{p.tagline}</div>
 
                 <div className="v2-emp-price-cost">
-                  {price !== null ? (
-                    <>
-                      <span className="pre">C$</span>
-                      <span className="n">{price}</span>
-                      <span className="per">/ mo</span>
-                    </>
-                  ) : (
-                    <span className="n" style={{ fontStyle: "italic" }}>
-                      {p.cost ?? "Custom"}
-                    </span>
-                  )}
+                  <span className="pre">C$</span>
+                  <span className="n">{cost}</span>
+                  <span className="per">/ mo</span>
                 </div>
-                <div className="v2-emp-price-billing">{billingLabel}</div>
+                <div className="v2-emp-price-billing">Cancel any time</div>
 
                 <ul className="v2-emp-price-feat">
-                  {p.features.map((f, i) =>
-                    typeof f === "string" ? (
-                      <li key={i}>{f}</li>
-                    ) : (
-                      <li key={i} className="muted">
-                        {f.text}
-                      </li>
-                    )
-                  )}
+                  {p.features.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
                 </ul>
 
-                <Link href={p.href} className="v2-emp-price-cta">
-                  {p.cta}
-                  <Icon name="arrowRight" size={14} />
-                </Link>
+                <EmpPlanCta cta={cta} />
               </div>
             );
           })}
         </div>
+
+        <p
+          style={{
+            marginTop: 32,
+            textAlign: "center",
+            fontSize: 14,
+            color: "var(--v2-ink-500)",
+          }}
+        >
+          Just looking around?{" "}
+          <Link
+            href="/sign-up?role=employer"
+            style={{
+              color: "var(--v2-accent-deep)",
+              textDecoration: "underline",
+              fontWeight: 700,
+            }}
+          >
+            Create a free employer account
+          </Link>{" "}
+          &mdash; browse candidates, save shortlists, upgrade when you&rsquo;re
+          ready to post.
+        </p>
       </div>
     </section>
   );
@@ -202,11 +136,35 @@ export function PricingSection() {
 const MIN_HIRES = 1;
 const MAX_HIRES = 100;
 
-export function RoiCalculator() {
+const TRADITIONAL_COST_PER_HIRE = 18_400;
+
+export type RoiTier = {
+  label: string;
+  priceCents: number;
+  jobsPerCycle: number;
+};
+
+export function RoiCalculator({
+  tierA,
+  tierB,
+  tierC,
+}: {
+  tierA: RoiTier;
+  tierB: RoiTier;
+  tierC: RoiTier;
+}) {
   const [hires, setHires] = useState(20);
 
-  const traditionalCost = hires * 18000;
-  const energizedCost = hires <= 24 ? 599 * 12 : 999 * 12;
+  const aMax = tierA.jobsPerCycle * 12;
+  const bMax = tierB.jobsPerCycle * 12;
+  const cMax = tierC.jobsPerCycle * 12;
+
+  const tier =
+    hires <= aMax ? tierA : hires <= bMax ? tierB : tierC;
+  const overC = hires > cMax;
+
+  const traditionalCost = hires * TRADITIONAL_COST_PER_HIRE;
+  const energizedCost = (tier.priceCents / 100) * 12;
   const savings = traditionalCost - energizedCost;
   const fmt = (n: number) => "C$" + n.toLocaleString();
 
@@ -224,7 +182,9 @@ export function RoiCalculator() {
               style={{ marginLeft: 0, maxWidth: 520, marginTop: 24 }}
             >
               The average Canadian energy hire costs{" "}
-              <strong style={{ color: "var(--v2-ink-950)" }}>C$18,400</strong>{" "}
+              <strong style={{ color: "var(--v2-ink-950)" }}>
+                {fmt(TRADITIONAL_COST_PER_HIRE)}
+              </strong>{" "}
               all-in when you tally agency fees, posting spend, recruiter time,
               and lost productivity from a vacant seat. Drag the slider to see
               what we save you.
@@ -279,8 +239,19 @@ export function RoiCalculator() {
               />
               <div className="v2-emp-roi-slider-row">
                 <span>1</span>
-                <span>50</span>
-                <span>100+</span>
+                <span>{bMax}</span>
+                <span>{MAX_HIRES}+</span>
+              </div>
+              <div
+                style={{
+                  marginTop: 12,
+                  fontSize: 12,
+                  fontFamily: "var(--v2-font-mono)",
+                  color: "var(--v2-ink-500)",
+                }}
+              >
+                Brackets: ≤{aMax} → {tierA.label} · {aMax + 1}&ndash;{bMax} →{" "}
+                {tierB.label} · {bMax + 1}&ndash;{cMax} → {tierC.label}
               </div>
             </div>
           </div>
@@ -300,19 +271,22 @@ export function RoiCalculator() {
             </div>
             <div className="v2-emp-roi-row">
               <span className="v2-emp-roi-label">
-                Energized {hires <= 24 ? "Growth" : "Enterprise"}
+                Energized {tier.label}
+                {overC && " (×3)"}
               </span>
               <span className="v2-emp-roi-value">
-                {fmt(energizedCost)}
-                <span
-                  style={{
-                    fontSize: 14,
-                    color: "var(--v2-ink-500)",
-                    marginLeft: 6,
-                  }}
-                >
-                  /yr
-                </span>
+                {overC ? "Custom" : fmt(energizedCost)}
+                {!overC && (
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: "var(--v2-ink-500)",
+                      marginLeft: 6,
+                    }}
+                  >
+                    /yr
+                  </span>
+                )}
               </span>
             </div>
             <div className="v2-emp-roi-row">
@@ -363,7 +337,7 @@ export function RoiCalculator() {
                 className="v2-emp-roi-value"
                 style={{ fontStyle: "italic" }}
               >
-                {fmt(Math.max(savings, 0))}
+                {overC ? "Talk to us" : fmt(Math.max(savings, 0))}
               </span>
             </div>
             <div

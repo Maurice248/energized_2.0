@@ -1,4 +1,21 @@
 import { env } from "@/env";
+import {
+  PACKAGE_A_FEATURES,
+  PACKAGE_B_FEATURES,
+  PACKAGE_C_FEATURES,
+  GOLD_FEATURES,
+  PLATINUM_FEATURES,
+} from "./billing-display";
+
+/* ---------------------------------------------------------------------------
+ * Server-only billing data. Imports `env` and exposes Stripe price IDs.
+ * Do NOT import this from a "use client" file — use `billing-display.ts`
+ * instead, or pass tier data as props from a server component.
+ * --------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+ * Employer paid tiers
+ * --------------------------------------------------------------------------- */
 
 export type PlanTier = "package_a" | "package_b" | "package_c";
 
@@ -7,6 +24,7 @@ export type TierDefinition = {
   label: string;
   priceCents: number;
   jobsPerCycle: number;
+  seats: number;
   stripePriceId: string | undefined;
   features: string[];
 };
@@ -17,34 +35,27 @@ export const TIERS: Record<PlanTier, TierDefinition> = {
     label: "Package A",
     priceCents: 29900,
     jobsPerCycle: 1,
+    seats: 1,
     stripePriceId: env.STRIPE_PRICE_PACKAGE_A,
-    features: [
-      "1 published role per billing cycle",
-      "Full applicant pipeline + emails",
-      "Branded company page",
-    ],
+    features: PACKAGE_A_FEATURES,
   },
   package_b: {
     id: "package_b",
     label: "Package B",
     priceCents: 54900,
-    jobsPerCycle: 3,
+    jobsPerCycle: 2,
+    seats: 3,
     stripePriceId: env.STRIPE_PRICE_PACKAGE_B,
-    features: [
-      "3 published roles per billing cycle",
-      "Everything in Package A",
-    ],
+    features: PACKAGE_B_FEATURES,
   },
   package_c: {
     id: "package_c",
     label: "Package C",
     priceCents: 74900,
-    jobsPerCycle: 5,
+    jobsPerCycle: 3,
+    seats: 5,
     stripePriceId: env.STRIPE_PRICE_PACKAGE_C,
-    features: [
-      "5 published roles per billing cycle",
-      "Everything in Package B",
-    ],
+    features: PACKAGE_C_FEATURES,
   },
 };
 
@@ -66,6 +77,70 @@ export function nextTier(current: PlanTier): PlanTier | null {
   if (idx < 0 || idx === TIER_ORDER.length - 1) return null;
   return TIER_ORDER[idx + 1];
 }
+
+/* ---------------------------------------------------------------------------
+ * Jobseeker paid tiers
+ * --------------------------------------------------------------------------- */
+
+export type JobseekerPlanTier = "gold" | "platinum";
+
+export type JobseekerTierDefinition = {
+  id: JobseekerPlanTier;
+  label: string;
+  priceCents: number;
+  stripePriceId: string | undefined;
+  features: string[];
+};
+
+export const JOBSEEKER_TIERS: Record<JobseekerPlanTier, JobseekerTierDefinition> = {
+  gold: {
+    id: "gold",
+    label: "Gold",
+    priceCents: 5900,
+    stripePriceId: env.STRIPE_PRICE_PACKAGE_GOLD,
+    features: GOLD_FEATURES,
+  },
+  platinum: {
+    id: "platinum",
+    label: "Platinum",
+    priceCents: 14900,
+    stripePriceId: env.STRIPE_PRICE_PACKAGE_PLATINUM,
+    features: PLATINUM_FEATURES,
+  },
+};
+
+export const JOBSEEKER_TIER_ORDER: JobseekerPlanTier[] = ["gold", "platinum"];
+
+export function jobseekerTierFromPriceId(
+  priceId: string,
+): JobseekerPlanTier | null {
+  for (const tier of JOBSEEKER_TIER_ORDER) {
+    if (JOBSEEKER_TIERS[tier].stripePriceId === priceId) return tier;
+  }
+  return null;
+}
+
+export function isJobseekerPlanTier(
+  value: string | null | undefined,
+): value is JobseekerPlanTier {
+  return value === "gold" || value === "platinum";
+}
+
+/* ---------------------------------------------------------------------------
+ * Display data re-exports — server components can pull both server and
+ * display data from this file. Client components should import directly
+ * from `billing-display.ts`.
+ * --------------------------------------------------------------------------- */
+
+export type { DisplayPlan } from "./billing-display";
+export {
+  JOBSEEKER_DISPLAY_PLANS,
+  EMPLOYER_DISPLAY_PLANS,
+} from "./billing-display";
+
+/* ---------------------------------------------------------------------------
+ * Formatting helpers
+ * --------------------------------------------------------------------------- */
 
 export function formatPrice(cents: number): string {
   return new Intl.NumberFormat("en-CA", {

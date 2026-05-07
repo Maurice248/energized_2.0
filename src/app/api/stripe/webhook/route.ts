@@ -3,9 +3,9 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { employerOrgs, jobListings } from "@/server/db/schema";
+import { employerOrgs, jobListings, user } from "@/server/db/schema";
 import { getStripe } from "@/lib/stripe";
-import { tierFromPriceId } from "@/lib/billing-tiers";
+import { jobseekerTierFromPriceId, tierFromPriceId } from "@/lib/billing-tiers";
 import { getPostHogClient } from "@/lib/posthog";
 import {
   EVENT_BILLING_SUBSCRIPTION_CANCELLED,
@@ -39,12 +39,27 @@ function mapStatus(stripeStatus: Stripe.Subscription.Status): LocalSubscriptionS
     case "unpaid":
       return stripeStatus;
     case "paused":
-      // Treat as past_due — billing is on hold, employer can still see their
-      // org but shouldn't be allowed to publish until resumed.
       return "past_due";
     default:
       return "canceled";
   }
+}
+
+type Audience = "jobseeker" | "employer";
+
+/**
+ * Determine which audience a subscription belongs to. Source of truth is the
+ * `metadata.audience` we set at checkout. Falls back to price-ID lookup for
+ * subscriptions created before the metadata was added.
+ */
+function classifyAudience(sub: Stripe.Subscription): Audience {
+  const meta = (sub.metadata?.audience ?? "").toLowerCase();
+  if (meta === "jobseeker") return "jobseeker";
+  if (meta === "employer") return "employer";
+
+  const priceId = sub.items.data[0]?.price?.id ?? null;
+  if (priceId && jobseekerTierFromPriceId(priceId)) return "jobseeker";
+  return "employer";
 }
 
 export async function POST(req: Request) {
@@ -81,12 +96,10 @@ export async function POST(req: Request) {
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
+      const audience = classifyAudience(sub);
       const customerId = sub.customer as string;
       const priceId = sub.items.data[0]?.price?.id ?? null;
-      const tier = priceId ? tierFromPriceId(priceId) : null;
 
-      // Stripe v2026-03-25 returns first-item period dates on the item, with
-      // a deprecated copy on the subscription. Prefer item-level when present.
       const item = sub.items.data[0];
       const periodStart =
         item?.current_period_start ??
@@ -97,77 +110,138 @@ export async function POST(req: Request) {
         (sub as unknown as { current_period_end: number })
           .current_period_end;
 
-      const [updated] = await db
-        .update(employerOrgs)
-        .set({
-          plan: tier ?? "none",
-          stripeSubscriptionId: sub.id,
-          subscriptionStatus: mapStatus(sub.status),
-          currentPeriodStart: asTimestamp(periodStart),
-          planRenewsAt: asTimestamp(periodEnd),
-          cancelAtPeriodEnd: sub.cancel_at_period_end,
-        })
-        .where(eq(employerOrgs.stripeCustomerId, customerId))
-        .returning({ id: employerOrgs.id });
+      if (audience === "jobseeker") {
+        const tier = priceId ? jobseekerTierFromPriceId(priceId) : null;
+        const [updated] = await db
+          .update(user)
+          .set({
+            jobseekerPlan: tier ?? "none",
+            jobseekerStripeSubscriptionId: sub.id,
+            jobseekerSubscriptionStatus: mapStatus(sub.status),
+            jobseekerCurrentPeriodStart: asTimestamp(periodStart),
+            jobseekerCurrentPeriodEnd: asTimestamp(periodEnd),
+            jobseekerCancelAtPeriodEnd: sub.cancel_at_period_end,
+          })
+          .where(eq(user.jobseekerStripeCustomerId, customerId))
+          .returning({ id: user.id });
 
-      if (event.type === "customer.subscription.created" && updated) {
-        posthog.capture({
-          distinctId: updated.id,
-          event: EVENT_BILLING_SUBSCRIPTION_STARTED,
-          properties: {
-            subscription_id: sub.id,
-            tier,
-            status: sub.status,
-          },
-        });
+        if (event.type === "customer.subscription.created" && updated) {
+          posthog.capture({
+            distinctId: updated.id,
+            event: EVENT_BILLING_SUBSCRIPTION_STARTED,
+            properties: {
+              audience: "jobseeker",
+              subscription_id: sub.id,
+              tier,
+              status: sub.status,
+            },
+          });
+        }
+      } else {
+        const tier = priceId ? tierFromPriceId(priceId) : null;
+        const [updated] = await db
+          .update(employerOrgs)
+          .set({
+            plan: tier ?? "none",
+            stripeSubscriptionId: sub.id,
+            subscriptionStatus: mapStatus(sub.status),
+            currentPeriodStart: asTimestamp(periodStart),
+            planRenewsAt: asTimestamp(periodEnd),
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+          })
+          .where(eq(employerOrgs.stripeCustomerId, customerId))
+          .returning({ id: employerOrgs.id });
+
+        if (event.type === "customer.subscription.created" && updated) {
+          posthog.capture({
+            distinctId: updated.id,
+            event: EVENT_BILLING_SUBSCRIPTION_STARTED,
+            properties: {
+              audience: "employer",
+              subscription_id: sub.id,
+              tier,
+              status: sub.status,
+            },
+          });
+        }
       }
       break;
     }
 
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
+      const audience = classifyAudience(sub);
       const customerId = sub.customer as string;
 
-      const [org] = await db
-        .select()
-        .from(employerOrgs)
-        .where(eq(employerOrgs.stripeCustomerId, customerId))
-        .limit(1);
+      if (audience === "jobseeker") {
+        const [u] = await db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.jobseekerStripeCustomerId, customerId))
+          .limit(1);
 
-      if (org) {
-        // If they chose close_at_period_end, do it now (this event fires at
-        // period end). If they chose close_immediate, jobs are already closed.
-        if (org.cancellationDisposition === "close_at_period_end") {
+        if (u) {
           await db
-            .update(jobListings)
-            .set({ status: "closed", closedAt: new Date() })
-            .where(
-              and(
-                eq(jobListings.orgId, org.id),
-                eq(jobListings.status, "published"),
-              ),
-            );
+            .update(user)
+            .set({
+              jobseekerPlan: "none",
+              jobseekerSubscriptionStatus: "canceled",
+              jobseekerStripeSubscriptionId: null,
+              jobseekerCancelAtPeriodEnd: false,
+              jobseekerCancellationDisposition: null,
+            })
+            .where(eq(user.id, u.id));
+
+          posthog.capture({
+            distinctId: u.id,
+            event: EVENT_BILLING_SUBSCRIPTION_CANCELLED,
+            properties: {
+              audience: "jobseeker",
+              subscription_id: sub.id,
+            },
+          });
         }
+      } else {
+        const [org] = await db
+          .select()
+          .from(employerOrgs)
+          .where(eq(employerOrgs.stripeCustomerId, customerId))
+          .limit(1);
 
-        await db
-          .update(employerOrgs)
-          .set({
-            plan: "none",
-            subscriptionStatus: "canceled",
-            stripeSubscriptionId: null,
-            cancelAtPeriodEnd: false,
-            cancellationDisposition: null,
-          })
-          .where(eq(employerOrgs.id, org.id));
+        if (org) {
+          if (org.cancellationDisposition === "close_at_period_end") {
+            await db
+              .update(jobListings)
+              .set({ status: "closed", closedAt: new Date() })
+              .where(
+                and(
+                  eq(jobListings.orgId, org.id),
+                  eq(jobListings.status, "published"),
+                ),
+              );
+          }
 
-        posthog.capture({
-          distinctId: org.id,
-          event: EVENT_BILLING_SUBSCRIPTION_CANCELLED,
-          properties: {
-            subscription_id: sub.id,
-            disposition: org.cancellationDisposition,
-          },
-        });
+          await db
+            .update(employerOrgs)
+            .set({
+              plan: "none",
+              subscriptionStatus: "canceled",
+              stripeSubscriptionId: null,
+              cancelAtPeriodEnd: false,
+              cancellationDisposition: null,
+            })
+            .where(eq(employerOrgs.id, org.id));
+
+          posthog.capture({
+            distinctId: org.id,
+            event: EVENT_BILLING_SUBSCRIPTION_CANCELLED,
+            properties: {
+              audience: "employer",
+              subscription_id: sub.id,
+              disposition: org.cancellationDisposition,
+            },
+          });
+        }
       }
       break;
     }
