@@ -107,6 +107,13 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
   const utils = api.useUtils();
   const updateDraft = api.jobs.updateDraft.useMutation();
   const publish = api.jobs.publish.useMutation();
+  const billing = api.billing.getCurrent.useQuery();
+  const noSubscription =
+    !billing.isLoading && (!billing.data?.tier || billing.data.tier === null);
+  const quotaFull =
+    !billing.isLoading &&
+    Boolean(billing.data?.tier) &&
+    billing.data!.publishedThisCycle >= billing.data!.quota;
 
   const savedSnapshotRef = useRef<WizardDraft>(draft);
   const pendingTimerRef = useRef<number | null>(null);
@@ -382,6 +389,49 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
             {activeStep.hint}
           </p>
 
+          {(noSubscription || quotaFull) && (
+            <div
+              role="status"
+              style={{
+                marginBottom: 24,
+                padding: "14px 18px",
+                background: "var(--v2-ink-50)",
+                border: "1px solid var(--v2-ink-200)",
+                borderLeft: "3px solid var(--v2-accent)",
+                borderRadius: 10,
+                fontSize: 13,
+                color: "var(--v2-ink-700)",
+                display: "flex",
+                gap: 14,
+                alignItems: "center",
+                flexWrap: "wrap",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                <strong style={{ color: "var(--v2-ink-950)" }}>
+                  {noSubscription
+                    ? "Heads up — no active subscription."
+                    : "Heads up — quota full this cycle."}
+                </strong>{" "}
+                You can fill in the role and{" "}
+                <strong>save it as a draft</strong>, but{" "}
+                <strong>publishing requires</strong>{" "}
+                {noSubscription
+                  ? "an active subscription."
+                  : `upgrading to a higher tier (${billing.data?.publishedThisCycle ?? 0} of ${billing.data?.quota ?? 0} slots used).`}
+              </div>
+              <Link
+                href="/employer/profile#ep-billing"
+                className="v2-btn v2-btn-ghost v2-btn-sm"
+                style={{ flexShrink: 0 }}
+              >
+                {noSubscription ? "Choose a plan" : "Upgrade plan"}{" "}
+                <Icon name="arrowUpRight" size={13} />
+              </Link>
+            </div>
+          )}
+
           {step === 1 && (
             <BasicsStep draft={draft} setDraft={setDraft} missing={missingFields} />
           )}
@@ -484,7 +534,20 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
                 <button
                   className="v2-btn v2-btn-primary"
                   onClick={() => void onPublish()}
-                  disabled={!canPublish || publish.isPending || saving}
+                  disabled={
+                    !canPublish ||
+                    publish.isPending ||
+                    saving ||
+                    noSubscription ||
+                    quotaFull
+                  }
+                  title={
+                    noSubscription
+                      ? "Subscribe to a plan to publish this role."
+                      : quotaFull
+                        ? "You've used all job slots this cycle — upgrade to publish more."
+                        : undefined
+                  }
                 >
                   {publish.isPending ? "Publishing…" : "Publish role"}
                 </button>
