@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient, signOut } from "@/lib/auth/client";
 import { PasswordInput } from "@/components/shared/password-input";
+import { PasswordStrength } from "@/components/shared/password-strength";
 
 export function AccountClient({
   email,
@@ -214,13 +215,16 @@ export function AccountClient({
             placeholder="Current password"
             autoComplete="current-password"
           />
-          <PasswordInput
-            className="v2-input-block"
-            value={newPw}
-            onChange={(e) => setNewPw(e.target.value)}
-            placeholder="New password (8+ characters)"
-            autoComplete="new-password"
-          />
+          <div>
+            <PasswordInput
+              className="v2-input-block"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="New password (8+ characters)"
+              autoComplete="new-password"
+            />
+            {newPw && <PasswordStrength value={newPw} />}
+          </div>
           <PasswordInput
             className="v2-input-block"
             value={confirmPw}
