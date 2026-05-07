@@ -51,12 +51,13 @@ export const onboardingRouter = router({
         const companyName = input.company.trim() || "Untitled company";
         const verificationToken = `energized-verify=${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
-        // Free tier = no Stripe subscription. Store "none" in the DB so the
-        // billing column matches the established "none" | "package_a" | ...
-        // shape (see employerOrgs schema comment).
-        const dbPlan =
-          input.plan === "employer_free" ? "none" : input.plan;
-
+        // The `plan` column reflects the *active Stripe subscription*. At
+        // org-creation time there is no subscription yet — even employers who
+        // picked Package A/B/C at sign-up haven't paid. Always start "none";
+        // the Stripe webhook (and `syncSubscriptionFromStripe`) flip it to a
+        // paid tier once the subscription becomes active. The user's pre-paid
+        // plan choice is held in `PENDING_BILLING_REDIRECT_KEY` so the wizard
+        // Finish step can prompt them to pay.
         const [org] = await ctx.db
           .insert(employerOrgs)
           .values({
@@ -64,7 +65,7 @@ export const onboardingRouter = router({
             hq: input.location || null,
             primarySector: mappedSectors[0] ?? null,
             size: companySizeLabelToEnum(input.companySize),
-            plan: dbPlan,
+            plan: "none",
             verificationToken,
           })
           .returning();
