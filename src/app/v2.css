@@ -1829,32 +1829,19 @@
 }
 @media (max-width: 960px) { .pp-body { grid-template-columns: 1fr; } }
 
-/* LEFT sidebar — profile summary */
+/* LEFT sidebar — profile summary
+   Plain sticky: pinned at top: 100px while the page scrolls. When the
+   user reaches the end of the main content, the parent's bottom edge
+   carries the sidebar up so its full height becomes visible (no internal
+   scroll, no scrollbar). */
 .pp-side {
   position: sticky;
   top: 100px;
-  /* Cap the sticky height so a tall sidebar (identity card + 8 nav items +
-     restart CTA) doesn't extend past the viewport. Without this, the bottom
-     of the sidebar only becomes visible once the page approaches its end. */
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  /* Hide the scrollbar — content still scrolls when the cursor is over the
-     sidebar. The page scrolls when the cursor is anywhere else. */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* legacy Edge / IE */
+  align-self: start;
   display: grid;
   gap: 16px;
 }
-.pp-side::-webkit-scrollbar {
-  display: none; /* WebKit (Chrome, Safari) */
-}
-@media (max-width: 960px) {
-  .pp-side {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
-  }
-}
+@media (max-width: 960px) { .pp-side { position: static; } }
 
 .pp-identity {
   background: white;

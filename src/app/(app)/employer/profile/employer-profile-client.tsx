@@ -582,26 +582,22 @@ export function EmployerProfileClient({
             >
               New job <Icon name="plus" size={14} />
             </button>
+          </div>
+
+          <div className="pp-side-cta">
+            <h4>
+              Redo <em>setup</em>?
+            </h4>
+            <p>
+              Walk through the 5-step wizard again — anything you&apos;ve
+              already filled will be pre-filled.
+            </p>
             <button
-              type="button"
+              className="v2-btn v2-btn-accent v2-btn-sm"
+              style={{ marginTop: 16 }}
               onClick={() => router.push("/employer/onboarding?retake=1")}
-              style={{
-                marginTop: 14,
-                background: "none",
-                border: "none",
-                padding: 0,
-                color: "rgba(255,255,255,0.75)",
-                fontSize: 12,
-                fontFamily: "var(--v2-font-mono)",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                fontWeight: 700,
-                cursor: "pointer",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
             >
-              Restart setup wizard
+              Restart wizard <Icon name="arrowRight" size={14} />
             </button>
           </div>
         </aside>
