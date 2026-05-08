@@ -26,8 +26,18 @@ export function GeneratingOverlay({ sectorName }: { sectorName: string }) {
             E
           </div>
         </div>
-        <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-          Building your test, <em className="not-italic italic text-[var(--brand-blue)]">just for you</em>.
+        <h2
+          className="text-3xl font-bold tracking-tight md:text-4xl"
+          style={{ color: "#fff" }}
+        >
+          Building your test,{" "}
+          <em
+            className="not-italic italic"
+            style={{ color: "var(--brand-blue, #1CAAE2)" }}
+          >
+            just for you
+          </em>
+          .
         </h2>
         <p className="mt-3 text-sm text-slate-300">Fresh question set — no two attempts are the same.</p>
         <div className="mt-7 min-h-[120px] rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left text-xs leading-relaxed text-slate-300">

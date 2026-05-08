@@ -64,8 +64,18 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--brand-blue)]" />
             AI generator · live
           </div>
-          <h3 className="mt-3 text-4xl font-bold tracking-tight text-white">
-            Just tell us the <em className="not-italic italic text-[var(--brand-blue)]">job</em>.
+          <h3
+            className="mt-3 text-4xl font-bold tracking-tight"
+            style={{ color: "#fff" }}
+          >
+            Just tell us the{" "}
+            <em
+              className="not-italic italic"
+              style={{ color: "var(--brand-blue, #1CAAE2)" }}
+            >
+              job
+            </em>
+            .
           </h3>
           <p className="mt-3 text-base leading-7 text-slate-200">
             Type your role or paste a job description. The generator picks the sector, level and question mix.

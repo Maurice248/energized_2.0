@@ -63,7 +63,7 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
           <Link
             key={s.slug}
             href={`/skills/${s.slug}/configure`}
-            className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-black)] hover:shadow-xl"
+            className="group relative overflow-hidden rounded-2xl border-2 border-slate-300 bg-white p-6 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-black)] hover:shadow-xl"
           >
             {s.isHot && (
               <span className="absolute left-6 top-6 rounded-full bg-[var(--brand-blue)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--brand-black)]">

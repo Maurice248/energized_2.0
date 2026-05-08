@@ -30,9 +30,17 @@ export function ResultBadgeCard({
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-blue)]" />
           {eyebrow}
         </div>
-        <h1 className="mt-4 text-5xl font-bold leading-[0.95] tracking-tight text-white md:text-7xl">
+        <h1
+          className="mt-4 text-5xl font-bold leading-[0.95] tracking-tight md:text-7xl"
+          style={{ color: "#fff" }}
+        >
           {headline}{" "}
-          <em className="not-italic italic text-[var(--brand-blue)]">{headlineEm}</em>
+          <em
+            className="not-italic italic"
+            style={{ color: "var(--brand-blue, #1CAAE2)" }}
+          >
+            {headlineEm}
+          </em>
         </h1>
         <div className="mt-7 flex items-baseline gap-3.5">
           <div className="text-9xl font-bold leading-none tracking-tight text-[var(--brand-blue)] md:text-[140px]">
