@@ -5,6 +5,7 @@ import { env } from "@/env";
 import {
   buildSkillTestSystemPrompt,
   buildSkillTestUserPrompt,
+  buildResultNarrativePrompt,
   type GeneratePromptInput,
 } from "./skill-test-prompts";
 
@@ -357,4 +358,30 @@ export async function generateSkillTest(
     }
   }
   throw new Error("Could not parse skill test response after retry.");
+}
+
+// ---------------------------------------------------------------------------
+// Skill result narrative
+// ---------------------------------------------------------------------------
+
+const NARRATIVE_MODEL = "gpt-4o";
+
+export async function narrateSkillResult(input: {
+  topicName: string;
+  score: number;
+  passed: boolean;
+  topVerified: boolean;
+  breakdown: Array<{ cat: string; pct: number; right: number; total: number }>;
+}): Promise<string> {
+  if (!openaiClient) {
+    throw new Error("OpenAI API key not configured.");
+  }
+  const { system, user } = buildResultNarrativePrompt(input);
+  const { text } = await generateText({
+    model: openaiClient(NARRATIVE_MODEL),
+    system,
+    prompt: user,
+    maxOutputTokens: 300,
+  });
+  return text.trim().replace(/^["']|["']$/g, "");
 }

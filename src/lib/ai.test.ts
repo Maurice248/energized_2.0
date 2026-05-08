@@ -1,6 +1,6 @@
 // src/lib/ai.test.ts
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { generateSkillTest } from "./ai";
+import { generateSkillTest, narrateSkillResult } from "./ai";
 
 vi.mock("@/env", () => ({
   env: {
@@ -73,5 +73,24 @@ describe("generateSkillTest", () => {
     ).rejects.toThrow(/parse/i);
 
     expect(generateTextMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("narrateSkillResult", () => {
+  it("returns the narrative text trimmed", async () => {
+    generateTextMock.mockResolvedValueOnce({
+      text: "  Strong showing on Mechanical fundamentals; brush up on Hydraulics before retaking.  ",
+    });
+    const out = await narrateSkillResult({
+      topicName: "Wind energy",
+      score: 78,
+      passed: true,
+      topVerified: false,
+      breakdown: [
+        { cat: "Mechanical", pct: 90, right: 9, total: 10 },
+        { cat: "Hydraulics", pct: 60, right: 3, total: 5 },
+      ],
+    });
+    expect(out).toBe("Strong showing on Mechanical fundamentals; brush up on Hydraulics before retaking.");
   });
 });
