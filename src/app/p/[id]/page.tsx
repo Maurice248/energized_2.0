@@ -3,8 +3,10 @@ import type { Metadata } from "next";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import {
+  applications,
   certifications,
   education,
+  jobListings,
   orgMembers,
   profiles,
   user,
@@ -121,22 +123,42 @@ export default async function PublicJobseekerProfilePage({
   const viewerIsAuthed = Boolean(session);
   const viewerIsEmployer = session?.user.role === "employer";
 
-  const viewerHasOrg = session
-    ? Boolean(
-        (
-          await db
-            .select({ orgId: orgMembers.orgId })
-            .from(orgMembers)
-            .where(
-              and(
-                eq(orgMembers.userId, session.user.id),
-                eq(orgMembers.status, "active"),
-              ),
-            )
-            .limit(1)
-        )[0],
+  const viewerOrgRow = session
+    ? (
+        await db
+          .select({ orgId: orgMembers.orgId })
+          .from(orgMembers)
+          .where(
+            and(
+              eq(orgMembers.userId, session.user.id),
+              eq(orgMembers.status, "active"),
+            ),
+          )
+          .limit(1)
+      )[0]
+    : null;
+  const viewerHasOrg = Boolean(viewerOrgRow);
+
+  // If the viewer is in an employer org AND this candidate has applied
+  // to a job in that org, surface the AI fit-score card on the profile.
+  // Pick the most recent application; the score query is keyed on
+  // (jobId, candidateId) so it shares cache with the kanban detail page.
+  let applicationIdInMyOrg: string | null = null;
+  if (viewerOrgRow && !viewerIsSelf) {
+    const [hit] = await db
+      .select({ applicationId: applications.id })
+      .from(applications)
+      .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
+      .where(
+        and(
+          eq(applications.candidateId, u.id),
+          eq(jobListings.orgId, viewerOrgRow.orgId),
+        ),
       )
-    : false;
+      .orderBy(desc(applications.createdAt))
+      .limit(1);
+    applicationIdInMyOrg = hit?.applicationId ?? null;
+  }
 
   await recordJobseekerProfileView({
     subjectUserId: u.id,
@@ -197,6 +219,7 @@ export default async function PublicJobseekerProfilePage({
       viewerIsEmployer={viewerIsEmployer}
       viewerHasOrg={viewerHasOrg}
       candidateUserId={u.id}
+      applicationIdInMyOrg={applicationIdInMyOrg}
     />
     </>
   );
