@@ -43,3 +43,10 @@ export const employerProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+export const jobseekerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== "jobseeker") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Jobseeker access only." });
+  }
+  return next({ ctx });
+});
