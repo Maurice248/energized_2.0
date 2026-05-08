@@ -1,6 +1,6 @@
 {
-  "id": "398df00d-046b-45f2-adf2-2ad7bd458ef3",
-  "prevId": "b1c5753e-fbc4-4c02-a59f-25b102919671",
+  "id": "e41e4f82-328e-4cec-a44e-22cd9b83004c",
+  "prevId": "398df00d-046b-45f2-adf2-2ad7bd458ef3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -47,6 +47,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'submitted'"
+        },
+        "last_viewed_by_employer_at": {
+          "name": "last_viewed_by_employer_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

@@ -3,11 +3,22 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { applications, employerOrgs, jobListings } from "@/server/db/schema";
+import {
+  applications,
+  employerOrgs,
+  jobListings,
+  user,
+} from "@/server/db/schema";
 import { getSession } from "@/server/auth";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { STAGE_FROM_DB, STAGE_LABEL } from "@/lib/application-stages";
 import { InterviewBlock } from "@/components/shared/interview-block";
+import { timeAgo } from "@/lib/time";
+import {
+  isEntitledSubscriptionStatus,
+  isJobseekerPlanTier,
+} from "@/lib/billing-tiers";
+import { Icon } from "@/components/shared/icon";
 
 export const metadata: Metadata = {
   title: "Application — Energized",
@@ -30,13 +41,17 @@ export default async function ApplicationDetailPage({
       coverNote: applications.coverNote,
       screeningAnswers: applications.screeningAnswers,
       createdAt: applications.createdAt,
+      lastViewedByEmployerAt: applications.lastViewedByEmployerAt,
       jobId: jobListings.id,
       jobTitle: jobListings.title,
       orgName: employerOrgs.name,
+      viewerPlan: user.jobseekerPlan,
+      viewerSubStatus: user.jobseekerSubscriptionStatus,
     })
     .from(applications)
     .innerJoin(jobListings, eq(jobListings.id, applications.jobId))
     .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
+    .innerJoin(user, eq(user.id, applications.candidateId))
     .where(eq(applications.id, id))
     .limit(1);
 
@@ -45,6 +60,9 @@ export default async function ApplicationDetailPage({
 
   const stageKey = STAGE_FROM_DB[app.statusDb] ?? "applied";
   const stageLabel = STAGE_LABEL[stageKey];
+  const viewerIsGold =
+    isJobseekerPlanTier(app.viewerPlan) &&
+    isEntitledSubscriptionStatus(app.viewerSubStatus);
 
   return (
     <div className="v2" style={{ minHeight: "100vh", background: "var(--v2-ink-50)" }}>
@@ -84,6 +102,62 @@ export default async function ApplicationDetailPage({
             </span>
           </div>
         </header>
+
+        {/* Application Insights — Gold-only signal that an employer has
+            actually opened the application detail page. Free users see a
+            short upgrade teaser instead. */}
+        <section
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 16px",
+            background: "white",
+            border: "1px solid var(--v2-ink-200)",
+            borderRadius: "var(--v2-r-xl)",
+            marginBottom: 20,
+            fontSize: 13,
+            color: "var(--v2-ink-700)",
+            lineHeight: 1.5,
+          }}
+        >
+          <Icon name="eye" size={14} />
+          {viewerIsGold ? (
+            app.lastViewedByEmployerAt ? (
+              <span>
+                <strong style={{ color: "var(--v2-ink-900)" }}>
+                  {app.orgName}
+                </strong>{" "}
+                last opened your application{" "}
+                <strong style={{ color: "var(--v2-ink-900)" }}>
+                  {timeAgo(app.lastViewedByEmployerAt)}
+                </strong>
+                .
+              </span>
+            ) : (
+              <span>
+                <strong style={{ color: "var(--v2-ink-900)" }}>
+                  {app.orgName}
+                </strong>{" "}
+                hasn&rsquo;t opened your application yet.
+              </span>
+            )
+          ) : (
+            <span>
+              See when employers opened your application —{" "}
+              <Link
+                href="/profile#pp-billing"
+                style={{
+                  color: "var(--v2-accent-deep)",
+                  textDecoration: "underline",
+                }}
+              >
+                upgrade to Gold
+              </Link>
+              .
+            </span>
+          )}
+        </section>
 
         {app.coverNote && (
           <section

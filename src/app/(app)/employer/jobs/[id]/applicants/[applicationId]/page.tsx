@@ -74,6 +74,14 @@ export default async function EmployerApplicantDetailPage({
     .limit(1);
   if (!member) notFound();
 
+  // Application Insights — Gold candidates see "Last viewed by employer Xh
+  // ago" on /applications/[id]. Awaited (single indexed UPDATE, ~5ms) so
+  // the write doesn't get lost on serverless response flush.
+  await db
+    .update(applications)
+    .set({ lastViewedByEmployerAt: new Date() })
+    .where(eq(applications.id, applicationId));
+
   const stageKey = STAGE_FROM_DB[row.statusDb] ?? "applied";
   const stageLabel = STAGE_LABEL[stageKey];
 
