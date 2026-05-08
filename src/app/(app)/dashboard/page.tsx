@@ -9,6 +9,7 @@ import {
   jobListings,
   profiles,
   savedJobs,
+  skillBadges,
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
@@ -133,6 +134,13 @@ export default async function DashboardPage() {
     .from(savedJobs)
     .where(eq(savedJobs.userId, userId));
   const savedCount = savedCountRow?.count ?? 0;
+
+  // --- skill badges ----------
+  const [badgeCountRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(skillBadges)
+    .where(eq(skillBadges.candidateId, userId));
+  const badgeCount = badgeCountRow?.count ?? 0;
 
   // --- profile views ----------
   const profileViews30d = await countJobseekerProfileViews30d(userId);
@@ -296,6 +304,9 @@ export default async function DashboardPage() {
           <div className="v2-dash-grid">
             {/* LEFT COLUMN */}
             <div style={{ display: "grid", gap: 24 }}>
+              {/* Skill tests promo */}
+              <SkillTestsCard badgeCount={badgeCount} />
+
               {/* Intro requests inbox */}
               <IntrosCard />
 
@@ -940,5 +951,106 @@ function ActivityCard({
         ))}
       </div>
     </div>
+  );
+}
+
+/* ---------- skill tests card ---------- */
+
+function SkillTestsCard({ badgeCount }: { badgeCount: number }) {
+  if (badgeCount === 0) {
+    return (
+      <section
+        className="v2-card"
+        style={{ background: "var(--brand-black, #101820)", border: "none" }}
+      >
+        <div className="v2-card-head">
+          <div>
+            <div className="v2-eyebrow" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Skill tests
+            </div>
+            <h2
+              className="v2-card-title"
+              style={{ marginTop: 8, color: "#fff" }}
+            >
+              Verify your <em>skills.</em>
+            </h2>
+          </div>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.08)",
+              display: "grid",
+              placeItems: "center",
+              color: "var(--brand-blue, #1CAAE2)",
+              flexShrink: 0,
+            }}
+          >
+            <Icon name="sparkles" size={22} />
+          </div>
+        </div>
+        <p
+          style={{
+            marginTop: 12,
+            fontSize: 14,
+            lineHeight: 1.6,
+            color: "rgba(255,255,255,0.6)",
+          }}
+        >
+          AI-built tests for your sector — pass and recruiters can filter for
+          you.
+        </p>
+        <div style={{ marginTop: 20 }}>
+          <Link
+            href="/skills"
+            className="v2-btn v2-btn-accent"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            Start a test <Icon name="arrowRight" size={14} />
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="v2-card">
+      <div className="v2-card-head">
+        <div>
+          <div className="v2-eyebrow">Skill tests</div>
+          <h2 className="v2-card-title" style={{ marginTop: 8 }}>
+            {badgeCount} verified{" "}
+            <em>skill{badgeCount === 1 ? "" : "s"}.</em>
+          </h2>
+        </div>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "var(--v2-ink-100)",
+            display: "grid",
+            placeItems: "center",
+            color: "var(--brand-blue, #1CAAE2)",
+            flexShrink: 0,
+          }}
+        >
+          <Icon name="sparkles" size={22} />
+        </div>
+      </div>
+      <p style={{ marginTop: 12, fontSize: 14, color: "var(--v2-ink-500)" }}>
+        Pick another sector to add to your verified track.
+      </p>
+      <div style={{ marginTop: 20 }}>
+        <Link
+          href="/skills"
+          className="v2-card-link"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          Browse tests <Icon name="arrowRight" size={14} />
+        </Link>
+      </div>
+    </section>
   );
 }
