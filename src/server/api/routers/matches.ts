@@ -87,6 +87,12 @@ export const matchesRouter = router({
         };
       }
 
+      const [profile] = await ctx.db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, ctx.session.user.id))
+        .limit(1);
+
       const [existing] = await ctx.db
         .select()
         .from(jobMatches)
@@ -98,7 +104,16 @@ export const matchesRouter = router({
         )
         .limit(1);
 
-      if (existing && Date.now() - existing.updatedAt.getTime() < CACHE_TTL_MS) {
+      // Cache hit: row exists, is fresh, AND was generated AFTER the
+      // candidate's last profile edit. Otherwise re-score so the model
+      // sees the new profile state.
+      const cacheFresh =
+        existing && Date.now() - existing.updatedAt.getTime() < CACHE_TTL_MS;
+      const cacheStaleVsProfile =
+        existing &&
+        profile &&
+        profile.updatedAt.getTime() > existing.updatedAt.getTime();
+      if (existing && cacheFresh && !cacheStaleVsProfile) {
         return {
           enabled: true as const,
           score: existing.score,
@@ -114,11 +129,6 @@ export const matchesRouter = router({
         .limit(1);
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const [profile] = await ctx.db
-        .select()
-        .from(profiles)
-        .where(eq(profiles.userId, ctx.session.user.id))
-        .limit(1);
       if (!profile) {
         return {
           enabled: true as const,

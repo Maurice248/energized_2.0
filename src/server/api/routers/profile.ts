@@ -139,6 +139,25 @@ async function requireProfile(
   return profile;
 }
 
+/**
+ * Bumps profiles.updatedAt for the given profile. Called from cert/work/edu
+ * mutations whose changes affect the AI match-scoring prompt (or could in
+ * the future) — INSERT and DELETE statements don't trigger Drizzle's
+ * `$onUpdate` hook on the parent table, so we have to do this explicitly.
+ *
+ * The match cache reads profile.updatedAt on every hit and re-scores when
+ * it's newer than jobMatches.updatedAt — see matches.ts.
+ */
+async function bumpProfileUpdatedAt(
+  db: typeof import("@/server/db").db,
+  profileId: string,
+) {
+  await db
+    .update(profiles)
+    .set({ updatedAt: new Date() })
+    .where(eq(profiles.id, profileId));
+}
+
 export const profileRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     const [profile] = await ctx.db
@@ -208,6 +227,7 @@ export const profileRouter = router({
         .insert(certifications)
         .values({ ...input, profileId: profile.id })
         .returning();
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return row;
     }),
 
@@ -232,6 +252,7 @@ export const profileRouter = router({
         .returning();
 
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return row;
     }),
 
@@ -252,6 +273,7 @@ export const profileRouter = router({
       if (!deleted) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return deleted;
     }),
 
@@ -263,6 +285,7 @@ export const profileRouter = router({
         .insert(workHistory)
         .values({ ...input, profileId: profile.id })
         .returning();
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return row;
     }),
 
@@ -287,6 +310,7 @@ export const profileRouter = router({
         .returning();
 
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return row;
     }),
 
@@ -307,6 +331,7 @@ export const profileRouter = router({
       if (!deleted) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return deleted;
     }),
 
@@ -318,6 +343,7 @@ export const profileRouter = router({
         .insert(education)
         .values({ ...input, profileId: profile.id })
         .returning();
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return row;
     }),
 
@@ -341,6 +367,7 @@ export const profileRouter = router({
         )
         .returning();
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return row;
     }),
 
@@ -358,6 +385,7 @@ export const profileRouter = router({
         )
         .returning({ id: education.id });
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
       return deleted;
     }),
 
