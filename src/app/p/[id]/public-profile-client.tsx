@@ -162,12 +162,10 @@ export function PublicProfileClient({
   const showHiddenDetails = viewerIsAuthed || viewerIsSelf;
 
   // Fetch skill badges for this candidate. `badgesForCandidate` is a
-  // protectedProcedure so this will be a no-op for unauthenticated viewers
-  // (React Query will skip on 401, showing nothing).
-  const badgesQuery = api.skillTests.badgesForCandidate.useQuery(
-    { candidateId: candidateUserId },
-    { retry: false },
-  );
+  // publicProcedure — badges are part of the public profile surface.
+  const badgesQuery = api.skillTests.badgesForCandidate.useQuery({
+    candidateId: candidateUserId,
+  });
   const badges = badgesQuery.data ?? [];
 
   return (

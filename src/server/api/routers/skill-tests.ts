@@ -481,7 +481,10 @@ export const skillTestsRouter = router({
       .orderBy(desc(skillBadges.earnedAt));
   }),
 
-  badgesForCandidate: protectedProcedure
+  // Public so anonymous viewers of /p/[id] can see badges as part of the
+  // candidate's public profile (badges are not PII — they're effectively a
+  // public credential the candidate earned).
+  badgesForCandidate: publicProcedure
     .input(z.object({ candidateId: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.db
