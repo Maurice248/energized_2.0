@@ -972,7 +972,7 @@ function SkillTestsCard({ badgeCount }: { badgeCount: number }) {
               className="v2-card-title"
               style={{ marginTop: 8, color: "#fff" }}
             >
-              Verify your <em>skills.</em>
+              Verify your <em style={{ color: "var(--brand-blue, #1CAAE2)" }}>skills.</em>
             </h2>
           </div>
           <div

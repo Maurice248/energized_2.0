@@ -148,7 +148,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-blue)]" />
             Ready to build
           </div>
-          <h4 className="mt-3.5 text-2xl font-bold tracking-tight">{selectedRole?.name}</h4>
+          <h4 className="mt-3.5 text-2xl font-bold tracking-tight text-white">{selectedRole?.name}</h4>
           <dl className="mt-4 divide-y divide-white/10 text-sm">
             <Row l="Sector" v={sector.name} />
             <Row l="Level" v={level[0].toUpperCase() + level.slice(1)} />

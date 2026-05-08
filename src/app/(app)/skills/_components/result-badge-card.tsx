@@ -30,7 +30,7 @@ export function ResultBadgeCard({
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-blue)]" />
           {eyebrow}
         </div>
-        <h1 className="mt-4 text-5xl font-bold leading-[0.95] tracking-tight md:text-7xl">
+        <h1 className="mt-4 text-5xl font-bold leading-[0.95] tracking-tight text-white md:text-7xl">
           {headline}{" "}
           <em className="not-italic italic text-[var(--brand-blue)]">{headlineEm}</em>
         </h1>

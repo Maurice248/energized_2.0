@@ -64,10 +64,10 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--brand-blue)]" />
             AI generator · live
           </div>
-          <h3 className="mt-3 text-3xl font-bold tracking-tight">
+          <h3 className="mt-3 text-4xl font-bold tracking-tight text-white">
             Just tell us the <em className="not-italic italic text-[var(--brand-blue)]">job</em>.
           </h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-300">
+          <p className="mt-3 text-base leading-7 text-slate-200">
             Type your role or paste a job description. The generator picks the sector, level and question mix.
           </p>
           <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1.5 pl-5 pr-1.5">
@@ -86,12 +86,12 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               Build test <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="mt-3.5 flex flex-wrap gap-1.5">
+          <div className="mt-5 flex flex-wrap gap-2.5">
             {suggestions.map((s) => (
               <button
                 key={s}
                 onClick={() => setText(s)}
-                className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-300 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                className="rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
               >
                 {s}
               </button>
