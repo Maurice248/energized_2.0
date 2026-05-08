@@ -48,6 +48,7 @@ export const GOLD_FEATURES: string[] = [
   "AI match scoring on every role — instant fit at a glance",
   "AI cover-letter generator — drafts a tailored note from your profile + the job",
   "AI profile polish — rewrites your summary to highlight impact",
+  "AI-generated skill tests — sector-specific, verifiable badges",
   "\"Open to work\" badge with sector preferences",
   "Profile-views counter — see how often employers view your profile",
   "Unlimited saved searches with daily digest",
@@ -74,6 +75,7 @@ export const JOBSEEKER_FREE_FEATURES: string[] = [
   "Save unlimited jobs",
   "Application status tracking",
   "Email alerts for new matches",
+  "1 free skill assessment — sector-specific badge if you pass",
 ];
 
 export const JOBSEEKER_FREE_FUTURE_FEATURES: string[] = [
