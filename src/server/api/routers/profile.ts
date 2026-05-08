@@ -14,6 +14,8 @@ import {
   EVENT_PROFILE_UPDATED,
   EVENT_RESUME_UPLOADED,
 } from "@/lib/analytics-events";
+import { polishProfileSummary } from "@/lib/ai";
+import { isJobseekerPlanTier } from "@/lib/billing-tiers";
 
 const sectorValues = [
   "oil_gas",
@@ -393,5 +395,63 @@ export const profileRouter = router({
         .set({ image: input.url })
         .where(eq(user.id, ctx.session.user.id));
       return { url: input.url };
+    }),
+
+  polishSummary: protectedProcedure
+    .input(z.object({ current: z.string().min(1).max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      // Gate: Gold or Platinum jobseeker subscription, status active.
+      const [u] = await ctx.db
+        .select({
+          jobseekerPlan: user.jobseekerPlan,
+          jobseekerSubscriptionStatus: user.jobseekerSubscriptionStatus,
+        })
+        .from(user)
+        .where(eq(user.id, ctx.session.user.id))
+        .limit(1);
+      if (!u) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const planActive =
+        isJobseekerPlanTier(u.jobseekerPlan) &&
+        u.jobseekerSubscriptionStatus === "active";
+      if (!planActive) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Profile Polish is a Gold feature. Upgrade to use AI rewriting.",
+        });
+      }
+
+      const [profile] = await ctx.db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, ctx.session.user.id))
+        .limit(1);
+      if (!profile) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const topRoles = await ctx.db
+        .select({
+          roleTitle: workHistory.roleTitle,
+          employerName: workHistory.employerName,
+          sector: workHistory.sector,
+          summary: workHistory.summary,
+        })
+        .from(workHistory)
+        .where(eq(workHistory.profileId, profile.id))
+        .limit(3);
+
+      try {
+        const polished = await polishProfileSummary({
+          current: input.current,
+          headline: profile.headline,
+          sectors: profile.sectors,
+          topRoles,
+        });
+        return { polished };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Polish failed.";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+      }
     }),
 });

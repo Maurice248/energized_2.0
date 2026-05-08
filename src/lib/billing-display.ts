@@ -52,7 +52,7 @@ export const GOLD_FEATURES: string[] = [
   "Application insights — who viewed your application, and when (coming soon)",
   "48-hour early access to new postings (coming soon)",
   "AI cover-letter generator (coming soon)",
-  "AI profile polish — rewrites bullets to highlight impact (coming soon)",
+  "AI profile polish — rewrites your summary to highlight impact",
 ];
 
 export const PLATINUM_FEATURES: string[] = [
