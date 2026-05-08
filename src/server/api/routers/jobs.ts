@@ -11,7 +11,11 @@ import {
   EVENT_JOB_PUBLISHED,
   EVENT_JOB_REOPENED,
 } from "@/lib/analytics-events";
-import { TIERS, isPlanTier } from "@/lib/billing-tiers";
+import {
+  TIERS,
+  isEntitledSubscriptionStatus,
+  isPlanTier,
+} from "@/lib/billing-tiers";
 
 const sectorValues = [
   "oil_gas",
@@ -229,11 +233,15 @@ export const jobsRouter = router({
         });
       }
 
-      // Billing gate: must have an active subscription, and must be under
-      // the tier's per-cycle quota. Errors use prefixes so the client can
-      // route them to the upgrade modal (the global errorFormatter only
-      // propagates zodError, not custom cause).
-      if (!isPlanTier(org.plan) || org.subscriptionStatus !== "active") {
+      // Billing gate: must have a paid plan with an entitled subscription
+      // status (active OR trialing — Stripe trial users are paying us in
+      // spirit), and must be under the tier's per-cycle quota. Errors use
+      // prefixes so the client can route them to the upgrade modal (the
+      // global errorFormatter only propagates zodError, not custom cause).
+      if (
+        !isPlanTier(org.plan) ||
+        !isEntitledSubscriptionStatus(org.subscriptionStatus)
+      ) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "BILLING_REQUIRED",
