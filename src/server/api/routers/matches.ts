@@ -4,14 +4,42 @@ import { z } from "zod";
 import { protectedProcedure, router } from "@/server/api/trpc";
 import {
   certifications,
+  employerOrgs,
   jobListings,
   jobMatches,
   profiles,
+  user,
   workHistory,
 } from "@/server/db/schema";
-import { EMBER_ENABLED, scoreJobMatch } from "@/lib/ai";
+import { EMBER_ENABLED, draftCoverNote, scoreJobMatch } from "@/lib/ai";
+import { isJobseekerPlanTier } from "@/lib/billing-tiers";
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function requireActiveJobseekerSubscription(
+  db: typeof import("@/server/db").db,
+  userId: string,
+): Promise<void> {
+  const [u] = await db
+    .select({
+      jobseekerPlan: user.jobseekerPlan,
+      jobseekerSubscriptionStatus: user.jobseekerSubscriptionStatus,
+    })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+  if (!u) throw new TRPCError({ code: "UNAUTHORIZED" });
+  const planActive =
+    isJobseekerPlanTier(u.jobseekerPlan) &&
+    u.jobseekerSubscriptionStatus === "active";
+  if (!planActive) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "AI cover-letter generator is a Gold feature. Upgrade to use AI drafting.",
+    });
+  }
+}
 
 export const matchesRouter = router({
   scoreForJob: protectedProcedure
@@ -22,6 +50,7 @@ export const matchesRouter = router({
           enabled: false as const,
           score: null,
           reason: null,
+          lockedReason: "no_key" as const,
         };
       }
       if (ctx.session.user.role === "employer") {
@@ -29,6 +58,29 @@ export const matchesRouter = router({
           enabled: false as const,
           score: null,
           reason: null,
+          lockedReason: "employer" as const,
+        };
+      }
+
+      // Gold-gate the AI match score. Non-Gold jobseekers see an upgrade card.
+      const [u] = await ctx.db
+        .select({
+          jobseekerPlan: user.jobseekerPlan,
+          jobseekerSubscriptionStatus: user.jobseekerSubscriptionStatus,
+        })
+        .from(user)
+        .where(eq(user.id, ctx.session.user.id))
+        .limit(1);
+      const isGold =
+        u &&
+        isJobseekerPlanTier(u.jobseekerPlan) &&
+        u.jobseekerSubscriptionStatus === "active";
+      if (!isGold) {
+        return {
+          enabled: false as const,
+          score: null,
+          reason: null,
+          lockedReason: "gold_required" as const,
         };
       }
 
@@ -48,6 +100,7 @@ export const matchesRouter = router({
           enabled: true as const,
           score: existing.score,
           reason: existing.reason,
+          lockedReason: null,
         };
       }
 
@@ -68,6 +121,7 @@ export const matchesRouter = router({
           enabled: true as const,
           score: null,
           reason: "Complete your profile to see a match score.",
+          lockedReason: null,
         };
       }
 
@@ -137,6 +191,7 @@ export const matchesRouter = router({
           enabled: true as const,
           score: result.score,
           reason: result.reason,
+          lockedReason: null,
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Scoring failed.";
@@ -144,7 +199,89 @@ export const matchesRouter = router({
           enabled: true as const,
           score: null,
           reason: `Couldn't compute match: ${msg}`,
+          lockedReason: null,
         };
+      }
+    }),
+
+  draftCoverNote: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireActiveJobseekerSubscription(ctx.db, ctx.session.user.id);
+
+      const [profile] = await ctx.db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, ctx.session.user.id))
+        .limit(1);
+      if (!profile) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Complete your profile first — drafting needs something to ground in.",
+        });
+      }
+
+      const [job] = await ctx.db
+        .select({
+          title: jobListings.title,
+          sector: jobListings.sector,
+          location: jobListings.location,
+          workSetup: jobListings.workSetup,
+          rotationSchedule: jobListings.rotationSchedule,
+          requiredCertifications: jobListings.requiredCertifications,
+          summary: jobListings.summary,
+          description: jobListings.description,
+          orgName: employerOrgs.name,
+        })
+        .from(jobListings)
+        .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
+        .where(eq(jobListings.id, input.jobId))
+        .limit(1);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const certs = await ctx.db
+        .select({ name: certifications.name })
+        .from(certifications)
+        .where(eq(certifications.profileId, profile.id))
+        .limit(8);
+      const topRoles = await ctx.db
+        .select({
+          roleTitle: workHistory.roleTitle,
+          employerName: workHistory.employerName,
+          sector: workHistory.sector,
+          summary: workHistory.summary,
+        })
+        .from(workHistory)
+        .where(eq(workHistory.profileId, profile.id))
+        .limit(3);
+
+      try {
+        const draft = await draftCoverNote({
+          candidate: {
+            headline: profile.headline,
+            summary: profile.summary,
+            sectors: profile.sectors,
+            location: profile.location,
+          },
+          topRoles,
+          topCertifications: certs.map((c) => c.name),
+          job: {
+            title: job.title ?? "(untitled)",
+            company: job.orgName,
+            sector: job.sector,
+            location: job.location,
+            workSetup: job.workSetup,
+            rotationSchedule: job.rotationSchedule,
+            requiredCertifications: job.requiredCertifications,
+            summary: job.summary,
+            description: job.description ?? "",
+          },
+        });
+        return { draft };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Drafting failed.";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
       }
     }),
 });

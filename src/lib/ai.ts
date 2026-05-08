@@ -97,3 +97,81 @@ export async function polishProfileSummary(input: {
   }
   return cleaned;
 }
+
+export async function draftCoverNote(input: {
+  candidate: {
+    headline: string | null;
+    summary: string | null;
+    sectors: string[];
+    location: string | null;
+  };
+  topRoles: { roleTitle: string | null; employerName: string; sector: string | null; summary: string | null }[];
+  topCertifications: string[];
+  job: {
+    title: string;
+    company: string;
+    sector: string | null;
+    location: string | null;
+    workSetup: string | null;
+    rotationSchedule: string | null;
+    requiredCertifications: string[];
+    summary: string | null;
+    description: string;
+  };
+}): Promise<string> {
+  if (!openaiClient) {
+    throw new Error("OpenAI API key not configured.");
+  }
+
+  const candidateBlock = [
+    `Headline: ${input.candidate.headline ?? "(none)"}`,
+    `Summary: ${input.candidate.summary ?? "(none)"}`,
+    `Sectors: ${input.candidate.sectors.join(", ") || "(none)"}`,
+    `Location: ${input.candidate.location ?? "(none)"}`,
+    `Certifications: ${input.topCertifications.join(", ") || "(none)"}`,
+    "Recent roles:",
+    ...input.topRoles
+      .slice(0, 3)
+      .map(
+        (r) =>
+          `- ${r.roleTitle ?? "Role"} at ${r.employerName} (${r.sector ?? "sector unset"})${r.summary ? ": " + r.summary.slice(0, 200) : ""}`,
+      ),
+  ].join("\n");
+
+  const jobBlock = [
+    `Title: ${input.job.title}`,
+    `Company: ${input.job.company}`,
+    `Sector: ${input.job.sector ?? "(unset)"}`,
+    `Location: ${input.job.location ?? "(unset)"}`,
+    `Work setup: ${input.job.workSetup ?? "(unset)"}`,
+    `Rotation: ${input.job.rotationSchedule ?? "(none)"}`,
+    `Required certifications: ${input.job.requiredCertifications.join(", ") || "(none)"}`,
+    `Job summary: ${input.job.summary ?? ""}`,
+    `Description: ${input.job.description.slice(0, 1200)}`,
+  ].join("\n");
+
+  const { text } = await generateText({
+    model: openaiClient(env.OPENAI_MODEL),
+    system:
+      "You draft cover notes for Canadian energy-sector job applications. " +
+      "Write 90–130 words, ONE paragraph. " +
+      "Open by connecting the candidate's strongest credential to the role. " +
+      "Reference ONE specific element from the posting (sector / ticket / location / rotation). " +
+      "Cite ONE concrete piece of the candidate's experience (project, ticket, or quantified result). " +
+      "Close with a grounded note of fit — no generic enthusiasm. " +
+      "Active voice. No clichés (\"passionate\", \"team player\", \"dynamic\"). " +
+      "No salutation. No signature. No \"Dear Hiring Manager\". " +
+      "Plain text only — no bullets, no headings, no quotes, no preamble. " +
+      "If the candidate or job has no specifics to ground the note in, return the exact string: INSUFFICIENT_INPUT",
+    prompt: `CANDIDATE:\n${candidateBlock}\n\nJOB:\n${jobBlock}\n\nDraft the cover note now.`,
+    maxOutputTokens: 350,
+  });
+
+  const cleaned = text.trim().replace(/^["']|["']$/g, "");
+  if (cleaned === "INSUFFICIENT_INPUT" || cleaned.length === 0) {
+    throw new Error(
+      "Not enough on your profile yet for a grounded draft — add a summary or a recent role first.",
+    );
+  }
+  return cleaned;
+}

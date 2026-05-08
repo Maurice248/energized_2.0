@@ -45,14 +45,15 @@ export const PACKAGE_C_FEATURES: string[] = [
 /* ---------- Jobseeker paid-tier delivered features ---------- */
 
 export const GOLD_FEATURES: string[] = [
+  "AI match scoring on every role — instant fit at a glance",
+  "AI cover-letter generator — drafts a tailored note from your profile + the job",
+  "AI profile polish — rewrites your summary to highlight impact",
   "\"Open to work\" badge with sector preferences",
   "See which employers viewed your profile",
   "Unlimited saved searches with daily digest",
   "Featured profile — top of employer searches (coming soon)",
   "Application insights — who viewed your application, and when (coming soon)",
   "48-hour early access to new postings (coming soon)",
-  "AI cover-letter generator (coming soon)",
-  "AI profile polish — rewrites your summary to highlight impact",
 ];
 
 export const PLATINUM_FEATURES: string[] = [

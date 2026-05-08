@@ -615,10 +615,10 @@ function PricingTeaser({ viewer }: { viewer: ViewerContext }) {
               </div>
               <div className="v2-plan-period">cancel anytime</div>
               <ul>
-                <li>&ldquo;Open to work&rdquo; badge with sector preferences</li>
+                <li>AI match scoring on every role</li>
+                <li>AI cover-letter generator</li>
+                <li>AI profile polish</li>
                 <li>See who viewed your profile</li>
-                <li>Unlimited saved searches with daily digest</li>
-                <li>AI cover-letter generator (coming soon)</li>
               </ul>
               <PlanCardButton cta={ctaJsGold} />
             </div>

@@ -50,10 +50,19 @@ export function ApplyButtonAndModal({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const apply = api.applications.submit.useMutation({
     onSuccess: () => setSuccess(true),
     onError: (e) => setError(e.message),
+  });
+
+  const draft = api.matches.draftCoverNote.useMutation({
+    onSuccess: (data) => {
+      setCoverNote(data.draft);
+      setDraftError(null);
+    },
+    onError: (e) => setDraftError(e.message),
   });
 
   const firstRequiredMissing = useMemo(() => {
@@ -239,19 +248,43 @@ export function ApplyButtonAndModal({
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label
+                <div
                   style={{
-                    display: "block",
-                    fontFamily: "var(--v2-font-mono)",
-                    fontSize: 11,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "var(--v2-ink-500)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
                     marginBottom: 8,
                   }}
                 >
-                  Cover note · optional
-                </label>
+                  <label
+                    style={{
+                      display: "block",
+                      fontFamily: "var(--v2-font-mono)",
+                      fontSize: 11,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--v2-ink-500)",
+                      margin: 0,
+                    }}
+                  >
+                    Cover note · optional
+                  </label>
+                  <button
+                    type="button"
+                    className="v2-btn v2-btn-outline v2-btn-sm"
+                    disabled={draft.isPending}
+                    onClick={() => {
+                      setDraftError(null);
+                      draft.mutate({ jobId });
+                    }}
+                    title="Draft a cover note from your profile and this role (Gold)"
+                  >
+                    <Icon name="sparkles" size={12} />
+                    {draft.isPending ? "Drafting…" : "Draft for me"}
+                  </button>
+                </div>
                 <textarea
                   className="v2-input-block"
                   rows={4}
@@ -262,13 +295,46 @@ export function ApplyButtonAndModal({
                 />
                 <div
                   style={{
-                    fontSize: 11,
-                    color: "var(--v2-ink-500)",
-                    textAlign: "right",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
                     marginTop: 4,
                   }}
                 >
-                  {coverNote.length}/1000
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#A63A20",
+                      lineHeight: 1.5,
+                      flex: 1,
+                    }}
+                  >
+                    {draftError && (
+                      <>
+                        {draftError}{" "}
+                        {draftError.toLowerCase().includes("gold") && (
+                          <Link
+                            href="/profile#pp-billing"
+                            style={{
+                              color: "var(--v2-accent-deep)",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            See plans
+                          </Link>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--v2-ink-500)",
+                    }}
+                  >
+                    {coverNote.length}/1000
+                  </div>
                 </div>
               </div>
 
