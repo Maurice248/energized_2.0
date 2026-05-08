@@ -81,7 +81,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             ))}
           </div>
           {selectedRole?.subDescription && (
-            <p className="mt-3 text-sm text-slate-500">{selectedRole.subDescription}</p>
+            <p className="mt-3 text-sm text-slate-600">{selectedRole.subDescription}</p>
           )}
         </Field>
 
@@ -213,7 +213,7 @@ function Toggle({ on, onChange, title, sub }: { on: boolean; onChange: (v: boole
     <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 first:mt-0">
       <div>
         <div className="text-[15px] font-medium text-slate-900">{title}</div>
-        <div className="mt-0.5 text-sm text-slate-500">{sub}</div>
+        <div className="mt-0.5 text-sm text-slate-600">{sub}</div>
       </div>
       <button
         onClick={() => onChange(!on)}

@@ -101,7 +101,7 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               <button
                 key={s}
                 onClick={() => setText(s)}
-                className="rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+                className="rounded-full border border-white/40 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--brand-blue)] hover:bg-white/[0.1] hover:text-[var(--brand-blue)]"
               >
                 {s}
               </button>

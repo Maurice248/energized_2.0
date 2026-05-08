@@ -14,7 +14,7 @@ export function HowItWorksStrip() {
             {s.n}
           </div>
           <h4 className="mt-3 text-xl font-bold tracking-tight">{s.h}</h4>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.p}</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{s.p}</p>
         </div>
       ))}
     </div>

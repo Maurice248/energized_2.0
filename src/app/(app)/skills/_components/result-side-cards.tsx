@@ -21,7 +21,7 @@ export function ResultSideCards({
     <div className="grid gap-4">
       <div className="rounded-3xl border border-slate-200 bg-white p-7">
         <h4 className="text-xl font-bold tracking-tight">Add to your profile</h4>
-        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+        <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
           Recruiters filtering for {sectorName} can find verified candidates first.
         </p>
         <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
@@ -49,7 +49,7 @@ export function ResultSideCards({
       {weakest.length > 0 && (
         <div className="rounded-3xl border border-slate-200 bg-white p-7">
           <h4 className="text-xl font-bold tracking-tight">Recommended next</h4>
-          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
             Areas to strengthen before your next attempt or role.
           </p>
           <div className="mt-4 grid gap-2.5">

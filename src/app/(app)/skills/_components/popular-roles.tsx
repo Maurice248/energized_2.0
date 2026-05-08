@@ -35,7 +35,7 @@ export function PopularRoles({ sectors }: { sectors: Sector[] }) {
             <div>
               <div className="text-2xl font-bold tracking-tight">{r.name}</div>
               {r.subDescription && (
-                <div className="mt-1 text-sm text-slate-500">{r.subDescription}</div>
+                <div className="mt-1 text-sm text-slate-600">{r.subDescription}</div>
               )}
             </div>
             <div className="hidden md:block">

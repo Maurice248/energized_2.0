@@ -81,7 +81,7 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
               <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--brand-blue)]" />
             </div>
             <h3 className="text-2xl font-bold tracking-tight">{s.name}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">{s.blurb}</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{s.blurb}</p>
             <div className="mt-5 flex items-center justify-between border-t border-dashed border-slate-200 pt-4 text-sm">
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500">Roles</div>
