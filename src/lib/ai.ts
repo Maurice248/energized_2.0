@@ -1,11 +1,11 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { env } from "@/env";
 
-export const EMBER_ENABLED = Boolean(env.ANTHROPIC_API_KEY);
+export const EMBER_ENABLED = Boolean(env.OPENAI_API_KEY);
 
-const anthropicClient = EMBER_ENABLED
-  ? createAnthropic({ apiKey: env.ANTHROPIC_API_KEY })
+const openaiClient = EMBER_ENABLED
+  ? createOpenAI({ apiKey: env.OPENAI_API_KEY })
   : null;
 
 export type MatchScore = {
@@ -17,21 +17,21 @@ export async function scoreJobMatch(input: {
   profile: string;
   job: string;
 }): Promise<MatchScore> {
-  if (!anthropicClient) {
-    throw new Error("Anthropic API key not configured.");
+  if (!openaiClient) {
+    throw new Error("OpenAI API key not configured.");
   }
 
   const { text } = await generateText({
-    model: anthropicClient("claude-haiku-4-5-20251001"),
+    model: openaiClient(env.OPENAI_MODEL),
     system:
       "You are an energy-sector recruiter scoring candidate-job fit. " +
-      "Return ONLY JSON: {\"score\": <0-100 integer>, \"reason\": \"<one sentence, under 140 chars, grounded in specifics>\"}. " +
+      'Return ONLY JSON: {"score": <0-100 integer>, "reason": "<one sentence, under 140 chars, grounded in specifics>"}. ' +
       "Score 85+ only for unambiguous fits. Consider sector, ticket alignment, experience level, rotation, and location.",
     prompt: `PROFILE:\n${input.profile}\n\nJOB:\n${input.job}\n\nJSON only.`,
     maxOutputTokens: 200,
   });
 
-  // Claude sometimes wraps JSON in prose; extract the first JSON block.
+  // Extract JSON in case the model wraps it in prose.
   const match = text.match(/\{[\s\S]*\}/);
   const raw = match ? match[0] : text.trim();
   try {

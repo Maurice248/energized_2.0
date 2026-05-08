@@ -44,7 +44,7 @@
 | 13 | Monitoring & Analytics | PostHog (also Feature Flags + A/B Testing) |
 | 14 | Testing | Vitest + Playwright (with visual) |
 | 15 | CI/CD & Infrastructure | Vercel |
-| 16 | AI / LLM Integration | Vercel AI SDK + Claude |
+| 16 | AI / LLM Integration | Vercel AI SDK + OpenAI |
 | 17 | Rate Limiting & Security | Better Auth CSRF + Vercel Firewall |
 
 > **Do not introduce alternative libraries for any of the above layers without explicit approval.** If you feel a layer is missing something (e.g. a form library), propose it in a PR description rather than silently adding it.
@@ -95,7 +95,7 @@ energized/
 │   │   ├── resend.ts
 │   │   ├── blob.ts
 │   │   ├── posthog.ts
-│   │   ├── ai.ts                # Vercel AI SDK + Claude wrapper
+│   │   ├── ai.ts                # Vercel AI SDK + OpenAI wrapper
 │   │   └── utils.ts             # cn(), formatters, etc.
 │   ├── emails/                  # React Email templates
 │   ├── jobs/                    # Trigger.dev task definitions
@@ -718,7 +718,7 @@ test("candidate can apply to a job", async ({ page }) => {
 
 ---
 
-## 18. Layer 16 — AI / LLM Integration (Vercel AI SDK + Claude)
+## 18. Layer 16 — AI / LLM Integration (Vercel AI SDK + OpenAI)
 
 **Primary AI use cases**
 1. **Profile Polish** — rewrite bullet points to highlight measurable impact ("Reduced flare gas volume by 18% at Site-14").
@@ -726,20 +726,22 @@ test("candidate can apply to a job", async ({ page }) => {
 3. **Cover Note Generator** — draft a short, sector-aware note.
 4. **Posting Assistant** — help employers write inclusive, clear job posts.
 
+Provider is `@ai-sdk/openai` (the Vercel AI SDK abstracts call sites, so swapping models is a one-liner). Model is read from `OPENAI_MODEL` env (default `gpt-4o`).
+
 ```ts
 // src/lib/ai.ts
-import { anthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
 import { env } from "@/env";
 
-export const claude = anthropic("claude-opus-4-6");
+const openaiClient = createOpenAI({ apiKey: env.OPENAI_API_KEY });
 
 export async function scoreJobMatch(input: { profile: string; job: string }) {
   const { text } = await generateText({
-    model: claude,
+    model: openaiClient(env.OPENAI_MODEL),
     system: "You are an energy-sector recruiter. Score 0-100 and explain briefly.",
     prompt: `PROFILE:\n${input.profile}\n\nJOB:\n${input.job}\n\nReturn JSON {score, reason}.`,
-    maxTokens: 400,
+    maxOutputTokens: 400,
   });
   return JSON.parse(text) as { score: number; reason: string };
 }
@@ -748,14 +750,17 @@ export async function scoreJobMatch(input: { profile: string; job: string }) {
 ```tsx
 // src/app/api/ai/cover-note/route.ts — streaming endpoint
 import { streamText } from "ai";
-import { claude } from "@/lib/ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { env } from "@/env";
 
 export const runtime = "nodejs";
+
+const openaiClient = createOpenAI({ apiKey: env.OPENAI_API_KEY });
 
 export async function POST(req: Request) {
   const { profile, job } = await req.json();
   const result = streamText({
-    model: claude,
+    model: openaiClient(env.OPENAI_MODEL),
     system: "Write a concise 120-word cover note for a Canadian energy-sector role. Grounded, no fluff.",
     prompt: `Profile:\n${profile}\n\nJob:\n${job}`,
   });

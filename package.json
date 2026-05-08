@@ -21,7 +21,7 @@
     "trigger:dev": "trigger dev"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.71",
+    "@ai-sdk/openai": "^3.0.63",
     "@ai-sdk/react": "^3.0.170",
     "@neondatabase/serverless": "^1.1.0",
     "@stripe/stripe-js": "^9.2.0",

@@ -74,7 +74,7 @@ export function EmberCard({
               lineHeight: 1.5,
             }}
           >
-            AI match scoring lights up once an Anthropic key is configured on
+            AI match scoring lights up once an OpenAI key is configured on
             this environment.
           </p>
         </div>
