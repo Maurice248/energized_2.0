@@ -76,23 +76,24 @@ export async function polishProfileSummary(input: {
     model: openaiClient(env.OPENAI_MODEL),
     system:
       "You are an editor for energy-sector professional profiles on Energized, a Canadian job platform. " +
-      "Rewrite the candidate's 'About' summary to: " +
-      "(1) lead with the strongest credential or experience; " +
-      "(2) quantify impact wherever the source allows it (volumes, %, sites, durations); " +
+      "Rewrite the candidate's 'About' summary. Goals: " +
+      "(1) lead with the strongest credential or experience the source mentions; " +
+      "(2) quantify impact wherever the source already includes numbers (volumes, %, sites, durations) — never invent; " +
       "(3) use confident, active voice — no hedging, no buzzword soup; " +
-      "(4) match the original length within ±20%; " +
-      "(5) keep references to specific certs, commodities, and locations the candidate mentioned. " +
-      "One paragraph. No bullets. No headings. No quotes. No preamble like 'Here is...'. " +
-      "Return ONLY the rewritten summary text. " +
-      "If the original is empty or has no factual content to work from, return the exact string: INSUFFICIENT_INPUT",
+      "(4) keep close to the original length (within ~30%); " +
+      "(5) preserve every specific cert, commodity, role, and location the candidate mentioned. " +
+      "If the source is sparse, work with what's there — produce the best honest rewrite you can. " +
+      "NEVER invent employers, certs, locations, or numbers that aren't in the source. " +
+      "One paragraph. No bullets. No headings. No quotes. No preamble like 'Here is…'. " +
+      "Return ONLY the rewritten summary text.",
     prompt: `CONTEXT (do not echo):\n${context}\n\nCURRENT SUMMARY:\n${input.current}\n\nRewrite the summary now.`,
     maxOutputTokens: 400,
   });
 
   const cleaned = text.trim().replace(/^["']|["']$/g, "");
-  if (cleaned === "INSUFFICIENT_INPUT" || cleaned.length === 0) {
+  if (cleaned.length === 0) {
     throw new Error(
-      "Add a draft sentence or two first — Profile Polish needs something to work from.",
+      "The AI returned an empty response. Try again, or add more detail to your summary first.",
     );
   }
   return cleaned;
@@ -155,22 +156,26 @@ export async function draftCoverNote(input: {
     system:
       "You draft cover notes for Canadian energy-sector job applications. " +
       "Write 90–130 words, ONE paragraph. " +
-      "Open by connecting the candidate's strongest credential to the role. " +
-      "Reference ONE specific element from the posting (sector / ticket / location / rotation). " +
-      "Cite ONE concrete piece of the candidate's experience (project, ticket, or quantified result). " +
+      "Goals: " +
+      "Open by connecting the candidate's strongest credential or sector experience to the role. " +
+      "Reference at least one specific element from the posting (sector, ticket, location, rotation, or scope). " +
+      "If the candidate's profile lists a concrete piece of experience (project, ticket, employer, quantified result), cite ONE — but never fabricate one. " +
       "Close with a grounded note of fit — no generic enthusiasm. " +
+      "Rules: " +
       "Active voice. No clichés (\"passionate\", \"team player\", \"dynamic\"). " +
       "No salutation. No signature. No \"Dear Hiring Manager\". " +
       "Plain text only — no bullets, no headings, no quotes, no preamble. " +
-      "If the candidate or job has no specifics to ground the note in, return the exact string: INSUFFICIENT_INPUT",
+      "NEVER invent employers, certs, locations, dates, or numbers that aren't in the candidate's profile. " +
+      "Work with whatever the profile provides; if it's sparse, write a leaner note rather than inventing facts. " +
+      "Return ONLY the cover note text.",
     prompt: `CANDIDATE:\n${candidateBlock}\n\nJOB:\n${jobBlock}\n\nDraft the cover note now.`,
     maxOutputTokens: 350,
   });
 
   const cleaned = text.trim().replace(/^["']|["']$/g, "");
-  if (cleaned === "INSUFFICIENT_INPUT" || cleaned.length === 0) {
+  if (cleaned.length === 0) {
     throw new Error(
-      "Not enough on your profile yet for a grounded draft — add a summary or a recent role first.",
+      "The AI returned an empty response. Try again, or add a recent role / summary on your profile first.",
     );
   }
   return cleaned;
