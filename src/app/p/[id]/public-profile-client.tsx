@@ -446,7 +446,7 @@ export function PublicProfileClient({
         )}
 
         {/* verified skill badges */}
-        {badges.length > 0 && (
+        {badges.length > 0 ? (
           <section className="pub-section">
             <div className="pub-section-head">
               <div className="pub-section-kicker">03.5 · Verified skills</div>
@@ -461,7 +461,41 @@ export function PublicProfileClient({
             </div>
             <VerifiedSkillsSection badges={badges} />
           </section>
-        )}
+        ) : viewerIsSelf ? (
+          <section className="pub-section">
+            <div className="pub-section-head">
+              <div className="pub-section-kicker">03.5 · Verified skills</div>
+              <div>
+                <h2 className="pub-section-title">
+                  Start your <em>verified track.</em>
+                </h2>
+                <p className="pub-section-lede">
+                  Take a sector test to earn a badge that recruiters can filter
+                  for.
+                </p>
+              </div>
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <Link
+                href="/skills"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "11px 22px",
+                  borderRadius: 8,
+                  background: "var(--brand-blue, #1CAAE2)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  textDecoration: "none",
+                }}
+              >
+                Take a skill test <Icon name="arrowRight" size={14} />
+              </Link>
+            </div>
+          </section>
+        ) : null}
 
         {/* certifications */}
         {certs.length > 0 && (
