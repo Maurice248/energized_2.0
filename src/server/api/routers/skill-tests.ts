@@ -221,23 +221,67 @@ export const skillTestsRouter = router({
         correctIdx: q.correctIdx as 0 | 1 | 2 | 3,
       }));
 
-      // 6. Insert the attempt
-      const [created] = await ctx.db
-        .insert(skillTestAttempts)
-        .values({
-          candidateId: ctx.session.user.id,
-          topicId: t.id,
-          status: "in_progress",
-          level: input.level,
-          questionCount: input.questionCount,
-          includeScenarios: input.includeScenarios,
-          includeCalc: input.includeCalc,
-          questionsJson: questionsWithIds,
-          generationModel: generated.model,
-        })
-        .returning({ id: skillTestAttempts.id });
+      // 6. Insert the attempt.
+      //
+      // Free-tier TOCTOU guard: two concurrent tabs can both pass the count
+      // check above (both read count=0) and both reach this point. To prevent
+      // double-insertion we use a conditional INSERT for free users: the SELECT
+      // inside the CTE re-verifies "no completed attempt exists" atomically at
+      // write time. If a concurrent row was already committed, the INSERT
+      // produces 0 rows and we throw FORBIDDEN rather than leaking a second
+      // free attempt. Paid users skip this check (they have unlimited attempts).
+      let attemptId: string;
 
-      return { attemptId: created.id };
+      if (isPaid) {
+        const [created] = await ctx.db
+          .insert(skillTestAttempts)
+          .values({
+            candidateId: ctx.session.user.id,
+            topicId: t.id,
+            status: "in_progress",
+            level: input.level,
+            questionCount: input.questionCount,
+            includeScenarios: input.includeScenarios,
+            includeCalc: input.includeCalc,
+            questionsJson: questionsWithIds,
+            generationModel: generated.model,
+          })
+          .returning({ id: skillTestAttempts.id });
+        attemptId = created.id;
+      } else {
+        // Conditional insert: only proceeds if no completed attempt exists for
+        // this candidate, preventing the TOCTOU double-insert race on free tier.
+        const result = await ctx.db.execute<{ id: string }>(
+          sql`
+            INSERT INTO skill_test_attempts
+              (id, candidate_id, topic_id, status, level, question_count,
+               include_scenarios, include_calc, questions_json, generation_model)
+            SELECT
+              gen_random_uuid(),
+              ${ctx.session.user.id},
+              ${t.id}::uuid,
+              'in_progress',
+              ${input.level},
+              ${input.questionCount},
+              ${input.includeScenarios},
+              ${input.includeCalc},
+              ${JSON.stringify(questionsWithIds)}::jsonb,
+              ${generated.model ?? null}
+            WHERE NOT EXISTS (
+              SELECT 1 FROM skill_test_attempts
+              WHERE candidate_id = ${ctx.session.user.id}
+                AND status != 'in_progress'
+            )
+            RETURNING id
+          `,
+        );
+        if (result.rows.length === 0) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "paywall:skill_tests" });
+        }
+        attemptId = result.rows[0].id;
+      }
+
+      return { attemptId };
     }),
 
   getAttempt: protectedProcedure
