@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/shared/icon";
+import { api } from "@/lib/trpc/client";
 
 const SECTORS = [
   { value: "", label: "All sectors" },
@@ -40,6 +41,7 @@ export function CandidatesFilters({
     setup: string;
     minYears: string;
     openToWork: boolean;
+    badges: string;
   };
 }) {
   const router = useRouter();
@@ -47,7 +49,21 @@ export function CandidatesFilters({
   const searchParams = useSearchParams();
   const [q, setQ] = useState(initial.q);
 
-  const navigate = (next: Partial<typeof initial>) => {
+  // Fetch all skill topics to build the badge filter options
+  const topicsQuery = api.skillTests.listTopics.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  });
+  const badgeOptions = topicsQuery.data?.flatMap((s) => [
+    { value: s.slug, label: s.name },
+    ...s.roles.map((r) => ({ value: r.slug, label: `${s.name} · ${r.name}` })),
+  ]) ?? [];
+
+  // Active badge slugs parsed from the initial badges URL param
+  const activeBadgeSlugs = initial.badges
+    ? initial.badges.split(",").filter(Boolean)
+    : [];
+
+  const navigate = (next: Partial<typeof initial> & { badges?: string }) => {
     const params = new URLSearchParams(searchParams.toString());
     const merged = { ...initial, ...next };
     if (merged.q) params.set("q", merged.q);
@@ -60,9 +76,20 @@ export function CandidatesFilters({
     else params.delete("minYears");
     if (merged.openToWork) params.delete("openToWork");
     else params.set("openToWork", "0");
+    if (merged.badges) params.set("badges", merged.badges);
+    else params.delete("badges");
     params.delete("page");
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
+  };
+
+  const addBadge = (slug: string) => {
+    if (!slug || activeBadgeSlugs.includes(slug)) return;
+    navigate({ badges: [...activeBadgeSlugs, slug].join(",") });
+  };
+
+  const removeBadge = (slug: string) => {
+    navigate({ badges: activeBadgeSlugs.filter((s) => s !== slug).join(",") });
   };
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -75,6 +102,7 @@ export function CandidatesFilters({
     initial.sector ||
     initial.setup ||
     initial.minYears ||
+    initial.badges ||
     !initial.openToWork;
 
   return (
@@ -182,6 +210,82 @@ export function CandidatesFilters({
           Open to work only
         </label>
 
+        {/* Badge filter: add via select, remove via × chip */}
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--v2-ink-700)",
+            background: "white",
+            border: "1px solid var(--v2-ink-200)",
+            borderRadius: 999,
+            padding: "6px 14px",
+          }}
+        >
+          <span style={{ color: "var(--v2-ink-500)" }}>Verified skill:</span>
+          <select
+            value=""
+            disabled={topicsQuery.isLoading}
+            onChange={(e) => { addBadge(e.target.value); e.target.value = ""; }}
+            style={{
+              appearance: "none",
+              border: "none",
+              background: "transparent",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--v2-ink-950)",
+              cursor: "pointer",
+              paddingRight: 4,
+            }}
+          >
+            <option value="">Add filter…</option>
+            {badgeOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Active badge chips */}
+        {activeBadgeSlugs.map((slug) => {
+          const opt = badgeOptions.find((o) => o.value === slug);
+          return (
+            <span
+              key={slug}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 700,
+                color: "white",
+                background: "var(--v2-ink-950)",
+                padding: "4px 10px",
+                borderRadius: 999,
+              }}
+            >
+              {opt?.label ?? slug}
+              <button
+                type="button"
+                onClick={() => removeBadge(slug)}
+                style={{
+                  all: "unset",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                  opacity: 0.7,
+                }}
+                aria-label={`Remove ${opt?.label ?? slug} filter`}
+              >
+                ×
+              </button>
+            </span>
+          );
+        })}
+
         {anyFilter && (
           <button
             type="button"
@@ -189,6 +293,7 @@ export function CandidatesFilters({
               router.push(pathname);
               setQ("");
             }}
+
             style={{
               fontSize: 13,
               fontWeight: 600,

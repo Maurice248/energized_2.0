@@ -33,6 +33,7 @@ type SearchParams = {
   setup?: string;
   minYears?: string;
   openToWork?: string;
+  badges?: string;
   page?: string;
 };
 
@@ -73,6 +74,12 @@ export default async function CandidatesPage({
   const minYears =
     Number.isInteger(minYearsRaw) && minYearsRaw >= 0 ? minYearsRaw : undefined;
   const openToWork = sp.openToWork !== "0";
+  const badgeSlugs = sp.badges
+    ? sp.badges
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined;
   const pageRaw = sp.page ? Number.parseInt(sp.page, 10) : 1;
   const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
@@ -83,6 +90,7 @@ export default async function CandidatesPage({
     setup,
     minYears,
     openToWork,
+    badgeSlugs,
     page,
   });
 
@@ -106,6 +114,7 @@ export default async function CandidatesPage({
               setup: setup ?? "",
               minYears: minYears != null ? String(minYears) : "",
               openToWork,
+              badges: sp.badges ?? "",
             }}
           />
           <SavedSearchesPanel surface="candidates" />
@@ -385,6 +394,7 @@ function Pagination({
     if (searchParams.setup) params.set("setup", searchParams.setup);
     if (searchParams.minYears) params.set("minYears", searchParams.minYears);
     if (searchParams.openToWork) params.set("openToWork", searchParams.openToWork);
+    if (searchParams.badges) params.set("badges", searchParams.badges);
     if (next > 1) params.set("page", String(next));
     const qs = params.toString();
     return qs ? `/candidates?${qs}` : "/candidates";
