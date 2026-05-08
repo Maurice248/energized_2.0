@@ -43,6 +43,7 @@ export default async function JobApplicantsPage({
       orgId: jobListings.orgId,
       title: jobListings.title,
       status: jobListings.status,
+      sector: jobListings.sector,
     })
     .from(jobListings)
     .where(eq(jobListings.id, id))
@@ -108,6 +109,7 @@ export default async function JobApplicantsPage({
     location: r.location,
     yearsExperience: r.yearsExperience,
     fitScore: r.fitScore,
+    jobSector: job.sector ?? null,
   }));
 
   return (
