@@ -17,3 +17,4 @@ export * from "./saved-candidates";
 export * from "./interviews";
 export * from "./intro-requests";
 export * from "./test-topics";
+export * from "./skill-test-attempts";
