@@ -965,7 +965,7 @@ function SkillTestsCard({ badgeCount }: { badgeCount: number }) {
       >
         <div className="v2-card-head">
           <div>
-            <div className="v2-eyebrow" style={{ color: "rgba(255,255,255,0.45)" }}>
+            <div className="v2-eyebrow" style={{ color: "rgba(255,255,255,0.7)" }}>
               Skill tests
             </div>
             <h2
@@ -995,7 +995,7 @@ function SkillTestsCard({ badgeCount }: { badgeCount: number }) {
             marginTop: 12,
             fontSize: 14,
             lineHeight: 1.6,
-            color: "rgba(255,255,255,0.6)",
+            color: "rgba(255,255,255,0.85)",
           }}
         >
           AI-built tests for your sector — pass and recruiters can filter for

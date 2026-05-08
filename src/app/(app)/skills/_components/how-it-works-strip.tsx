@@ -10,10 +10,10 @@ export function HowItWorksStrip() {
     <div className="mt-20 grid gap-8 rounded-3xl border border-slate-200 bg-white p-11 sm:grid-cols-2 lg:grid-cols-4">
       {STEPS.map((s) => (
         <div key={s.n}>
-          <div className="text-5xl font-normal leading-none tracking-tight text-[var(--brand-dark-blue)]">
+          <div className="text-5xl font-bold leading-none tracking-tight text-[var(--brand-dark-blue)]">
             {s.n}
           </div>
-          <h4 className="mt-3 text-xl font-normal tracking-tight">{s.h}</h4>
+          <h4 className="mt-3 text-xl font-bold tracking-tight">{s.h}</h4>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.p}</p>
         </div>
       ))}

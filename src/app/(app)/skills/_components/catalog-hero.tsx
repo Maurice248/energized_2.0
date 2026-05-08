@@ -42,8 +42,8 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
         <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
           Skill assessments
         </div>
-        <h1 className="mt-6 text-5xl font-normal leading-[0.95] tracking-tight md:text-7xl lg:text-8xl">
-          Get <em className="not-italic font-normal italic text-[var(--brand-dark-blue)]">verified</em>.<br />
+        <h1 className="mt-6 text-5xl font-bold leading-[0.95] tracking-tight md:text-7xl lg:text-8xl">
+          Get <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
           One sitting. 25 minutes.
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
@@ -64,7 +64,7 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--brand-blue)]" />
             AI generator · live
           </div>
-          <h3 className="mt-3 text-3xl font-normal tracking-tight">
+          <h3 className="mt-3 text-3xl font-bold tracking-tight">
             Just tell us the <em className="not-italic italic text-[var(--brand-blue)]">job</em>.
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-300">
@@ -77,7 +77,7 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder="e.g. Wind technician II, GWO certified"
-              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-400"
+              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-300"
             />
             <button
               onClick={submit}
@@ -106,7 +106,7 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
 function Stat({ v, l }: { v: string; l: string }) {
   return (
     <div>
-      <div className="text-4xl font-normal italic tracking-tight text-[var(--brand-dark-blue)]">{v}</div>
+      <div className="text-4xl font-bold italic tracking-tight text-[var(--brand-dark-blue)]">{v}</div>
       <div className="mt-2 max-w-[160px] text-[11px] font-bold uppercase leading-relaxed tracking-[0.16em] text-slate-500">
         {l}
       </div>

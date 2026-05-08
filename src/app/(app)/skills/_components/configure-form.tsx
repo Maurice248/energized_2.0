@@ -44,7 +44,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
       <div>
         <div className="mb-2 flex items-center gap-4">
           <div
-            className="grid h-12 w-12 place-items-center rounded-2xl text-lg font-normal text-white"
+            className="grid h-12 w-12 place-items-center rounded-2xl text-lg font-bold text-white"
             style={{ background: sector.tileColor }}
           >
             {sector.monogram}
@@ -55,7 +55,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             </div>
           </div>
         </div>
-        <h1 className="text-5xl font-normal leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">
+        <h1 className="text-5xl font-bold leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">
           Tune the <em className="not-italic italic text-[var(--brand-dark-blue)]">test</em>.<br />
           We&apos;ll generate it next.
         </h1>
@@ -100,7 +100,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
                 <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
                   {l.y}
                 </div>
-                <div className="mt-1 text-xl font-normal tracking-tight">{l.n}</div>
+                <div className="mt-1 text-xl font-bold tracking-tight">{l.n}</div>
               </button>
             ))}
           </div>
@@ -110,7 +110,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="mb-3.5 flex items-baseline justify-between">
               <div>
-                <div className="text-3xl font-normal leading-none tracking-tight">
+                <div className="text-3xl font-bold leading-none tracking-tight">
                   <em className="not-italic italic text-[var(--brand-dark-blue)]">{count}</em>{" "}
                   <span className="text-base">questions</span>
                 </div>
@@ -148,7 +148,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-blue)]" />
             Ready to build
           </div>
-          <h4 className="mt-3.5 text-2xl font-normal tracking-tight">{selectedRole?.name}</h4>
+          <h4 className="mt-3.5 text-2xl font-bold tracking-tight">{selectedRole?.name}</h4>
           <dl className="mt-4 divide-y divide-white/10 text-sm">
             <Row l="Sector" v={sector.name} />
             <Row l="Level" v={level[0].toUpperCase() + level.slice(1)} />
@@ -182,7 +182,7 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             <Sparkles className="h-4 w-4" />
             {submitting ? "Generating…" : "Generate test"}
           </button>
-          <p className="mt-3.5 text-center text-xs leading-relaxed text-slate-400">
+          <p className="mt-3.5 text-center text-xs leading-relaxed text-slate-300">
             Each generation is fresh. You can re-take after 30 days on a pass, 7 days on a fail.
           </p>
         </div>

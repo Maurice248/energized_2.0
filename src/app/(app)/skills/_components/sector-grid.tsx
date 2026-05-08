@@ -37,7 +37,7 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
   return (
     <>
       <div className="mb-7 flex flex-wrap items-end justify-between gap-6">
-        <h2 className="text-3xl font-normal tracking-tight md:text-4xl">
+        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
           Pick your <em className="not-italic italic text-[var(--brand-dark-blue)]">sector</em>.<br />
           We&apos;ll build the test.
         </h2>
@@ -74,18 +74,18 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
               <ArrowRight className="h-4 w-4" />
             </div>
             <div
-              className="relative mb-7 grid h-14 w-14 place-items-center rounded-2xl text-xl font-normal text-white"
+              className="relative mb-7 grid h-14 w-14 place-items-center rounded-2xl text-xl font-bold text-white"
               style={{ background: s.tileColor }}
             >
               {s.monogram}
               <span className="absolute -right-1.5 -top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--brand-blue)]" />
             </div>
-            <h3 className="text-2xl font-normal tracking-tight">{s.name}</h3>
+            <h3 className="text-2xl font-bold tracking-tight">{s.name}</h3>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">{s.blurb}</p>
             <div className="mt-5 flex items-center justify-between border-t border-dashed border-slate-200 pt-4 text-sm">
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500">Roles</div>
-                <div className="text-xl font-normal tracking-tight">{s.roles.length}</div>
+                <div className="text-xl font-bold tracking-tight">{s.roles.length}</div>
               </div>
             </div>
           </Link>
