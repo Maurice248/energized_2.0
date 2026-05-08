@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, desc, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { jobseekerProcedure, protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
@@ -412,5 +412,61 @@ export const skillTestsRouter = router({
       }
 
       return { ok: true, score, status, breakdown, narrative };
+    }),
+
+  // ---------------------------------------------------------------------------
+  // Badge reads
+  // ---------------------------------------------------------------------------
+
+  myBadges: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        topicId: skillBadges.topicId,
+        score: skillBadges.score,
+        isVerifiedTop: skillBadges.isVerifiedTop,
+        earnedAt: skillBadges.earnedAt,
+        slug: testTopics.slug,
+        name: testTopics.name,
+        monogram: testTopics.monogram,
+        tileColor: testTopics.tileColor,
+        jobSectorMatch: testTopics.jobSectorMatch,
+      })
+      .from(skillBadges)
+      .innerJoin(testTopics, eq(skillBadges.topicId, testTopics.id))
+      .where(eq(skillBadges.candidateId, ctx.session.user.id))
+      .orderBy(desc(skillBadges.earnedAt));
+  }),
+
+  badgesForCandidate: protectedProcedure
+    .input(z.object({ candidateId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select({
+          topicId: skillBadges.topicId,
+          score: skillBadges.score,
+          isVerifiedTop: skillBadges.isVerifiedTop,
+          earnedAt: skillBadges.earnedAt,
+          slug: testTopics.slug,
+          name: testTopics.name,
+          monogram: testTopics.monogram,
+          tileColor: testTopics.tileColor,
+          jobSectorMatch: testTopics.jobSectorMatch,
+        })
+        .from(skillBadges)
+        .innerJoin(testTopics, eq(skillBadges.topicId, testTopics.id))
+        .where(eq(skillBadges.candidateId, input.candidateId))
+        .orderBy(desc(skillBadges.earnedAt));
+    }),
+
+  searchByBadge: protectedProcedure
+    .input(z.object({ topicSlugs: z.array(z.string()).min(1) }))
+    .query(async ({ ctx, input }) => {
+      const matched = await ctx.db
+        .select({ candidateId: skillBadges.candidateId })
+        .from(skillBadges)
+        .innerJoin(testTopics, eq(skillBadges.topicId, testTopics.id))
+        .where(sql`${testTopics.slug} = ANY(${input.topicSlugs})`)
+        .groupBy(skillBadges.candidateId);
+      return matched.map((m) => m.candidateId);
     }),
 });
