@@ -433,17 +433,17 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
           )}
 
           {step === 1 && (
-            <BasicsStep draft={draft} setDraft={setDraft} missing={missingFields} />
+            <BasicsStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
           )}
           {step === 2 && (
-            <LocationStep draft={draft} setDraft={setDraft} missing={missingFields} />
+            <LocationStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
           )}
           {step === 3 && (
-            <PayStep draft={draft} setDraft={setDraft} missing={missingFields} />
+            <PayStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
           )}
           {step === 4 && (
             <div style={{ display: "grid", gap: 28 }}>
-              <StoryStep draft={draft} setDraft={setDraft} missing={missingFields} />
+              <StoryStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
               <div className="v2-eyebrow">Live preview</div>
               <JobPreviewCard
                 job={{

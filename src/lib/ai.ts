@@ -180,3 +180,113 @@ export async function draftCoverNote(input: {
   }
   return cleaned;
 }
+
+export async function polishJobDescription(input: {
+  current: string;
+  title: string | null;
+  sector: string | null;
+  summary: string | null;
+}): Promise<string> {
+  if (!openaiClient) {
+    throw new Error("OpenAI API key not configured.");
+  }
+
+  const context = [
+    `Title: ${input.title ?? "(unset)"}`,
+    `Sector: ${input.sector ?? "(unset)"}`,
+    `One-line summary: ${input.summary ?? "(unset)"}`,
+  ].join("\n");
+
+  const { text } = await generateText({
+    model: openaiClient(env.OPENAI_MODEL),
+    system:
+      "You edit job descriptions for Canadian energy-sector roles on Energized. " +
+      "Rewrite the employer's description so it: " +
+      "(1) opens with what the role actually is — not company boilerplate; " +
+      "(2) describes the first 90 days, the team, and reporting line if the source mentions any of these; " +
+      "(3) lists day-to-day responsibilities in concrete terms — keep specific tools, sites, and credentials the source named; " +
+      "(4) uses confident, active voice — no clichés (\"rockstar\", \"ninja\", \"family\", \"passionate\"); " +
+      "(5) keeps close to the original length (within ~30%). " +
+      "Avoid biased or exclusionary phrasing (gendered language, age proxies, \"culture fit\"). " +
+      "NEVER invent salary, benefits, sites, or certifications that aren't in the source. " +
+      "If the source is sparse, work with what's there — produce the best honest rewrite you can. " +
+      "Plain text. Use blank lines for paragraph breaks if useful, but no markdown bullets or headings. " +
+      "Return ONLY the rewritten description.",
+    prompt: `CONTEXT (do not echo):\n${context}\n\nCURRENT DESCRIPTION:\n${input.current}\n\nRewrite the description now.`,
+    maxOutputTokens: 800,
+  });
+
+  const cleaned = text.trim().replace(/^["']|["']$/g, "");
+  if (cleaned.length === 0) {
+    throw new Error(
+      "The AI returned an empty response. Try again, or add more detail to your description first.",
+    );
+  }
+  return cleaned;
+}
+
+export async function suggestScreeningQuestions(input: {
+  title: string | null;
+  sector: string | null;
+  summary: string | null;
+  description: string | null;
+  requiredCertifications: string[];
+}): Promise<{ q: string; required: boolean }[]> {
+  if (!openaiClient) {
+    throw new Error("OpenAI API key not configured.");
+  }
+
+  const context = [
+    `Title: ${input.title ?? "(unset)"}`,
+    `Sector: ${input.sector ?? "(unset)"}`,
+    `Summary: ${input.summary ?? "(unset)"}`,
+    `Required certifications: ${input.requiredCertifications.join(", ") || "(none specified)"}`,
+    `Description: ${(input.description ?? "").slice(0, 1500)}`,
+  ].join("\n");
+
+  const { text } = await generateText({
+    model: openaiClient(env.OPENAI_MODEL),
+    system:
+      "You generate applicant screening questions for Canadian energy-sector job postings. " +
+      "Given a role, produce 3 to 5 short, fair, sector-appropriate questions that help the employer triage applications. " +
+      "Cover: hard credentials the role needs (tickets / certs / clearances), commute or rotation tolerance if relevant, " +
+      "concrete experience signals (specific tools, sites, commodities), and one open-ended fit question. " +
+      "Keep each question under 20 words. Use plain language. NEVER ask about protected characteristics " +
+      "(age, gender, family status, disability, religion, race, nationality, citizenship beyond legal-to-work-in-Canada). " +
+      "NEVER ask for salary expectations (Canadian provinces increasingly ban it). " +
+      "Mark a question `required: true` only if it's a hard credential or eligibility filter — keep most as optional. " +
+      "Return ONLY a JSON array of objects with shape {\"q\": string, \"required\": boolean}. " +
+      "No preamble, no code fences, no commentary.",
+    prompt: `JOB:\n${context}\n\nGenerate the screening questions now.`,
+    maxOutputTokens: 600,
+  });
+
+  // Extract a JSON array from the response.
+  const match = text.match(/\[[\s\S]*\]/);
+  const raw = match ? match[0] : text.trim();
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) throw new Error("not an array");
+    const out: { q: string; required: boolean }[] = [];
+    for (const entry of parsed) {
+      if (
+        entry &&
+        typeof entry === "object" &&
+        "q" in entry &&
+        typeof (entry as { q: unknown }).q === "string"
+      ) {
+        const q = String((entry as { q: string }).q).trim().slice(0, 240);
+        const required = Boolean((entry as { required?: unknown }).required);
+        if (q.length > 0) out.push({ q, required });
+      }
+      if (out.length >= 5) break;
+    }
+    if (out.length === 0) {
+      throw new Error("Couldn't parse any questions from the response.");
+    }
+    return out;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`Couldn't parse screening questions: ${msg}`);
+  }
+}

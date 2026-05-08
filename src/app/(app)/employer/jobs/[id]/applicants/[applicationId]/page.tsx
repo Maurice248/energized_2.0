@@ -17,6 +17,7 @@ import { SiteHeader } from "@/components/marketing/site-header";
 import { STAGE_FROM_DB, STAGE_LABEL } from "@/lib/application-stages";
 import { InterviewBlock } from "@/components/shared/interview-block";
 import { ScheduleInterviewModal } from "@/components/shared/schedule-interview-modal";
+import { ApplicantMatchCard } from "./applicant-match-card";
 
 export const metadata: Metadata = {
   title: "Applicant — Energized",
@@ -221,6 +222,9 @@ export default async function EmployerApplicantDetailPage({
               {stageLabel}
             </span>
           </header>
+
+          {/* AI fit score (employer-side mirror of the candidate's Ember card) */}
+          <ApplicantMatchCard applicationId={applicationId} />
 
           {/* Cover note */}
           {row.coverNote && (
