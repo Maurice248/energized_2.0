@@ -49,6 +49,9 @@
 }
 
 :root {
+  --brand-blue: #1CAAE2;
+  --brand-dark-blue: #004984;
+  --brand-black: #101820;
   --font-sans: var(--font-lato), 'Lato', system-ui, -apple-system, sans-serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
