@@ -165,7 +165,17 @@ export function ProfileClient({
 
   const saving = update.isPending || setResume.isPending;
 
-  const completeness = computeCompleteness(profile, data ?? undefined);
+  const profileChecks = computeProfileChecks(profile, data ?? undefined);
+  const completeness =
+    profileChecks.length === 0
+      ? 0
+      : Math.round(
+          (profileChecks.filter((c) => c.done).length / profileChecks.length) *
+            100,
+        );
+  const missingFields = profileChecks
+    .filter((c) => !c.done)
+    .map((c) => c.label);
 
   const expiringCertCount = (data?.certifications ?? []).filter(
     (c) => expiryState(c.expiresAt) === "warn",
@@ -251,9 +261,9 @@ export function ProfileClient({
                   lineHeight: 1.5,
                 }}
               >
-                {completeness < 100
-                  ? "Upload a resume and add certifications to reach 100%."
-                  : "Your profile is complete."}
+                {missingFields.length === 0
+                  ? "Your profile is complete."
+                  : `Add ${profileChecksFormatter.format(missingFields)} to reach 100%.`}
               </div>
             </div>
           </div>
@@ -2040,17 +2050,36 @@ function expiryState(expiresAt: Date | null): "warn" | "fresh" | "none" {
   return "fresh";
 }
 
-function computeCompleteness(
-  profile: { headline: string | null; location: string | null; resumeUrl: string | null; sectors: string[] } | undefined,
-  data: { workHistory: unknown[]; certifications: unknown[] } | undefined,
-) {
-  if (!profile || !data) return 0;
-  let score = 0;
-  const total = 5;
-  if (profile.headline) score += 1;
-  if (profile.location) score += 1;
-  if (profile.resumeUrl) score += 1;
-  if (data.workHistory.length > 0) score += 1;
-  if (data.certifications.length > 0) score += 1;
-  return Math.round((score / total) * 100);
+const profileChecksFormatter = new Intl.ListFormat("en", {
+  style: "long",
+  type: "conjunction",
+});
+
+function computeProfileChecks(
+  profile:
+    | {
+        headline: string | null;
+        location: string | null;
+        summary: string | null;
+        resumeUrl: string | null;
+      }
+    | undefined,
+  data:
+    | {
+        workHistory: unknown[];
+        education: unknown[];
+        certifications: unknown[];
+      }
+    | undefined,
+): { label: string; done: boolean }[] {
+  if (!profile || !data) return [];
+  return [
+    { label: "a headline", done: Boolean(profile.headline?.trim()) },
+    { label: "your location", done: Boolean(profile.location?.trim()) },
+    { label: "an about section", done: Boolean(profile.summary?.trim()) },
+    { label: "a resume", done: Boolean(profile.resumeUrl) },
+    { label: "a work history role", done: data.workHistory.length > 0 },
+    { label: "your education", done: data.education.length > 0 },
+    { label: "certifications", done: data.certifications.length > 0 },
+  ];
 }

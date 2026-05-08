@@ -313,7 +313,16 @@ export function EmployerProfileClient({
     removeMember.isPending ||
     updateMemberRole.isPending;
 
-  const completion = useMemo(() => computeCompleteness(org), [org]);
+  const orgChecks = useMemo(() => computeOrgChecks(org), [org]);
+  const completion =
+    orgChecks.length === 0
+      ? 0
+      : Math.round(
+          (orgChecks.filter((c) => c.done).length / orgChecks.length) * 100,
+        );
+  const missingOrgFields = orgChecks
+    .filter((c) => !c.done)
+    .map((c) => c.label);
 
   return (
     <div className="pp-shell v2">
@@ -534,9 +543,9 @@ export function EmployerProfileClient({
                   lineHeight: 1.5,
                 }}
               >
-                {completion < 100
-                  ? "Verify the domain and invite teammates to hit 100%."
-                  : "Your company profile is complete."}
+                {missingOrgFields.length === 0
+                  ? "Your company profile is complete."
+                  : `Add ${orgChecksFormatter.format(missingOrgFields)} to hit 100%.`}
               </div>
             </div>
           </div>
@@ -2010,16 +2019,22 @@ function VerificationSection({ id, org }: { id?: string; org: OrgRow }) {
 
 /* ---------- helpers ---------- */
 
-function computeCompleteness(org: OrgRow | null): number {
-  if (!org) return 0;
-  let score = 0;
-  const total = 7;
-  if (org.tagline) score += 1;
-  if (org.about) score += 1;
-  if (org.hq) score += 1;
-  if (org.primarySector) score += 1;
-  if (org.size) score += 1;
-  if (org.verified) score += 1;
-  if (org.focusRoles.length > 0) score += 1;
-  return Math.round((score / total) * 100);
+const orgChecksFormatter = new Intl.ListFormat("en", {
+  style: "long",
+  type: "conjunction",
+});
+
+function computeOrgChecks(
+  org: OrgRow | null,
+): { label: string; done: boolean }[] {
+  if (!org) return [];
+  return [
+    { label: "a tagline", done: Boolean(org.tagline?.trim()) },
+    { label: "an about section", done: Boolean(org.about?.trim()) },
+    { label: "an HQ location", done: Boolean(org.hq?.trim()) },
+    { label: "a primary sector", done: Boolean(org.primarySector) },
+    { label: "company size", done: Boolean(org.size) },
+    { label: "domain verification", done: org.verified },
+    { label: "focus roles", done: org.focusRoles.length > 0 },
+  ];
 }
