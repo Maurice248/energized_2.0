@@ -19,6 +19,26 @@ import {
   EVENT_APPLICATION_STATUS_CHANGED,
   EVENT_APPLICATION_SUBMITTED,
 } from "@/lib/analytics-events";
+import {
+  isEntitledSubscriptionStatus,
+  isJobseekerPlanTier,
+} from "@/lib/billing-tiers";
+
+// Gold/Platinum jobseekers can apply to a role from the moment it's
+// published; Free + anonymous viewers must wait this many hours after
+// publishedAt. Surfaced as Gold's "48-hour early access" benefit.
+export const GOLD_EARLY_ACCESS_HOURS = 48;
+const GOLD_EARLY_ACCESS_MS = GOLD_EARLY_ACCESS_HOURS * 60 * 60 * 1000;
+
+export function jobIsInEarlyAccessWindow(publishedAt: Date | null): boolean {
+  if (!publishedAt) return false;
+  return Date.now() - publishedAt.getTime() < GOLD_EARLY_ACCESS_MS;
+}
+
+export function jobPublicAt(publishedAt: Date | null): Date | null {
+  if (!publishedAt) return null;
+  return new Date(publishedAt.getTime() + GOLD_EARLY_ACCESS_MS);
+}
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -103,6 +123,33 @@ export const applicationsRouter = router({
           code: "BAD_REQUEST",
           message: "This role isn't accepting applications right now.",
         });
+      }
+
+      // 48h early-access gate: Free jobseekers can't apply to roles
+      // published less than GOLD_EARLY_ACCESS_HOURS ago. Gold/Platinum
+      // (active or trialing) bypass this. Defense-in-depth — the apply
+      // modal also disables the button for Free viewers in the window,
+      // but the server is the authoritative gate.
+      if (jobIsInEarlyAccessWindow(job.publishedAt)) {
+        const [u] = await ctx.db
+          .select({
+            jobseekerPlan: user.jobseekerPlan,
+            jobseekerSubscriptionStatus: user.jobseekerSubscriptionStatus,
+          })
+          .from(user)
+          .where(eq(user.id, ctx.session.user.id))
+          .limit(1);
+        const isEntitled =
+          u &&
+          isJobseekerPlanTier(u.jobseekerPlan) &&
+          isEntitledSubscriptionStatus(u.jobseekerSubscriptionStatus);
+        if (!isEntitled) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "This role just opened — Gold members are applying first. Free members can apply 48 hours after a role is posted.",
+          });
+        }
       }
 
       const [profile] = await ctx.db

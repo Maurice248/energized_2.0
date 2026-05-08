@@ -10,9 +10,18 @@ import {
   orgMembers,
   profiles,
   savedJobs,
+  user,
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
+import {
+  isEntitledSubscriptionStatus,
+  isJobseekerPlanTier,
+} from "@/lib/billing-tiers";
+import {
+  jobIsInEarlyAccessWindow,
+  jobPublicAt,
+} from "@/server/api/routers/applications";
 import type { ApplyViewerState } from "./apply-modal";
 import type { SaveViewer } from "./save-button";
 import { Icon } from "@/components/shared/icon";
@@ -168,6 +177,37 @@ export default async function PublicJobDetailPage({
             .limit(1);
           if (!hasSectors && !wh) {
             viewer = { kind: "incomplete" };
+          } else if (jobIsInEarlyAccessWindow(job.publishedAt)) {
+            // Otherwise eligible — but the role is in the 48h Gold-only
+            // early-access window. Allow Gold/Platinum (active or
+            // trialing) through; Free jobseekers see a disabled apply
+            // state with countdown + upgrade CTA.
+            const [u] = await db
+              .select({
+                jobseekerPlan: user.jobseekerPlan,
+                jobseekerSubscriptionStatus: user.jobseekerSubscriptionStatus,
+              })
+              .from(user)
+              .where(eq(user.id, session.user.id))
+              .limit(1);
+            const isEntitled =
+              u &&
+              isJobseekerPlanTier(u.jobseekerPlan) &&
+              isEntitledSubscriptionStatus(u.jobseekerSubscriptionStatus);
+            if (isEntitled) {
+              viewer = {
+                kind: "eligible",
+                candidateName: session.user.name ?? session.user.email,
+                candidateHeadline: p.headline,
+                candidateLocation: p.location,
+                candidateResumeName: p.resumeFilename,
+              };
+            } else {
+              viewer = {
+                kind: "early_access_only",
+                publicAt: jobPublicAt(job.publishedAt) ?? new Date(),
+              };
+            }
           } else {
             viewer = {
               kind: "eligible",

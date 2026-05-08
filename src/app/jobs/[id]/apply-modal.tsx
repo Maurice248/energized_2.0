@@ -22,6 +22,15 @@ export type ApplyViewerState =
   | { kind: "incomplete" }
   | { kind: "applied" }
   | {
+      // Job is in the 48h Gold-early-access window AND the viewer is a
+      // Free jobseeker. Apply button shows a disabled-with-countdown
+      // state that links to the upgrade flow. Server-side
+      // applications.submit also enforces this so the gate doesn't rely
+      // on the client.
+      kind: "early_access_only";
+      publicAt: Date;
+    }
+  | {
       kind: "eligible";
       candidateName: string;
       candidateHeadline: string | null;
@@ -122,6 +131,44 @@ export function ApplyButtonAndModal({
       >
         <Icon name="check" size={14} /> Applied
       </button>
+    );
+  }
+
+  if (viewer.kind === "early_access_only") {
+    const hours = Math.max(
+      1,
+      Math.ceil((viewer.publicAt.getTime() - Date.now()) / (60 * 60 * 1000)),
+    );
+    const label = hours >= 24
+      ? `${Math.ceil(hours / 24)} day${Math.ceil(hours / 24) === 1 ? "" : "s"}`
+      : `${hours}h`;
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 4,
+        }}
+      >
+        <Link
+          href="/profile#pp-billing"
+          className="v2-btn v2-btn-primary"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          ★ Gold-only · upgrade to apply <Icon name="arrowUpRight" size={14} />
+        </Link>
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--v2-ink-500)",
+            fontFamily: "var(--v2-font-mono)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Free members can apply in {label}
+        </span>
+      </div>
     );
   }
 

@@ -53,7 +53,7 @@ export const GOLD_FEATURES: string[] = [
   "Unlimited saved searches with daily digest",
   "Featured profile — top of every employer search",
   "Application insights — see when employers opened your application",
-  "48-hour early access to new postings (coming soon)",
+  "48-hour early access — apply to new roles before everyone else",
 ];
 
 export const PLATINUM_FEATURES: string[] = [
