@@ -7,6 +7,7 @@ import { api } from "@/lib/trpc/client";
 import { IntroRequestModal } from "@/components/profile/intro-request-modal";
 import { IntroContactPanel } from "@/components/profile/intro-contact-panel";
 import { ApplicantMatchCard } from "@/app/(app)/employer/jobs/[id]/applicants/[applicationId]/applicant-match-card";
+import { VerifiedSkillsSection } from "@/components/profile/verified-skills-section";
 
 type SectorEnum =
   | "oil_gas"
@@ -159,6 +160,15 @@ export function PublicProfileClient({
   const [firstName, lastName] = splitName(user.name);
   const initials = initialsOf(user.name);
   const showHiddenDetails = viewerIsAuthed || viewerIsSelf;
+
+  // Fetch skill badges for this candidate. `badgesForCandidate` is a
+  // protectedProcedure so this will be a no-op for unauthenticated viewers
+  // (React Query will skip on 401, showing nothing).
+  const badgesQuery = api.skillTests.badgesForCandidate.useQuery(
+    { candidateId: candidateUserId },
+    { retry: false },
+  );
+  const badges = badgesQuery.data ?? [];
 
   return (
     <div className="pub-page">
@@ -434,6 +444,24 @@ export function PublicProfileClient({
                 </div>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* verified skill badges */}
+        {badges.length > 0 && (
+          <section className="pub-section">
+            <div className="pub-section-head">
+              <div className="pub-section-kicker">03.5 · Verified skills</div>
+              <div>
+                <h2 className="pub-section-title">
+                  Tested &amp; <em>verified.</em>
+                </h2>
+                <p className="pub-section-lede">
+                  Scored on Energized&apos;s proctored assessments.
+                </p>
+              </div>
+            </div>
+            <VerifiedSkillsSection badges={badges} />
           </section>
         )}
 
