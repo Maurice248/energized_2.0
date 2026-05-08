@@ -169,6 +169,13 @@
       "when": 1778252368751,
       "tag": "0023_curious_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1778270515040,
+      "tag": "0024_lame_mandarin",
+      "breakpoints": true
     }
   ]
 }
