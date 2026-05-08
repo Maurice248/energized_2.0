@@ -38,15 +38,21 @@ export function RunnerClient({
 
   const totalSeconds = attempt.questionCount * 90;
   const startedAtMs = new Date(attempt.startedAt).getTime();
-  const elapsedAtMount = Math.floor((Date.now() - startedAtMs) / 1000);
-  const [secondsLeft, setSecondsLeft] = useState(Math.max(0, totalSeconds - elapsedAtMount));
+  // Lazy useState initializer — runs once on mount, avoids impure Date.now() during render
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const elapsedAtMount = Math.floor((Date.now() - startedAtMs) / 1000);
+    return Math.max(0, totalSeconds - elapsedAtMount);
+  });
 
   const saveMut = api.skillTests.saveAnswer.useMutation();
   const submitMut = api.skillTests.submitAttempt.useMutation({
     onSuccess: () => router.push(`/skills/${topicSlug}/attempt/${attempt.id}/result`),
   });
   const submitRef = useRef(submitMut);
-  submitRef.current = submitMut;
+  // Keep ref current via effect rather than during render (avoid ref-access-in-render lint rule)
+  useEffect(() => {
+    submitRef.current = submitMut;
+  });
 
   useEffect(() => {
     if (secondsLeft <= 0) {
