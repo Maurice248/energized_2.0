@@ -49,7 +49,7 @@ export const GOLD_FEATURES: string[] = [
   "AI cover-letter generator — drafts a tailored note from your profile + the job",
   "AI profile polish — rewrites your summary to highlight impact",
   "\"Open to work\" badge with sector preferences",
-  "See which employers viewed your profile",
+  "Profile-views counter — see how often employers view your profile",
   "Unlimited saved searches with daily digest",
   "Featured profile — top of employer searches (coming soon)",
   "Application insights — who viewed your application, and when (coming soon)",

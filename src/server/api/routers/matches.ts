@@ -12,7 +12,10 @@ import {
   workHistory,
 } from "@/server/db/schema";
 import { EMBER_ENABLED, draftCoverNote, scoreJobMatch } from "@/lib/ai";
-import { isJobseekerPlanTier } from "@/lib/billing-tiers";
+import {
+  isEntitledSubscriptionStatus,
+  isJobseekerPlanTier,
+} from "@/lib/billing-tiers";
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -31,7 +34,7 @@ async function requireActiveJobseekerSubscription(
   if (!u) throw new TRPCError({ code: "UNAUTHORIZED" });
   const planActive =
     isJobseekerPlanTier(u.jobseekerPlan) &&
-    u.jobseekerSubscriptionStatus === "active";
+    isEntitledSubscriptionStatus(u.jobseekerSubscriptionStatus);
   if (!planActive) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -74,7 +77,7 @@ export const matchesRouter = router({
       const isGold =
         u &&
         isJobseekerPlanTier(u.jobseekerPlan) &&
-        u.jobseekerSubscriptionStatus === "active";
+        isEntitledSubscriptionStatus(u.jobseekerSubscriptionStatus);
       if (!isGold) {
         return {
           enabled: false as const,

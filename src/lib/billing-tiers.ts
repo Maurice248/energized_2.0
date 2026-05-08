@@ -126,6 +126,20 @@ export function isJobseekerPlanTier(
   return value === "gold" || value === "platinum";
 }
 
+/**
+ * Returns true if a Stripe-managed subscription status entitles the user to
+ * the paid features of their tier. Both `active` and `trialing` count — a
+ * trialing subscriber is paying us in spirit and Stripe is carrying the
+ * conversion risk; locking them out of paid features would generate refunds.
+ *
+ * Use this in any feature gate that reads a subscription_status column.
+ */
+export function isEntitledSubscriptionStatus(
+  status: string | null | undefined,
+): boolean {
+  return status === "active" || status === "trialing";
+}
+
 /* ---------------------------------------------------------------------------
  * Display data re-exports — server components can pull both server and
  * display data from this file. Client components should import directly

@@ -15,7 +15,10 @@ import {
   EVENT_RESUME_UPLOADED,
 } from "@/lib/analytics-events";
 import { polishProfileSummary } from "@/lib/ai";
-import { isJobseekerPlanTier } from "@/lib/billing-tiers";
+import {
+  isEntitledSubscriptionStatus,
+  isJobseekerPlanTier,
+} from "@/lib/billing-tiers";
 
 const sectorValues = [
   "oil_gas",
@@ -413,7 +416,7 @@ export const profileRouter = router({
 
       const planActive =
         isJobseekerPlanTier(u.jobseekerPlan) &&
-        u.jobseekerSubscriptionStatus === "active";
+        isEntitledSubscriptionStatus(u.jobseekerSubscriptionStatus);
       if (!planActive) {
         throw new TRPCError({
           code: "FORBIDDEN",

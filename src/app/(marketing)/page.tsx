@@ -618,7 +618,7 @@ function PricingTeaser({ viewer }: { viewer: ViewerContext }) {
                 <li>AI match scoring on every role</li>
                 <li>AI cover-letter generator</li>
                 <li>AI profile polish</li>
-                <li>See who viewed your profile</li>
+                <li>Profile-views counter</li>
               </ul>
               <PlanCardButton cta={ctaJsGold} />
             </div>

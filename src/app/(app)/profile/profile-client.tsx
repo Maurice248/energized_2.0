@@ -1398,13 +1398,17 @@ function BasicsForm({
   const [polishError, setPolishError] = useState<string | null>(null);
   const polish = api.profile.polishSummary.useMutation({
     onSuccess: (data) => {
-      setPreBetterSummary(summary);
+      // Snapshot the FIRST pre-polish state so multi-tap polishing can still
+      // undo back to the user's hand-typed draft, not just the previous AI
+      // output.
+      setPreBetterSummary((prev) => prev ?? summary);
       setSummary(data.polished);
       setPolishError(null);
     },
     onError: (err) => {
       setPolishError(err.message);
-      setPreBetterSummary(null);
+      // Do NOT touch preBetterSummary — preserves Undo if a previous polish
+      // succeeded and a subsequent retry errored.
     },
   });
   const dirty =

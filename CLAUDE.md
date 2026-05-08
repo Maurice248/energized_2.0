@@ -98,12 +98,11 @@ energized/
 │   │   ├── ai.ts                # Vercel AI SDK + OpenAI wrapper
 │   │   └── utils.ts             # cn(), formatters, etc.
 │   ├── emails/                  # React Email templates
-│   └── ...
-├── code/
-│   └── trigger/                 # Trigger.dev task definitions
 │   ├── middleware.ts            # Edge auth + rate-limit
 │   ├── env.ts                   # Typed env (zod)
 │   └── styles/globals.css
+├── code/
+│   └── trigger/                 # Trigger.dev task definitions (NOT src/jobs/)
 ├── drizzle.config.ts
 ├── trigger.config.ts
 ├── playwright.config.ts
