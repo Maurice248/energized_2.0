@@ -7,6 +7,7 @@ import {
   applications,
   employerOrgs,
   jobListings,
+  jobMatches,
   orgMembers,
   profiles,
   user,
@@ -305,10 +306,22 @@ export const applicationsRouter = router({
           location: profiles.location,
           yearsExperience: profiles.yearsExperience,
           sectors: profiles.sectors,
+          // Cached AI fit score from job_matches if one exists. Stays
+          // null when never scored — clicking through to the detail
+          // page (or the candidate viewing their own match) will
+          // populate it. Avoids N+1 AI calls on kanban load.
+          fitScore: jobMatches.score,
         })
         .from(applications)
         .innerJoin(user, eq(user.id, applications.candidateId))
         .leftJoin(profiles, eq(profiles.userId, user.id))
+        .leftJoin(
+          jobMatches,
+          and(
+            eq(jobMatches.jobId, applications.jobId),
+            eq(jobMatches.candidateId, applications.candidateId),
+          ),
+        )
         .where(eq(applications.jobId, input.jobId))
         .orderBy(desc(applications.createdAt));
 

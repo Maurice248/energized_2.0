@@ -29,6 +29,8 @@ export type ApplicantRow = {
   headline: string | null;
   location: string | null;
   yearsExperience: number | null;
+  /** Cached AI fit score, null when not scored yet. */
+  fitScore: number | null;
 };
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -194,6 +196,28 @@ export function ApplicantCard({
             <span className={statusChipClass(applicant.status)}>
               {STATUS_LABELS[applicant.status]}
             </span>
+            {applicant.fitScore != null && (
+              <span
+                title="AI fit score · cached from scoreApplicantForEmployer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "white",
+                  background: "var(--v2-ink-950)",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  fontFamily: "var(--v2-font-mono)",
+                }}
+              >
+                <span style={{ color: "var(--v2-accent)" }}>★</span>
+                {applicant.fitScore}
+              </span>
+            )}
           </div>
           <div
             style={{
