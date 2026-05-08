@@ -51,7 +51,7 @@ export const GOLD_FEATURES: string[] = [
   "\"Open to work\" badge with sector preferences",
   "Profile-views counter — see how often employers view your profile",
   "Unlimited saved searches with daily digest",
-  "Featured profile — top of employer searches (coming soon)",
+  "Featured profile — top of every employer search",
   "Application insights — see when employers opened your application",
   "48-hour early access to new postings (coming soon)",
 ];

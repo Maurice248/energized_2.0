@@ -50,6 +50,14 @@ export const candidatesRouter = router({
 
     const offset = (input.page - 1) * PAGE_SIZE;
 
+    // Featured = active Gold or Platinum subscription. Surfaces these
+    // candidates above everyone else in the list. Computed inline so we
+    // can sort by it; no schema change needed.
+    const featuredExpr = sql<boolean>`(
+      ${user.jobseekerPlan} IN ('gold', 'platinum')
+      AND ${user.jobseekerSubscriptionStatus} IN ('active', 'trialing')
+    )`;
+
     const rows = await ctx.db
       .select({
         id: user.id,
@@ -64,11 +72,12 @@ export const candidatesRouter = router({
         openToWork: profiles.openToWork,
         skills: profiles.skills,
         updatedAt: profiles.updatedAt,
+        featured: featuredExpr,
       })
       .from(profiles)
       .innerJoin(user, eq(user.id, profiles.userId))
       .where(where)
-      .orderBy(desc(profiles.updatedAt))
+      .orderBy(desc(featuredExpr), desc(profiles.updatedAt))
       .limit(PAGE_SIZE)
       .offset(offset);
 

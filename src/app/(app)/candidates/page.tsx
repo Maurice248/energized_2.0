@@ -161,6 +161,7 @@ function CandidateCard({
     remotePreference: string | null;
     openToWork: boolean;
     skills: string[];
+    featured: boolean;
   };
 }) {
   const initial = (candidate.name?.trim()[0] ?? "?").toUpperCase();
@@ -170,10 +171,13 @@ function CandidateCard({
       style={{
         display: "block",
         background: "white",
-        border: "1px solid var(--v2-ink-200)",
+        border: candidate.featured
+          ? "1px solid var(--v2-accent-deep)"
+          : "1px solid var(--v2-ink-200)",
         borderRadius: 16,
         padding: 20,
         transition: "border-color 150ms, box-shadow 150ms",
+        position: "relative",
       }}
       className="hover:!border-[var(--v2-ink-400)] hover:shadow-sm"
     >
@@ -225,6 +229,26 @@ function CandidateCard({
             >
               {candidate.name ?? "Anonymous"}
             </h3>
+            {candidate.featured && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "white",
+                  background: "var(--v2-ink-950)",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+                title="Featured profile · Gold subscriber"
+              >
+                ★ Featured
+              </span>
+            )}
             {candidate.openToWork && (
               <span
                 style={{
