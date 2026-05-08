@@ -2,14 +2,15 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, count, desc, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { jobseekerProcedure, publicProcedure, router } from "@/server/api/trpc";
+import { jobseekerProcedure, protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
 import {
+  skillBadges,
   skillTestAttempts,
   testTopics,
   user,
   type SkillTestQuestion,
 } from "@/server/db/schema";
-import { generateSkillTest } from "@/lib/ai";
+import { generateSkillTest, narrateSkillResult } from "@/lib/ai";
 import { isEntitledSubscriptionStatus } from "@/lib/billing-tiers";
 
 export const skillTestsRouter = router({
@@ -237,5 +238,179 @@ export const skillTestsRouter = router({
         .returning({ id: skillTestAttempts.id });
 
       return { attemptId: created.id };
+    }),
+
+  getAttempt: protectedProcedure
+    .input(z.object({ attemptId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select()
+        .from(skillTestAttempts)
+        .where(eq(skillTestAttempts.id, input.attemptId))
+        .limit(1);
+      const attempt = rows[0];
+      if (!attempt) throw new TRPCError({ code: "NOT_FOUND" });
+      if (attempt.candidateId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Forfeit stale in_progress attempts on read
+      if (attempt.status === "in_progress" && attempt.startedAt) {
+        const minutesElapsed = (Date.now() - attempt.startedAt.getTime()) / 60000;
+        if (minutesElapsed > 25) {
+          await ctx.db
+            .update(skillTestAttempts)
+            .set({ status: "forfeited", finishedAt: new Date() })
+            .where(eq(skillTestAttempts.id, attempt.id));
+          return { ...attempt, status: "forfeited" as const };
+        }
+      }
+
+      // Strip correctIdx from questions so we don't leak the answer key
+      const safeQuestions = attempt.questionsJson.map((q) => ({
+        id: q.id,
+        prompt: q.prompt,
+        context: q.context,
+        options: q.options,
+        tags: q.tags,
+        tagKind: q.tagKind,
+      }));
+
+      return { ...attempt, questionsJson: safeQuestions };
+    }),
+
+  saveAnswer: protectedProcedure
+    .input(
+      z.object({
+        attemptId: z.string().uuid(),
+        questionId: z.string().uuid(),
+        selectedIdx: z.number().int().min(0).max(3),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          id: skillTestAttempts.id,
+          candidateId: skillTestAttempts.candidateId,
+          status: skillTestAttempts.status,
+          answersJson: skillTestAttempts.answersJson,
+        })
+        .from(skillTestAttempts)
+        .where(eq(skillTestAttempts.id, input.attemptId))
+        .limit(1);
+      const a = rows[0];
+      if (!a) throw new TRPCError({ code: "NOT_FOUND" });
+      if (a.candidateId !== ctx.session.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      if (a.status !== "in_progress") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Attempt is not in progress." });
+      }
+
+      const next = { ...(a.answersJson ?? {}), [input.questionId]: input.selectedIdx };
+      await ctx.db
+        .update(skillTestAttempts)
+        .set({ answersJson: next })
+        .where(eq(skillTestAttempts.id, a.id));
+
+      return { ok: true };
+    }),
+
+  submitAttempt: protectedProcedure
+    .input(z.object({ attemptId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select()
+        .from(skillTestAttempts)
+        .where(eq(skillTestAttempts.id, input.attemptId))
+        .limit(1);
+      const a = rows[0];
+      if (!a) throw new TRPCError({ code: "NOT_FOUND" });
+      if (a.candidateId !== ctx.session.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      if (a.status !== "in_progress") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Attempt already finished." });
+      }
+
+      const answers = a.answersJson ?? {};
+      let correct = 0;
+      const cats = new Map<string, { right: number; total: number }>();
+      for (const q of a.questionsJson) {
+        const cat = q.tags[0] ?? "General";
+        const entry = cats.get(cat) ?? { right: 0, total: 0 };
+        entry.total += 1;
+        if (answers[q.id] === q.correctIdx) {
+          correct += 1;
+          entry.right += 1;
+        }
+        cats.set(cat, entry);
+      }
+      const score = Math.round((correct / a.questionsJson.length) * 100);
+      const passed = score >= 70;
+      const topVerified = score >= 80;
+      const status: "passed" | "passed_top" | "failed" = topVerified
+        ? "passed_top"
+        : passed
+          ? "passed"
+          : "failed";
+
+      const breakdown = Array.from(cats.entries()).map(([cat, v]) => ({
+        cat,
+        right: v.right,
+        total: v.total,
+        pct: Math.round((v.right / v.total) * 100),
+      }));
+
+      const topic = await ctx.db
+        .select({ name: testTopics.name })
+        .from(testTopics)
+        .where(eq(testTopics.id, a.topicId))
+        .limit(1);
+      let narrative = "";
+      try {
+        narrative = await narrateSkillResult({
+          topicName: topic[0]?.name ?? "this topic",
+          score,
+          passed,
+          topVerified,
+          breakdown,
+        });
+      } catch {
+        narrative = passed
+          ? "You passed. Review the breakdown to see where to push next."
+          : "Almost there. Use the breakdown to focus your prep before retaking.";
+      }
+
+      await ctx.db
+        .update(skillTestAttempts)
+        .set({
+          status,
+          score,
+          correctCount: correct,
+          categoryBreakdown: breakdown,
+          aiFeedback: narrative,
+          finishedAt: new Date(),
+        })
+        .where(eq(skillTestAttempts.id, a.id));
+
+      if (passed) {
+        await ctx.db
+          .insert(skillBadges)
+          .values({
+            candidateId: a.candidateId,
+            topicId: a.topicId,
+            attemptId: a.id,
+            isVerifiedTop: topVerified,
+            score,
+          })
+          .onConflictDoUpdate({
+            target: [skillBadges.candidateId, skillBadges.topicId],
+            set: {
+              attemptId: a.id,
+              isVerifiedTop: topVerified,
+              score,
+              earnedAt: new Date(),
+            },
+          });
+      }
+
+      return { ok: true, score, status, breakdown, narrative };
     }),
 });
