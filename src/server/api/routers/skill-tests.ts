@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, desc, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { jobseekerProcedure, protectedProcedure, publicProcedure, router } from "@/server/api/trpc";
@@ -509,7 +509,7 @@ export const skillTestsRouter = router({
         .select({ candidateId: skillBadges.candidateId })
         .from(skillBadges)
         .innerJoin(testTopics, eq(skillBadges.topicId, testTopics.id))
-        .where(sql`${testTopics.slug} = ANY(${input.topicSlugs})`)
+        .where(inArray(testTopics.slug, input.topicSlugs))
         .groupBy(skillBadges.candidateId);
       return matched.map((m) => m.candidateId);
     }),

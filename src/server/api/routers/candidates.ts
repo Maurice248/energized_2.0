@@ -37,7 +37,7 @@ export const candidatesRouter = router({
         .select({ candidateId: skillBadges.candidateId })
         .from(skillBadges)
         .innerJoin(testTopics, eq(skillBadges.topicId, testTopics.id))
-        .where(sql`${testTopics.slug} = ANY(${input.badgeSlugs})`)
+        .where(inArray(testTopics.slug, input.badgeSlugs))
         .groupBy(skillBadges.candidateId);
       badgeFilteredIds = matched.map((m) => m.candidateId);
       if (badgeFilteredIds.length === 0) {
