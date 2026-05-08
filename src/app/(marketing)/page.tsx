@@ -615,10 +615,10 @@ function PricingTeaser({ viewer }: { viewer: ViewerContext }) {
               </div>
               <div className="v2-plan-period">cancel anytime</div>
               <ul>
-                <li>Featured profile in employer searches</li>
                 <li>&ldquo;Open to work&rdquo; badge with sector preferences</li>
                 <li>See who viewed your profile</li>
-                <li>48-hour early access to new postings</li>
+                <li>Unlimited saved searches with daily digest</li>
+                <li>AI cover-letter generator (coming soon)</li>
               </ul>
               <PlanCardButton cta={ctaJsGold} />
             </div>
@@ -631,9 +631,9 @@ function PricingTeaser({ viewer }: { viewer: ViewerContext }) {
               <div className="v2-plan-period">cancel anytime</div>
               <ul>
                 <li>Everything in Gold</li>
+                <li>Cert expiry warnings in your profile</li>
                 <li>Trainings library (coming soon)</li>
-                <li>Ticket renewal tracking + reminders</li>
-                <li>Priority placement above Gold</li>
+                <li>Cert prep & practice tests (coming soon)</li>
               </ul>
               <PlanCardButton cta={ctaJsPlatinum} />
             </div>

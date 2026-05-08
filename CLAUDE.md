@@ -98,7 +98,9 @@ energized/
 │   │   ├── ai.ts                # Vercel AI SDK + OpenAI wrapper
 │   │   └── utils.ts             # cn(), formatters, etc.
 │   ├── emails/                  # React Email templates
-│   ├── jobs/                    # Trigger.dev task definitions
+│   └── ...
+├── code/
+│   └── trigger/                 # Trigger.dev task definitions
 │   ├── middleware.ts            # Edge auth + rate-limit
 │   ├── env.ts                   # Typed env (zod)
 │   └── styles/globals.css
@@ -114,7 +116,7 @@ energized/
 ```
 
 **Import aliases (set in `tsconfig.json`):**
-- `@/app/*`, `@/components/*`, `@/server/*`, `@/lib/*`, `@/emails/*`, `@/jobs/*`
+- `@/app/*`, `@/components/*`, `@/server/*`, `@/lib/*`, `@/emails/*` (Trigger.dev tasks live at `code/trigger/`, not under `src/`)
 
 ---
 
@@ -604,7 +606,7 @@ export const deleteBlob = (url: string) => del(url);
 Use for: sending application-received emails, nightly search-index rebuilds, AI profile-enrichment, recurring candidate-match digests.
 
 ```ts
-// src/jobs/send-application-email.ts
+// code/trigger/send-application-email.ts
 import { task } from "@trigger.dev/sdk/v3";
 import { sendApplicationReceived } from "@/lib/resend";
 import { db } from "@/server/db";

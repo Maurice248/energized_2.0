@@ -45,22 +45,23 @@ export const PACKAGE_C_FEATURES: string[] = [
 /* ---------- Jobseeker paid-tier delivered features ---------- */
 
 export const GOLD_FEATURES: string[] = [
-  "Featured profile — top of employer searches",
   "\"Open to work\" badge with sector preferences",
   "See which employers viewed your profile",
-  "Application insights (views, last-viewed timestamp)",
-  "48-hour early access to new postings",
   "Unlimited saved searches with daily digest",
+  "Featured profile — top of employer searches (coming soon)",
+  "Application insights — who viewed your application, and when (coming soon)",
+  "48-hour early access to new postings (coming soon)",
   "AI cover-letter generator (coming soon)",
   "AI profile polish — rewrites bullets to highlight impact (coming soon)",
 ];
 
 export const PLATINUM_FEATURES: string[] = [
   "Everything in Gold (incl. AI features when shipped)",
+  "Cert expiry warnings in your profile",
   "Trainings library — energy-sector courses (coming soon)",
-  "Cert prep & practice tests (H2S, First Aid, CSTS, P.Eng…)",
-  "Ticket renewal tracking + expiry reminders",
-  "Early access to new training content as it launches",
+  "Cert prep & practice tests, H2S / First Aid / CSTS / P.Eng (coming soon)",
+  "Renewal reminder emails before tickets expire (coming soon)",
+  "Early access to new training content as it launches (coming soon)",
 ];
 
 /* ---------- Free-tier delivered features (no Stripe product, no billing) ---------- */
