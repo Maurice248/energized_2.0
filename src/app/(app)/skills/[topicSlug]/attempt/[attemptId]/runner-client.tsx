@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { api } from "@/lib/trpc/client";
 import { RunnerBar } from "@/app/(app)/skills/_components/runner-bar";
 import { QuestionCard } from "@/app/(app)/skills/_components/question-card";
@@ -49,6 +50,9 @@ export function RunnerClient({
 
   useEffect(() => {
     if (secondsLeft <= 0) {
+      try {
+        posthog.capture("skill_test.attempt.forfeited", { reason: "timer_expired", attemptId: attempt.id });
+      } catch {}
       submitRef.current.mutate({ attemptId: attempt.id });
       return;
     }
@@ -85,6 +89,9 @@ export function RunnerClient({
         secondsLeft={secondsLeft}
         onQuit={() => {
           if (window.confirm("Quit this test? It'll be marked forfeited.")) {
+            try {
+              posthog.capture("skill_test.attempt.forfeited", { reason: "user_quit", attemptId: attempt.id });
+            } catch {}
             router.push("/skills");
           }
         }}

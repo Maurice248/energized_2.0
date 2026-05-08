@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight } from "lucide-react";
+import posthog from "posthog-js";
 
 type Sector = {
   slug: string;
@@ -12,6 +13,12 @@ type Sector = {
 export function CatalogHero({ sectors }: { sectors: Sector[] }) {
   const [text, setText] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    try {
+      posthog.capture("skill_test.catalog.viewed", { totalSectors: sectors.length });
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = () => {
     if (!text.trim()) return;

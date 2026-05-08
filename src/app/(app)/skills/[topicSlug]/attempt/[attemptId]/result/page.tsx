@@ -3,6 +3,7 @@ import { api } from "@/lib/trpc/server";
 import { ResultBadgeCard } from "@/app/(app)/skills/_components/result-badge-card";
 import { ResultBreakdown } from "@/app/(app)/skills/_components/result-breakdown";
 import { ResultSideCards } from "@/app/(app)/skills/_components/result-side-cards";
+import { ResultTelemetry } from "./result-telemetry";
 
 export default async function ResultPage({
   params,
@@ -22,6 +23,7 @@ export default async function ResultPage({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50">
+      <ResultTelemetry topicSlug={topicSlug} score={score} status={attempt.status} />
       <div className="mx-auto max-w-6xl px-4 py-14">
         <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
           <ResultBadgeCard

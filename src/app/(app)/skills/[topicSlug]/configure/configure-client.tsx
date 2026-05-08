@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, AlertCircle } from "lucide-react";
+import posthog from "posthog-js";
 import { api } from "@/lib/trpc/client";
 import { ConfigureForm } from "@/app/(app)/skills/_components/configure-form";
 import { GeneratingOverlay } from "@/app/(app)/skills/_components/generating-overlay";
@@ -27,6 +28,21 @@ export function ConfigureClient({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    try {
+      posthog.capture("skill_test.configure.viewed", { topicSlug: sector.slug });
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (error?.startsWith("paywall:")) {
+      try {
+        posthog.capture("skill_test.paywall.viewed", { topicSlug: sector.slug });
+      } catch {}
+    }
+  }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const startMut = api.skillTests.startAttempt.useMutation({
     onSuccess: (data) => {
       router.push(`/skills/${sector.slug}/attempt/${data.attemptId}`);
@@ -77,6 +93,15 @@ export function ConfigureClient({
           onSubmit={(values) => {
             setError(null);
             setGenerating(true);
+            try {
+              posthog.capture("skill_test.attempt.started", {
+                topicSlug: values.roleSlug,
+                level: values.level,
+                count: values.questionCount,
+                scenarios: values.includeScenarios,
+                calc: values.includeCalc,
+              });
+            } catch {}
             startMut.mutate({
               topicSlug: values.roleSlug,
               level: values.level,
