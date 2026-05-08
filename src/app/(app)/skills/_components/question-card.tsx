@@ -56,7 +56,7 @@ export function QuestionCard({
           Question {questionNumber}
         </span>
       </div>
-      <div className="text-2xl font-black leading-snug tracking-tight md:text-3xl">
+      <div className="text-2xl font-normal leading-snug tracking-tight md:text-3xl">
         {question.prompt}
       </div>
       {question.context && (

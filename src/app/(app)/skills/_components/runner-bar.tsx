@@ -30,7 +30,7 @@ export function RunnerBar({
         </button>
         <div className="flex items-center gap-3.5">
           <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
-            <strong className="text-lg font-black tracking-tight text-[var(--brand-black)]">
+            <strong className="text-lg font-normal tracking-tight text-[var(--brand-black)]">
               {current}
             </strong>{" "}
             / {total}

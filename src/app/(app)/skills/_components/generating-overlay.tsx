@@ -22,11 +22,11 @@ export function GeneratingOverlay({ sectorName }: { sectorName: string }) {
           <div className="absolute inset-0 animate-[spin_8s_linear_infinite] rounded-full border border-dashed border-[var(--brand-blue)]/30" />
           <div className="absolute inset-6 animate-[spin_12s_linear_infinite_reverse] rounded-full border border-dashed border-[var(--brand-blue)]/20" />
           <div className="absolute inset-12 animate-[spin_16s_linear_infinite] rounded-full border border-dashed border-[var(--brand-blue)]/15" />
-          <div className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[var(--brand-blue)] text-2xl font-black text-[var(--brand-black)] shadow-[0_0_60px_rgba(28,170,226,0.4)]">
+          <div className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[var(--brand-blue)] text-2xl font-normal text-[var(--brand-black)] shadow-[0_0_60px_rgba(28,170,226,0.4)]">
             E
           </div>
         </div>
-        <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+        <h2 className="text-3xl font-normal tracking-tight text-white md:text-4xl">
           Building your test, <em className="not-italic italic text-[var(--brand-blue)]">just for you</em>.
         </h2>
         <p className="mt-3 text-sm text-slate-300">Fresh question set — no two attempts are the same.</p>

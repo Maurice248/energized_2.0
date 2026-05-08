@@ -15,7 +15,7 @@ export function PopularRoles({ sectors }: { sectors: Sector[] }) {
   return (
     <>
       <div className="mb-7 flex flex-wrap items-end justify-between gap-6">
-        <h2 className="text-3xl font-black tracking-tight md:text-4xl">
+        <h2 className="text-3xl font-normal tracking-tight md:text-4xl">
           Most-taken <em className="not-italic italic text-[var(--brand-dark-blue)]">roles</em>.
         </h2>
         <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
@@ -33,7 +33,7 @@ export function PopularRoles({ sectors }: { sectors: Sector[] }) {
               {String(i + 1).padStart(2, "0")}
             </div>
             <div>
-              <div className="text-2xl font-black tracking-tight">{r.name}</div>
+              <div className="text-2xl font-normal tracking-tight">{r.name}</div>
               {r.subDescription && (
                 <div className="mt-1 text-sm text-slate-500">{r.subDescription}</div>
               )}

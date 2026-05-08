@@ -20,7 +20,7 @@ export function ResultSideCards({
   return (
     <div className="grid gap-4">
       <div className="rounded-3xl border border-slate-200 bg-white p-7">
-        <h4 className="text-xl font-black tracking-tight">Add to your profile</h4>
+        <h4 className="text-xl font-normal tracking-tight">Add to your profile</h4>
         <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
           Recruiters filtering for {sectorName} can find verified candidates first.
         </p>
@@ -41,14 +41,14 @@ export function ResultSideCards({
             <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-[var(--brand-blue)] text-[var(--brand-black)]">
               <Check className="h-2.5 w-2.5" strokeWidth={3} />
             </span>
-            Verified <em className="not-italic font-black italic text-[var(--brand-dark-blue)]">{sectorName}</em> · {score}/100
+            Verified <em className="not-italic font-normal italic text-[var(--brand-dark-blue)]">{sectorName}</em> · {score}/100
           </div>
         </div>
       </div>
 
       {weakest.length > 0 && (
         <div className="rounded-3xl border border-slate-200 bg-white p-7">
-          <h4 className="text-xl font-black tracking-tight">Recommended next</h4>
+          <h4 className="text-xl font-normal tracking-tight">Recommended next</h4>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
             Areas to strengthen before your next attempt or role.
           </p>

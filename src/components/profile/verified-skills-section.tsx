@@ -23,7 +23,7 @@ export function VerifiedSkillsSection({ badges }: { badges: Badge[] }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6">
       <div className="mb-4 flex items-baseline justify-between">
-        <h3 className="text-xl font-black tracking-tight">Verified skills</h3>
+        <h3 className="text-xl font-normal tracking-tight">Verified skills</h3>
         <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
           {badges.length} {badges.length === 1 ? "badge" : "badges"}
         </span>

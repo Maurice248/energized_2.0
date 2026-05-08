@@ -30,15 +30,15 @@ export function ResultBadgeCard({
           <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-blue)]" />
           {eyebrow}
         </div>
-        <h1 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight md:text-7xl">
+        <h1 className="mt-4 text-5xl font-normal leading-[0.95] tracking-tight md:text-7xl">
           {headline}{" "}
           <em className="not-italic italic text-[var(--brand-blue)]">{headlineEm}</em>
         </h1>
         <div className="mt-7 flex items-baseline gap-3.5">
-          <div className="text-9xl font-black leading-none tracking-tight text-[var(--brand-blue)] md:text-[140px]">
+          <div className="text-9xl font-normal leading-none tracking-tight text-[var(--brand-blue)] md:text-[140px]">
             {score}
           </div>
-          <div className="text-3xl font-black text-slate-300 md:text-4xl">/100</div>
+          <div className="text-3xl font-normal text-slate-300 md:text-4xl">/100</div>
           <div className="ml-auto max-w-[140px] text-[11px] font-bold uppercase leading-relaxed tracking-[0.16em] text-slate-300">
             {correct} of {total} correct · {topicName}
           </div>
