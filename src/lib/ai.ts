@@ -1,6 +1,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { z } from "zod";
 import { env } from "@/env";
+import {
+  buildSkillTestSystemPrompt,
+  buildSkillTestUserPrompt,
+  type GeneratePromptInput,
+} from "./skill-test-prompts";
 
 export const EMBER_ENABLED = Boolean(env.OPENAI_API_KEY);
 
@@ -289,4 +295,66 @@ export async function suggestScreeningQuestions(input: {
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(`Couldn't parse screening questions: ${msg}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Skill test generation
+// ---------------------------------------------------------------------------
+
+const QuestionSchema = z.object({
+  prompt: z.string().min(20).max(500),
+  context: z.string().nullable(),
+  options: z.array(z.string().min(1).max(200)).length(4),
+  correctIdx: z.number().int().min(0).max(3),
+  tags: z.array(z.string().min(1).max(40)).min(1).max(3),
+  tagKind: z.enum(["scenario", "calc"]).nullable(),
+});
+
+const GenerateResponseSchema = z.object({
+  questions: z.array(QuestionSchema),
+});
+
+export type GeneratedSkillTest = z.infer<typeof GenerateResponseSchema>;
+
+const SKILL_TEST_MODEL = "gpt-4o-mini";
+
+export async function generateSkillTest(
+  input: GeneratePromptInput,
+): Promise<GeneratedSkillTest & { model: string }> {
+  if (!openaiClient) {
+    throw new Error("OpenAI API key not configured.");
+  }
+
+  const system = buildSkillTestSystemPrompt();
+  const user = buildSkillTestUserPrompt(input);
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { text } = await generateText({
+      model: openaiClient(SKILL_TEST_MODEL),
+      system,
+      prompt: user,
+      maxOutputTokens: Math.min(6000, 250 + input.count * 200),
+    });
+
+    const match = text.match(/\{[\s\S]*\}/);
+    const raw = match ? match[0] : text.trim();
+    try {
+      const parsed = GenerateResponseSchema.parse(JSON.parse(raw));
+      if (parsed.questions.length !== input.count) {
+        if (attempt === 1) {
+          throw new Error(
+            `Could not parse skill test: expected ${input.count} questions, got ${parsed.questions.length}.`,
+          );
+        }
+        continue;
+      }
+      return { ...parsed, model: SKILL_TEST_MODEL };
+    } catch (e) {
+      if (attempt === 1) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error(`Could not parse skill test response: ${msg}`);
+      }
+    }
+  }
+  throw new Error("Could not parse skill test response after retry.");
 }
