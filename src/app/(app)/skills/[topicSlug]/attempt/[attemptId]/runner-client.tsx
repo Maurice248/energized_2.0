@@ -46,7 +46,10 @@ export function RunnerClient({
 
   const saveMut = api.skillTests.saveAnswer.useMutation();
   const submitMut = api.skillTests.submitAttempt.useMutation({
-    onSuccess: () => router.push(`/skills/${topicSlug}/attempt/${attempt.id}/result`),
+    onSuccess: () =>
+      // replace (not push) so the browser back button skips the runner
+      // — it's already submitted and would just bounce to /result anyway.
+      router.replace(`/skills/${topicSlug}/attempt/${attempt.id}/result`),
   });
   const submitRef = useRef(submitMut);
   // Keep ref current via effect rather than during render (avoid ref-access-in-render lint rule)
