@@ -81,7 +81,20 @@ export function ConfigureClient({
             className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900"
           >
             <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-            <div className="leading-relaxed">{formatErrorMessage(error)}</div>
+            <div className="flex-1 leading-relaxed">
+              <div>{formatErrorMessage(error)}</div>
+              {error.startsWith("cooldown:") && (
+                <div className="mt-2">
+                  Want to test something else?{" "}
+                  <Link
+                    href="/skills"
+                    className="font-bold underline underline-offset-2 hover:text-amber-950"
+                  >
+                    Browse other sectors →
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         )}
         <ConfigureForm
