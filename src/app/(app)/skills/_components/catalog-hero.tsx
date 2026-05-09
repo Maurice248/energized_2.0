@@ -91,7 +91,7 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               placeholder="e.g. Wind technician II, GWO certified"
-              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-300"
+              className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-slate-500"
             />
             <button
               onClick={submit}
