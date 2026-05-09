@@ -29,6 +29,26 @@ export function ConfigureClient({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Cooldowns by topic slug → { status, daysLeft }. Used to grey out
+  // role pills that are blocked, and to pick a sensible default role.
+  const cooldownsQuery = api.skillTests.myActiveCooldowns.useQuery(undefined, {
+    retry: false,
+  });
+  const cooldowns: Record<string, { status: string; daysLeft: number }> =
+    Object.fromEntries(
+      (cooldownsQuery.data ?? []).map((c) => [
+        c.slug,
+        { status: c.status, daysLeft: c.daysLeft },
+      ]),
+    );
+
+  const firstAvailableSlug =
+    roles.find((r) => !cooldowns[r.slug])?.slug ?? roles[0]?.slug ?? sector.slug;
+  const defaultRoleSlug =
+    initialRoleSlug && !cooldowns[initialRoleSlug]
+      ? initialRoleSlug
+      : firstAvailableSlug;
+
   useEffect(() => {
     try {
       posthog.capture("skill_test.configure.viewed", { topicSlug: sector.slug });
@@ -100,7 +120,8 @@ export function ConfigureClient({
         <ConfigureForm
           sector={sector}
           roles={roles}
-          initialRoleSlug={initialRoleSlug ?? roles[0]?.slug ?? sector.slug}
+          initialRoleSlug={defaultRoleSlug}
+          cooldowns={cooldowns}
           submitting={startMut.isPending}
           onSubmit={(values) => {
             setError(null);

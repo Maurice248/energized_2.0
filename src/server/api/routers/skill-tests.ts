@@ -462,6 +462,36 @@ export const skillTestsRouter = router({
   // Badge reads
   // ---------------------------------------------------------------------------
 
+  // Returns currently-active cooldowns for the signed-in user.
+  // Used to grey out role pills and pick a sensible default in the
+  // configure form. 30-day window for passes, 7-day for fails.
+  myActiveCooldowns: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db
+      .select({
+        slug: testTopics.slug,
+        status: skillTestAttempts.status,
+        finishedAt: skillTestAttempts.finishedAt,
+      })
+      .from(skillTestAttempts)
+      .innerJoin(testTopics, eq(skillTestAttempts.topicId, testTopics.id))
+      .where(
+        and(
+          eq(skillTestAttempts.candidateId, ctx.session.user.id),
+          ne(skillTestAttempts.status, "in_progress"),
+          ne(skillTestAttempts.status, "forfeited"),
+        ),
+      );
+    const now = Date.now();
+    return rows.flatMap((r) => {
+      if (!r.finishedAt) return [];
+      const window = r.status === "failed" ? 7 : 30;
+      const daysSince = (now - r.finishedAt.getTime()) / (1000 * 60 * 60 * 24);
+      const daysLeft = Math.ceil(window - daysSince);
+      if (daysLeft <= 0) return [];
+      return [{ slug: r.slug, status: r.status, daysLeft }];
+    });
+  }),
+
   myBadges: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select({

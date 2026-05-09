@@ -11,10 +11,13 @@ const LEVELS = [
 
 const QUESTION_OPTS = [10, 15, 20, 25, 30] as const;
 
+type Cooldown = { status: string; daysLeft: number };
+
 type Props = {
   sector: { name: string; monogram: string; tileColor: string };
   roles: { slug: string; name: string; subDescription: string | null }[];
   initialRoleSlug: string;
+  cooldowns?: Record<string, Cooldown>;
   submitting: boolean;
   onSubmit: (v: {
     roleSlug: string;
@@ -25,7 +28,14 @@ type Props = {
   }) => void;
 };
 
-export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSubmit }: Props) {
+export function ConfigureForm({
+  sector,
+  roles,
+  initialRoleSlug,
+  cooldowns = {},
+  submitting,
+  onSubmit,
+}: Props) {
   const [roleSlug, setRoleSlug] = useState(initialRoleSlug);
   const [level, setLevel] = useState<"entry" | "junior" | "mid" | "senior">("mid");
   const [count, setCount] = useState<10 | 15 | 20 | 25 | 30>(15);
@@ -66,19 +76,59 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
 
         <Field label="Role" hint={`${roles.length} options`}>
           <div className="flex flex-wrap gap-2">
-            {roles.map((r) => (
-              <button
-                key={r.slug}
-                onClick={() => setRoleSlug(r.slug)}
-                className={`rounded-full border px-4 py-2.5 text-sm transition ${
-                  roleSlug === r.slug
-                    ? "border-[var(--brand-black)] bg-[var(--brand-black)] text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-[var(--brand-black)]"
-                }`}
-              >
-                {r.name}
-              </button>
-            ))}
+            {roles.map((r) => {
+              const cd = cooldowns[r.slug];
+              const isActive = roleSlug === r.slug;
+              const isLocked = !!cd;
+              const lockLabel = cd
+                ? cd.status === "passed_top" || cd.status === "passed"
+                  ? `Verified · ${cd.daysLeft}d`
+                  : `Cooldown · ${cd.daysLeft}d`
+                : null;
+              return (
+                <button
+                  key={r.slug}
+                  onClick={() => setRoleSlug(r.slug)}
+                  disabled={isLocked}
+                  title={
+                    isLocked
+                      ? cd?.status === "failed"
+                        ? `Failed attempt — retake in ${cd.daysLeft}d`
+                        : `Already verified — retake in ${cd.daysLeft}d`
+                      : undefined
+                  }
+                  className="rounded-full border text-sm transition"
+                  style={{
+                    padding: "10px 16px",
+                    background: isActive
+                      ? "var(--brand-black, #101820)"
+                      : isLocked
+                        ? "#f1f5f9"
+                        : "#fff",
+                    color: isActive ? "#fff" : isLocked ? "#94a3b8" : "#475569",
+                    borderColor: isActive
+                      ? "var(--brand-black, #101820)"
+                      : isLocked
+                        ? "#e2e8f0"
+                        : "#e2e8f0",
+                    cursor: isLocked ? "not-allowed" : "pointer",
+                  }}
+                >
+                  <span>{r.name}</span>
+                  {lockLabel && (
+                    <span
+                      className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                      style={{
+                        background: "rgba(217,119,6,0.12)",
+                        color: "#92400e",
+                      }}
+                    >
+                      {lockLabel}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
           {selectedRole?.subDescription && (
             <p className="mt-3 text-sm text-slate-600">{selectedRole.subDescription}</p>
@@ -171,22 +221,33 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             />
             I&apos;ll take this test on my own — no outside help, no AI assistance.
           </label>
-          <button
-            disabled={!honor || submitting}
-            onClick={() =>
-              onSubmit({
-                roleSlug,
-                level,
-                questionCount: count,
-                includeScenarios: scenarios,
-                includeCalc: calc,
-              })
-            }
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--brand-blue)] px-4 py-4 text-sm font-bold text-[var(--brand-black)] transition hover:bg-[var(--brand-dark-blue)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Sparkles className="h-4 w-4" />
-            {submitting ? "Generating…" : "Generate test"}
-          </button>
+          {(() => {
+            const selectedCooldown = cooldowns[roleSlug];
+            const blocked = !!selectedCooldown;
+            const buttonLabel = blocked
+              ? `Locked · ${selectedCooldown.daysLeft}d`
+              : submitting
+                ? "Generating…"
+                : "Generate test";
+            return (
+              <button
+                disabled={!honor || submitting || blocked}
+                onClick={() =>
+                  onSubmit({
+                    roleSlug,
+                    level,
+                    questionCount: count,
+                    includeScenarios: scenarios,
+                    includeCalc: calc,
+                  })
+                }
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--brand-blue)] px-4 py-4 text-sm font-bold text-[var(--brand-black)] transition hover:bg-[var(--brand-dark-blue)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Sparkles className="h-4 w-4" />
+                {buttonLabel}
+              </button>
+            );
+          })()}
           <p
             className="mt-3.5 text-center text-xs leading-relaxed"
             style={{ color: "rgba(255,255,255,0.78)" }}
