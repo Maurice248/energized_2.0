@@ -100,12 +100,12 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               Build test <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="mt-5 flex flex-wrap gap-2.5">
+          <div className="mt-6 flex flex-wrap gap-3">
             {suggestions.map((s) => (
               <button
                 key={s}
                 onClick={() => setText(s)}
-                className="rounded-full px-4 py-2 text-sm font-medium transition hover:text-[var(--brand-blue)]"
+                className="rounded-full px-5 py-2.5 text-sm font-medium transition hover:text-[var(--brand-blue)]"
                 style={{
                   border: "1px solid rgba(255,255,255,0.45)",
                   background: "rgba(255,255,255,0.06)",
