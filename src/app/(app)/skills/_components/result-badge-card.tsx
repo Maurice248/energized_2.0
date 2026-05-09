@@ -61,20 +61,59 @@ export function ResultBadgeCard({
         )}
         <div className="mt-9 flex flex-wrap gap-2.5">
           {passed ? (
-            <button className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-blue)] px-5 py-3.5 text-sm font-bold text-[var(--brand-black)] hover:bg-white">
+            <button
+              className="inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold transition"
+              style={{
+                background: "var(--brand-blue, #1CAAE2)",
+                color: "var(--brand-black, #101820)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--brand-dark-blue, #004984)";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--brand-blue, #1CAAE2)";
+                e.currentTarget.style.color = "var(--brand-black, #101820)";
+              }}
+            >
               <Check className="h-4 w-4" /> Badge added to your profile
             </button>
           ) : (
             <Link
               href="/skills"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-blue)] px-5 py-3.5 text-sm font-bold text-[var(--brand-black)] hover:bg-white"
+              className="inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold transition"
+              style={{
+                background: "var(--brand-blue, #1CAAE2)",
+                color: "var(--brand-black, #101820)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--brand-dark-blue, #004984)";
+                e.currentTarget.style.color = "#fff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--brand-blue, #1CAAE2)";
+                e.currentTarget.style.color = "var(--brand-black, #101820)";
+              }}
             >
               Take another <ArrowRight className="h-4 w-4" />
             </Link>
           )}
           <Link
             href="/skills"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3.5 text-sm font-medium text-white hover:border-[var(--brand-blue)] hover:text-[var(--brand-blue)]"
+            className="inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-medium transition"
+            style={{
+              border: "1px solid rgba(255,255,255,0.25)",
+              color: "#fff",
+              background: "transparent",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--brand-blue, #1CAAE2)";
+              e.currentTarget.style.color = "var(--brand-blue, #1CAAE2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
+              e.currentTarget.style.color = "#fff";
+            }}
           >
             <ArrowRight className="h-3.5 w-3.5" /> All sectors
           </Link>
