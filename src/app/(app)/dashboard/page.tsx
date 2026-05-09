@@ -1042,13 +1042,20 @@ function SkillTestsCard({ badgeCount }: { badgeCount: number }) {
       <p style={{ marginTop: 12, fontSize: 14, color: "var(--v2-ink-500)" }}>
         Pick another sector to add to your verified track.
       </p>
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 20, display: "flex", gap: 16, flexWrap: "wrap" }}>
         <Link
           href="/skills"
           className="v2-card-link"
           style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           Browse tests <Icon name="arrowRight" size={14} />
+        </Link>
+        <Link
+          href="/skills/my-tests"
+          className="v2-card-link"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          View history <Icon name="arrowRight" size={14} />
         </Link>
       </div>
     </section>

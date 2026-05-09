@@ -492,6 +492,31 @@ export const skillTestsRouter = router({
     });
   }),
 
+  // Full attempt history for the signed-in user, newest first.
+  // Used by the /skills/my-tests history page and the catalog
+  // "Recent attempts" strip.
+  myAttempts: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        attemptId: skillTestAttempts.id,
+        status: skillTestAttempts.status,
+        score: skillTestAttempts.score,
+        correctCount: skillTestAttempts.correctCount,
+        questionCount: skillTestAttempts.questionCount,
+        startedAt: skillTestAttempts.startedAt,
+        finishedAt: skillTestAttempts.finishedAt,
+        slug: testTopics.slug,
+        name: testTopics.name,
+        monogram: testTopics.monogram,
+        tileColor: testTopics.tileColor,
+      })
+      .from(skillTestAttempts)
+      .innerJoin(testTopics, eq(skillTestAttempts.topicId, testTopics.id))
+      .where(eq(skillTestAttempts.candidateId, ctx.session.user.id))
+      .orderBy(desc(skillTestAttempts.startedAt))
+      .limit(50);
+  }),
+
   myBadges: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select({
