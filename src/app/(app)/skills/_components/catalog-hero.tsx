@@ -105,11 +105,12 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               <button
                 key={s}
                 onClick={() => setText(s)}
-                className="rounded-full px-5 py-2.5 text-sm font-medium transition hover:text-[var(--brand-blue)]"
+                className="rounded-full text-sm font-medium transition hover:text-[var(--brand-blue)]"
                 style={{
                   border: "1px solid rgba(255,255,255,0.45)",
                   background: "rgba(255,255,255,0.06)",
                   color: "#fff",
+                  padding: "10px 20px",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = "var(--brand-blue, #1CAAE2)";
