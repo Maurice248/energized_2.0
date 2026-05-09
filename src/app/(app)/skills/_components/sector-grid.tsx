@@ -41,20 +41,33 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
           Pick your <em className="not-italic italic text-[var(--brand-dark-blue)]">sector</em>.<br />
           We&apos;ll build the test.
         </h2>
-        <div className="inline-flex gap-0.5 rounded-full border border-slate-200 bg-white p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`rounded-full px-3.5 py-2 text-xs font-bold transition ${
-                tab === t.id
-                  ? "bg-[var(--brand-black)] text-white"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              {t.l}
-            </button>
-          ))}
+        <div
+          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white"
+          style={{ padding: "4px" }}
+        >
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="rounded-full text-sm font-medium transition"
+                style={{
+                  padding: "8px 18px",
+                  background: active ? "var(--brand-black, #101820)" : "transparent",
+                  color: active ? "#fff" : "#475569",
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) e.currentTarget.style.color = "#0f172a";
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) e.currentTarget.style.color = "#475569";
+                }}
+              >
+                {t.l}
+              </button>
+            );
+          })}
         </div>
       </div>
 
