@@ -16,7 +16,10 @@ export function GeneratingOverlay({ sectorName }: { sectorName: string }) {
   }, [lines.length]);
 
   return (
-    <div className="fixed inset-0 z-[100] grid animate-in fade-in place-items-center bg-[var(--brand-black)]/95 backdrop-blur duration-200">
+    <div
+      className="fixed inset-0 z-[100] grid animate-in fade-in place-items-center backdrop-blur duration-200"
+      style={{ background: "rgba(16, 24, 32, 0.95)" }}
+    >
       <div className="w-[calc(100%-3rem)] max-w-lg p-10 text-center">
         <div className="relative mx-auto mb-8 h-44 w-44">
           <div className="absolute inset-0 animate-[spin_8s_linear_infinite] rounded-full border border-dashed border-[var(--brand-blue)]/30" />

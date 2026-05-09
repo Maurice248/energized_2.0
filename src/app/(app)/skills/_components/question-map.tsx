@@ -22,7 +22,10 @@ export function QuestionMap({
   const answeredCount = Object.keys(answers).length;
   return (
     <aside className="sticky top-24 rounded-3xl border border-slate-200 bg-white p-6">
-      <h4 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+      <h4
+        className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500"
+        style={{ marginBottom: 18 }}
+      >
         Question map
       </h4>
       <div className="grid grid-cols-5 gap-1.5">

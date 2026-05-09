@@ -40,6 +40,7 @@ export default async function ResultPage({
             sectorTileColor={topic.sector.tileColor}
             currentRoleName={topic.currentRole?.name ?? topic.sector.name}
             score={score}
+            passed={passed}
             breakdown={attempt.categoryBreakdown ?? []}
           />
         </div>

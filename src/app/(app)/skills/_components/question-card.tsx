@@ -61,7 +61,8 @@ export function QuestionCard({
       </div>
       {question.context && (
         <div className="mt-4 rounded-md border-l-4 border-[var(--brand-dark-blue)] bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
-          <strong className="font-semibold text-slate-900">Given:</strong> {question.context}
+          <strong className="font-semibold text-slate-900">Given:</strong>{" "}
+          {question.context.replace(/^\s*given:\s*/i, "")}
         </div>
       )}
       <div className="mt-7 grid gap-2.5">
