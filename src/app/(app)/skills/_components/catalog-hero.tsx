@@ -110,7 +110,7 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
                   border: "1px solid rgba(255,255,255,0.45)",
                   background: "rgba(255,255,255,0.06)",
                   color: "#fff",
-                  padding: "10px 20px",
+                  padding: "5px 10px",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = "var(--brand-blue, #1CAAE2)";
