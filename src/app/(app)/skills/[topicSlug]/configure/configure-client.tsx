@@ -76,13 +76,12 @@ export function ConfigureClient({
 
       <div className="mx-auto max-w-6xl px-4 py-14">
         {error && (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            <AlertCircle className="h-5 w-5" />
-            {error.startsWith("paywall:")
-              ? "You've used your free skill test. Upgrade to Gold to take more."
-              : error.startsWith("cooldown:")
-                ? `You can't retake this topic yet — ${error}`
-                : error}
+          <div
+            ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900"
+          >
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+            <div className="leading-relaxed">{formatErrorMessage(error)}</div>
           </div>
         )}
         <ConfigureForm
@@ -117,4 +116,24 @@ export function ConfigureClient({
       {generating && <GeneratingOverlay sectorName={sector.name} />}
     </div>
   );
+}
+
+function formatErrorMessage(raw: string): string {
+  if (raw.startsWith("paywall:")) {
+    return "You've used your free skill test. Upgrade to Gold to take more.";
+  }
+  // cooldown:7d:3 → 7-day window, 3 days remaining (failed attempt)
+  // cooldown:30d:12 → 30-day window, 12 days remaining (passed attempt)
+  const cooldown = /^cooldown:(7d|30d):(\d+)$/.exec(raw);
+  if (cooldown) {
+    const window = cooldown[1];
+    const daysLeft = Number(cooldown[2]);
+    const reason =
+      window === "30d"
+        ? "You've already earned a badge for this topic"
+        : "Take a few days to study before trying again";
+    const dayLabel = daysLeft === 1 ? "1 day" : `${daysLeft} days`;
+    return `${reason}. You can retake this test in ${dayLabel}.`;
+  }
+  return raw;
 }
