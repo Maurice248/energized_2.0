@@ -187,8 +187,12 @@ export function ConfigureForm({ sector, roles, initialRoleSlug, submitting, onSu
             <Sparkles className="h-4 w-4" />
             {submitting ? "Generating…" : "Generate test"}
           </button>
-          <p className="mt-3.5 text-center text-xs leading-relaxed text-slate-300">
-            Each generation is fresh. You can re-take after 30 days on a pass, 7 days on a fail.
+          <p
+            className="mt-3.5 text-center text-xs leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.78)" }}
+          >
+            Each generation is fresh. You can re-take after 30 days on a pass,
+            7 days on a fail.
           </p>
         </div>
       </aside>

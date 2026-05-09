@@ -39,7 +39,9 @@ export function GeneratingOverlay({ sectorName }: { sectorName: string }) {
           </em>
           .
         </h2>
-        <p className="mt-3 text-sm text-slate-300">Fresh question set — no two attempts are the same.</p>
+        <p className="mt-3 text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>
+          Fresh question set — no two attempts are the same.
+        </p>
         <div className="mt-7 min-h-[120px] rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left text-xs leading-relaxed text-slate-300">
           {lines.map((l, i) => (
             <div key={i} className="flex gap-2.5">

@@ -52,7 +52,12 @@ export function ResultBadgeCard({
           </div>
         </div>
         {narrative && (
-          <p className="mt-7 max-w-xl text-base leading-relaxed text-slate-200">{narrative}</p>
+          <p
+            className="mt-7 max-w-xl text-base leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.85)" }}
+          >
+            {narrative}
+          </p>
         )}
         <div className="mt-9 flex flex-wrap gap-2.5">
           {passed ? (

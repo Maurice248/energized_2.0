@@ -77,8 +77,12 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
             </em>
             .
           </h3>
-          <p className="mt-3 text-base leading-7 text-slate-200">
-            Type your role or paste a job description. The generator picks the sector, level and question mix.
+          <p
+            className="mt-3 text-base leading-7"
+            style={{ color: "rgba(255,255,255,0.85)" }}
+          >
+            Type your role or paste a job description. The generator picks the
+            sector, level and question mix.
           </p>
           <div className="mt-5 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1.5 pl-5 pr-1.5">
             <Sparkles className="h-4 w-4 text-[var(--brand-blue)]" />
@@ -101,7 +105,20 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
               <button
                 key={s}
                 onClick={() => setText(s)}
-                className="rounded-full border border-white/40 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--brand-blue)] hover:bg-white/[0.1] hover:text-[var(--brand-blue)]"
+                className="rounded-full px-4 py-2 text-sm font-medium transition hover:text-[var(--brand-blue)]"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.45)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "#fff",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--brand-blue, #1CAAE2)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.45)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                }}
               >
                 {s}
               </button>
