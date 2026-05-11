@@ -332,28 +332,35 @@ export const skillTestsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const rows = await ctx.db
-        .select({
-          id: skillTestAttempts.id,
-          candidateId: skillTestAttempts.candidateId,
-          status: skillTestAttempts.status,
-          answersJson: skillTestAttempts.answersJson,
-        })
-        .from(skillTestAttempts)
-        .where(eq(skillTestAttempts.id, input.attemptId))
-        .limit(1);
-      const a = rows[0];
-      if (!a) throw new TRPCError({ code: "NOT_FOUND" });
-      if (a.candidateId !== ctx.session.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      if (a.status !== "in_progress") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Attempt is not in progress." });
-      }
-
-      const next = { ...(a.answersJson ?? {}), [input.questionId]: input.selectedIdx };
-      await ctx.db
+      // Atomic JSONB merge — answers_json || {questionId: selectedIdx}.
+      // This replaces a read-modify-write pattern that lost concurrent
+      // saves: two parallel mutations could each read the same baseline
+      // and the later write would overwrite the earlier one. The merge
+      // happens entirely inside Postgres, so concurrent saves to
+      // different keys both land.
+      const result = await ctx.db
         .update(skillTestAttempts)
-        .set({ answersJson: next })
-        .where(eq(skillTestAttempts.id, a.id));
+        .set({
+          answersJson: sql`COALESCE(${skillTestAttempts.answersJson}, '{}'::jsonb) || jsonb_build_object(${input.questionId}, to_jsonb(${input.selectedIdx}::int))`,
+        })
+        .where(
+          and(
+            eq(skillTestAttempts.id, input.attemptId),
+            eq(skillTestAttempts.candidateId, ctx.session.user.id),
+            eq(skillTestAttempts.status, "in_progress"),
+          ),
+        )
+        .returning({ id: skillTestAttempts.id });
+
+      if (result.length === 0) {
+        // Either: attempt doesn't exist, isn't owned by the user, or
+        // status moved off `in_progress` (submitted / forfeited). All
+        // three are "this answer can't be saved right now."
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Attempt not available for answer save.",
+        });
+      }
 
       return { ok: true };
     }),
