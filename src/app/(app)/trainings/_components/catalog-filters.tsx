@@ -62,7 +62,7 @@ export function CatalogFilters({
       />
       <div className="ml-auto inline-flex items-center gap-2 text-sm">
         <span className="text-slate-500">Sort:</span>
-        <div className="relative">
+        <div className="relative inline-block">
           <select
             value={filters.sort}
             onChange={(e) => onChange({ ...filters, sort: e.target.value as Filters["sort"] })}
