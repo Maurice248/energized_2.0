@@ -23,7 +23,13 @@ const TABS = [
 const RENEWABLE = new Set(["wind", "solar", "geo", "hydrogen", "battery"]);
 const TRADITIONAL = new Set(["oilgas", "grid", "nuclear", "ccus"]);
 
-export function SectorGrid({ sectors }: { sectors: Sector[] }) {
+export function SectorGrid({
+  sectors,
+  isEmployer,
+}: {
+  sectors: Sector[];
+  isEmployer: boolean;
+}) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("all");
   const filtered =
     tab === "all"
@@ -72,10 +78,15 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
       </div>
 
       <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((s) => (
+        {filtered.map((s) => {
+          const href = isEmployer
+            ? `/candidates?badges=${encodeURIComponent(s.slug)}`
+            : `/skills/${s.slug}/configure`;
+          return (
           <Link
             key={s.slug}
-            href={`/skills/${s.slug}/configure`}
+            href={href}
+            title={isEmployer ? "See candidates with this badge" : undefined}
             className="group relative overflow-hidden rounded-2xl border-2 border-slate-300 bg-white p-6 text-left transition hover:-translate-y-0.5 hover:border-[var(--brand-black)] hover:shadow-xl"
           >
             {s.isHot && (
@@ -102,7 +113,8 @@ export function SectorGrid({ sectors }: { sectors: Sector[] }) {
               </div>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </>
   );
