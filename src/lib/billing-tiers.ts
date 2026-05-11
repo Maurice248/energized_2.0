@@ -140,6 +140,18 @@ export function isEntitledSubscriptionStatus(
   return status === "active" || status === "trialing";
 }
 
+/**
+ * Returns true if the user is a Platinum jobseeker with an active or
+ * trialing subscription. Used to gate Platinum-only features like
+ * trainings.
+ */
+export function isPlatinumEntitled(args: {
+  plan: string | null | undefined;
+  status: string | null | undefined;
+}): boolean {
+  return args.plan === "platinum" && isEntitledSubscriptionStatus(args.status);
+}
+
 /* ---------------------------------------------------------------------------
  * Display data re-exports — server components can pull both server and
  * display data from this file. Client components should import directly

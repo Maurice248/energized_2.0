@@ -633,7 +633,7 @@ function PricingTeaser({ viewer }: { viewer: ViewerContext }) {
               <ul>
                 <li>Everything in Gold</li>
                 <li>Cert expiry warnings in your profile</li>
-                <li>Trainings library (coming soon)</li>
+                <li>Trainings library</li>
                 <li>Cert prep & practice tests (coming soon)</li>
               </ul>
               <PlanCardButton cta={ctaJsPlatinum} />

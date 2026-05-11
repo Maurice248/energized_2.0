@@ -19,3 +19,7 @@ export * from "./intro-requests";
 export * from "./test-topics";
 export * from "./skill-test-attempts";
 export * from "./skill-badges";
+export * from "./trainings";
+export * from "./training-modules";
+export * from "./training-lessons";
+export * from "./training-enrollments";
