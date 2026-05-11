@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
 type Cat = { cat: string; pct: number; right: number; total: number };
@@ -58,9 +59,10 @@ export function ResultSideCards({
           </p>
           <div className="mt-4 grid gap-2.5">
             {weakest.map((c, i) => (
-              <div
+              <Link
                 key={c.cat}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5"
+                href="/trainings"
+                className="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5 transition hover:border-slate-700 hover:bg-slate-50"
               >
                 <div
                   className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-md text-xs font-bold text-white"
@@ -73,13 +75,13 @@ export function ResultSideCards({
                     {c.cat} — focused training
                   </div>
                   <div className="mt-0.5 text-xs text-slate-500">
-                    {c.right}/{c.total} correct · trainings coming soon
+                    {c.right}/{c.total} correct · browse trainings →
                   </div>
                 </div>
                 <div className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-700">
                   <ArrowRight className="h-3 w-3" />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
