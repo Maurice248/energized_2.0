@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { api } from "@/lib/trpc/server";
 import { getSession } from "@/server/auth";
 import { db } from "@/server/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { user as userTable } from "@/server/db/schema/auth";
+import { trainingEnrollments } from "@/server/db/schema";
 import { isPlatinumEntitled } from "@/lib/billing-tiers";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -20,6 +21,12 @@ export default async function TrainingDetailPage({
 
   const session = await getSession();
   let isPlatinum = false;
+  let existingEnrollment: {
+    id: string;
+    status: string;
+    progressJson: Record<string, { completedAt: string; score?: number }>;
+  } | null = null;
+
   if (session) {
     const [u] = await db
       .select({
@@ -30,6 +37,22 @@ export default async function TrainingDetailPage({
       .where(eq(userTable.id, session.user.id))
       .limit(1);
     if (u) isPlatinum = isPlatinumEntitled({ plan: u.plan, status: u.status });
+
+    const [enr] = await db
+      .select({
+        id: trainingEnrollments.id,
+        status: trainingEnrollments.status,
+        progressJson: trainingEnrollments.progressJson,
+      })
+      .from(trainingEnrollments)
+      .where(
+        and(
+          eq(trainingEnrollments.candidateId, session.user.id),
+          eq(trainingEnrollments.trainingId, data.training.id),
+        ),
+      )
+      .limit(1);
+    if (enr) existingEnrollment = enr;
   }
 
   return (
@@ -50,6 +73,7 @@ export default async function TrainingDetailPage({
             modules={data.modules}
             isPlatinum={isPlatinum}
             isSignedIn={!!session}
+            existingEnrollment={existingEnrollment}
           />
         </div>
       </main>

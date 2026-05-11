@@ -41,27 +41,48 @@ type ModuleWithLessons = {
   }>;
 };
 
+type ExistingEnrollment = {
+  id: string;
+  status: string;
+  progressJson: Record<string, { completedAt: string; score?: number }>;
+};
+
 export function DetailClient({
   training,
   modules,
   isPlatinum,
   isSignedIn,
+  existingEnrollment,
 }: {
   training: Training;
   modules: ModuleWithLessons[];
   isPlatinum: boolean;
   isSignedIn: boolean;
+  existingEnrollment: ExistingEnrollment | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
+  // Find the first lesson the user hasn't completed yet — used to deep-link
+  // "Continue" to wherever they left off. Falls back to the first lesson.
+  const findNextLesson = () => {
+    const progress = existingEnrollment?.progressJson ?? {};
+    for (const m of modules) {
+      for (const l of m.lessons) {
+        if (!progress[l.id]) return { module: m, lesson: l };
+      }
+    }
+    return modules[0]
+      ? { module: modules[0], lesson: modules[0].lessons[0] }
+      : null;
+  };
+
   const enrollMut = api.trainings.enroll.useMutation({
     onSuccess: (data) => {
-      const firstModule = modules[0];
-      const firstLesson = firstModule?.lessons[0];
-      if (firstModule && firstLesson) {
+      const target = findNextLesson();
+      if (target?.module && target?.lesson) {
         router.push(
-          `/trainings/${training.slug}/learn/${firstModule.slug}/${firstLesson.slug}?enrollment=${data.enrollmentId}`,
+          `/trainings/${training.slug}/learn/${target.module.slug}/${target.lesson.slug}?enrollment=${data.enrollmentId}`,
         );
       } else {
         router.push("/trainings/my-trainings");
@@ -69,6 +90,9 @@ export function DetailClient({
     },
     onError: (e) => setError(e.message),
   });
+
+  const isCompleted = existingEnrollment?.status === "completed";
+  const isEnrolled = !!existingEnrollment;
 
   const onEnroll = () => {
     if (!isSignedIn) {
@@ -83,8 +107,34 @@ export function DetailClient({
       window.location.href = "/profile#pp-billing";
       return;
     }
+    // Already enrolled — go to the next lesson (or cert if fully completed).
+    if (existingEnrollment) {
+      if (isCompleted) {
+        router.push(
+          `/trainings/${training.slug}/certificate?enrollment=${existingEnrollment.id}`,
+        );
+        return;
+      }
+      const target = findNextLesson();
+      if (target?.module && target?.lesson) {
+        router.push(
+          `/trainings/${training.slug}/learn/${target.module.slug}/${target.lesson.slug}?enrollment=${existingEnrollment.id}`,
+        );
+        return;
+      }
+    }
     enrollMut.mutate({ slug: training.slug });
   };
+
+  const ctaLabel = enrollMut.isPending
+    ? "Enrolling…"
+    : !isPlatinum
+      ? "Upgrade to Platinum"
+      : isCompleted
+        ? "View certificate"
+        : isEnrolled
+          ? "Continue learning"
+          : "Enroll free";
 
   return (
     <>
@@ -117,13 +167,7 @@ export function DetailClient({
         moduleCount={modules.length}
         lessonCount={modules.reduce((n, m) => n + m.lessons.length, 0)}
         onEnroll={onEnroll}
-        ctaLabel={
-          enrollMut.isPending
-            ? "Enrolling…"
-            : !isPlatinum
-              ? "Upgrade to Platinum"
-              : "Enroll free"
-        }
+        ctaLabel={ctaLabel}
         ctaDisabled={enrollMut.isPending}
       />
       <DetailCurriculum modules={modules} />
