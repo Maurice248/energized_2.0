@@ -168,6 +168,12 @@ export function PublicProfileClient({
   });
   const badges = badgesQuery.data ?? [];
 
+  // Completed trainings — publicProcedure, recruiter-visible.
+  const trainingsQuery = api.trainings.completedForCandidate.useQuery({
+    candidateId: candidateUserId,
+  });
+  const completedTrainings = trainingsQuery.data ?? [];
+
   return (
     <div className="pub-page">
       {/* viewer banner */}
@@ -496,6 +502,110 @@ export function PublicProfileClient({
             </div>
           </section>
         ) : null}
+
+        {/* completed trainings */}
+        {completedTrainings.length > 0 && (
+          <section className="pub-section">
+            <div className="pub-section-head">
+              <div className="pub-section-kicker">03.6 · Completed trainings</div>
+              <div>
+                <h2 className="pub-section-title">
+                  Courses <em>completed.</em>
+                </h2>
+                <p className="pub-section-lede">
+                  Energized-graded courses with downloadable certificates.
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                marginTop: 20,
+                display: "grid",
+                gap: 12,
+              }}
+            >
+              {completedTrainings.map((t) => (
+                <div
+                  key={t.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "1px solid var(--v2-ink-200, #e2e8f0)",
+                    background: "var(--v2-ink-50, #f8fafc)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 10,
+                      display: "grid",
+                      placeItems: "center",
+                      background: t.trainingTileColor,
+                      color: "white",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {t.trainingMonogram}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>
+                      {t.trainingTitle}
+                    </div>
+                    <div style={{ marginTop: 2, fontSize: 12, color: "var(--v2-ink-500, #6b7280)" }}>
+                      {t.trainingDurationLabel}
+                      {t.trainingCertName ? ` · ${t.trainingCertName}` : ""}
+                      {t.completedAt
+                        ? ` · Completed ${new Date(t.completedAt).toLocaleDateString("en-CA", { year: "numeric", month: "short" })}`
+                        : ""}
+                    </div>
+                  </div>
+                  {t.finalScore !== null && (
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "5px 10px",
+                        borderRadius: 999,
+                        background: "var(--brand-blue, #1CAAE2)",
+                        color: "var(--brand-black, #101820)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t.finalScore}/100
+                    </div>
+                  )}
+                  <Link
+                    href={`/trainings/${t.trainingSlug}/certificate?enrollment=${t.id}`}
+                    aria-label="View certificate"
+                    style={{
+                      flexShrink: 0,
+                      width: 34,
+                      height: 34,
+                      borderRadius: 999,
+                      border: "1px solid var(--v2-ink-200, #e2e8f0)",
+                      background: "white",
+                      display: "grid",
+                      placeItems: "center",
+                      color: "var(--v2-ink-700, #475569)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <Icon name="arrowRight" size={14} />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* certifications */}
         {certs.length > 0 && (

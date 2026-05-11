@@ -9,6 +9,7 @@ export type SiteHeaderActive =
   | "home"
   | "jobs"
   | "skill-tests"
+  | "trainings"
   | "seekers"
   | "employers"
   | "about"
@@ -27,6 +28,7 @@ const NAV_LINKS: NavLink[] = [
   { id: "home", label: "Home", href: "/" },
   { id: "jobs", label: "Jobs", href: "/jobs" },
   { id: "skill-tests", label: "Skill tests", href: "/skills" },
+  { id: "trainings", label: "Trainings", href: "/trainings" },
   { id: "seekers", label: "For job seekers", href: "/for-seekers" },
   { id: "employers", label: "For employers", href: "/for-employers" },
   { id: "about", label: "About", href: "/about" },
@@ -64,14 +66,14 @@ export async function SiteHeader({ active }: { active?: SiteHeaderActive }) {
         <nav className="v2-nav-links">
           {NAV_LINKS.map((l) => {
             const isActive = active === l.id;
-            const isAi = l.id === "skill-tests";
+            const hasIcon = l.id === "skill-tests" || l.id === "trainings";
             return (
               <Link
                 key={l.id}
                 href={l.href}
                 className={`v2-nav-link ${isActive ? "active" : ""}`}
                 style={
-                  isAi
+                  hasIcon
                     ? { ...(isActive ? activeLinkStyle : {}), display: "inline-flex", alignItems: "center", gap: 6 }
                     : isActive
                       ? activeLinkStyle
@@ -79,9 +81,9 @@ export async function SiteHeader({ active }: { active?: SiteHeaderActive }) {
                 }
                 aria-current={isActive ? "page" : undefined}
               >
-                {isAi && (
+                {hasIcon && (
                   <Icon
-                    name="sparkles"
+                    name={l.id === "skill-tests" ? "sparkles" : "graduationCap"}
                     size={14}
                     color={
                       isActive
