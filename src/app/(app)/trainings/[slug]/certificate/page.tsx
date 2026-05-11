@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import { api } from "@/lib/trpc/server";
+import { getSession } from "@/server/auth";
 import { PrintButton } from "./print-button";
 
 const fmtDate = (d: Date | string) =>
@@ -15,6 +16,10 @@ export default async function CertificatePage({
 }: {
   searchParams: Promise<{ enrollment?: string }>;
 }) {
+  const session = await getSession();
+  if (session?.user?.role === "employer") {
+    redirect("/candidates");
+  }
   const sp = await searchParams;
   if (!sp.enrollment) notFound();
 

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight } from "lucide-react";
 import posthog from "posthog-js";
@@ -10,13 +11,22 @@ type Sector = {
   roles: { slug: string; name: string }[];
 };
 
-export function CatalogHero({ sectors }: { sectors: Sector[] }) {
+export function CatalogHero({
+  sectors,
+  isEmployer,
+}: {
+  sectors: Sector[];
+  isEmployer: boolean;
+}) {
   const [text, setText] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     try {
-      posthog.capture("skill_test.catalog.viewed", { totalSectors: sectors.length });
+      posthog.capture("skill_test.catalog.viewed", {
+        totalSectors: sectors.length,
+        isEmployer,
+      });
     } catch {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -40,15 +50,25 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
     <div className="grid gap-14 border-b border-slate-200 pb-12 lg:grid-cols-[1.4fr_1fr] lg:items-end">
       <div>
         <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-          Skill assessments
+          {isEmployer ? "Skill assessments · proof of talent" : "Skill assessments"}
         </div>
         <h1 className="mt-6 text-5xl font-bold leading-[0.95] tracking-tight md:text-7xl lg:text-8xl">
-          Get <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
-          One sitting. 25 minutes.
+          {isEmployer ? (
+            <>
+              Hire <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
+              Not self-claimed.
+            </>
+          ) : (
+            <>
+              Get <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
+              One sitting. 25 minutes.
+            </>
+          )}
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
-          AI builds a fresh test for your sector and role — multiple choice, real scenarios, calcs.
-          Pass and a badge lands on your profile that recruiters can filter by.
+          {isEmployer
+            ? "Every candidate on Energized can prove what they know — same AI-built test, real scenarios, sector-specific. Filter by badge and shortlist with confidence."
+            : "AI builds a fresh test for your sector and role — multiple choice, real scenarios, calcs. Pass and a badge lands on your profile that recruiters can filter by."}
         </p>
         <div className="mt-8 flex flex-wrap gap-9">
           <Stat v={String(sectors.length)} l="Sectors covered" />
@@ -57,6 +77,9 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
         </div>
       </div>
 
+      {isEmployer ? (
+        <EmployerPanel />
+      ) : (
       <div className="relative overflow-hidden rounded-3xl bg-[var(--brand-black)] p-7 text-white">
         <div className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(28,170,226,0.25),transparent_70%)]" />
         <div className="relative">
@@ -126,6 +149,46 @@ export function CatalogHero({ sectors }: { sectors: Sector[] }) {
             ))}
           </div>
         </div>
+      </div>
+      )}
+    </div>
+  );
+}
+
+function EmployerPanel() {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-[var(--brand-black)] p-7 text-white">
+      <div className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(28,170,226,0.25),transparent_70%)]" />
+      <div className="relative">
+        <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--brand-blue)]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-blue)]" />
+          Find verified candidates
+        </div>
+        <h3
+          className="mt-3 text-4xl font-bold tracking-tight"
+          style={{ color: "#fff" }}
+        >
+          This is what your future hires{" "}
+          <em
+            className="not-italic italic"
+            style={{ color: "var(--brand-blue, #1CAAE2)" }}
+          >
+            prove
+          </em>
+          .
+        </h3>
+        <p
+          className="mt-3 text-base leading-7"
+          style={{ color: "rgba(255,255,255,0.85)" }}
+        >
+          Pick a sector below to see candidates who have earned the badge — or jump straight to the talent pool.
+        </p>
+        <Link
+          href="/candidates"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-blue)] px-5 py-2.5 text-sm font-bold text-[var(--brand-black)] transition hover:bg-[var(--brand-dark-blue)] hover:text-white"
+        >
+          Browse candidates <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </div>
   );

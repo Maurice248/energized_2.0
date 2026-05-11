@@ -22,10 +22,18 @@ const LEVEL_LABEL: Record<string, string> = {
   all: "All levels",
 };
 
-export function TrainingCard({ training }: { training: CardTraining }) {
+export function TrainingCard({
+  training,
+  isEmployer,
+}: {
+  training: CardTraining;
+  isEmployer: boolean;
+}) {
+  const href = isEmployer ? "/candidates" : `/trainings/${training.slug}`;
   return (
     <Link
-      href={`/trainings/${training.slug}`}
+      href={href}
+      title={isEmployer ? "See candidates investing in their skills" : undefined}
       className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-slate-300 bg-white p-6 transition hover:-translate-y-0.5 hover:border-[var(--brand-black,#101820)] hover:shadow-xl"
     >
       <div className="flex items-start justify-between gap-3">

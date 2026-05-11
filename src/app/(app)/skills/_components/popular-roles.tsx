@@ -8,7 +8,13 @@ type Sector = {
   roles: { slug: string; name: string; subDescription: string | null }[];
 };
 
-export function PopularRoles({ sectors }: { sectors: Sector[] }) {
+export function PopularRoles({
+  sectors,
+  isEmployer,
+}: {
+  sectors: Sector[];
+  isEmployer: boolean;
+}) {
   const top = sectors
     .flatMap((s) => s.roles.slice(0, 1).map((r) => ({ ...r, sector: s })))
     .slice(0, 9);
@@ -23,10 +29,15 @@ export function PopularRoles({ sectors }: { sectors: Sector[] }) {
         </div>
       </div>
       <div className="border-t border-slate-200">
-        {top.map((r, i) => (
+        {top.map((r, i) => {
+          const href = isEmployer
+            ? `/candidates?badges=${encodeURIComponent(r.sector.slug)}`
+            : `/skills/${r.slug}/configure`;
+          return (
           <Link
             key={r.slug}
-            href={`/skills/${r.slug}/configure`}
+            href={href}
+            title={isEmployer ? "See candidates with this badge" : undefined}
             className="group grid grid-cols-[40px_1fr_44px] items-center gap-6 border-b border-slate-200 px-2 py-5 transition hover:bg-white hover:px-4 md:grid-cols-[60px_1.4fr_1fr_60px]"
           >
             <div className="text-xs font-bold uppercase text-slate-400">
@@ -50,7 +61,8 @@ export function PopularRoles({ sectors }: { sectors: Sector[] }) {
               <ArrowRight className="h-4 w-4" />
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </>
   );

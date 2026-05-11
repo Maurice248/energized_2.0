@@ -6,8 +6,10 @@ import { CatalogFilters, type Filters } from "./catalog-filters";
 
 export function CatalogClient({
   initialTrainings,
+  isEmployer,
 }: {
   initialTrainings: CardTraining[];
+  isEmployer: boolean;
 }) {
   const [filters, setFilters] = useState<Filters>({
     query: "",
@@ -66,7 +68,7 @@ export function CatalogClient({
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {visible.map((t) => (
-          <TrainingCard key={t.slug} training={t} />
+          <TrainingCard key={t.slug} training={t} isEmployer={isEmployer} />
         ))}
       </div>
     </div>
