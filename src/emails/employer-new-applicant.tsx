@@ -22,7 +22,7 @@ export default function EmployerNewApplicantEmail({
 }: Props) {
   return (
     <EmailShell
-      preview={`New applicant for ${jobTitle} — ${candidateName}`}
+      preview={`New applicant for ${jobTitle} at ${companyName} — ${candidateName}`}
       footer={
         <>
           <Text style={{ margin: 0, fontSize: 12, color: INK_500 }}>
