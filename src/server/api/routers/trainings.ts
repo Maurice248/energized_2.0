@@ -166,12 +166,47 @@ export const trainingsRouter = router({
         trainingTileColor: trainings.tileColor,
         trainingHours: trainings.hours,
         trainingDurationLabel: trainings.durationLabel,
+        // Total lesson count for this training — used for progress bars
+        // on the "Continue learning" dashboard card.
+        totalLessons: sql<number>`(
+          SELECT COUNT(*)::int FROM training_lessons tl
+          INNER JOIN training_modules tm ON tm.id = tl.module_id
+          WHERE tm.training_id = ${trainings.id}
+        )`,
       })
       .from(trainingEnrollments)
       .innerJoin(trainings, eq(trainings.id, trainingEnrollments.trainingId))
       .where(eq(trainingEnrollments.candidateId, ctx.session.user.id))
       .orderBy(desc(trainingEnrollments.enrolledAt));
   }),
+
+  // Public so recruiters viewing /p/[id] can see the candidate's
+  // completed trainings without needing to be signed in.
+  completedForCandidate: publicProcedure
+    .input(z.object({ candidateId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select({
+          id: trainingEnrollments.id,
+          completedAt: trainingEnrollments.completedAt,
+          finalScore: trainingEnrollments.finalScore,
+          trainingSlug: trainings.slug,
+          trainingTitle: trainings.title,
+          trainingMonogram: trainings.monogram,
+          trainingTileColor: trainings.tileColor,
+          trainingCertName: trainings.certName,
+          trainingDurationLabel: trainings.durationLabel,
+        })
+        .from(trainingEnrollments)
+        .innerJoin(trainings, eq(trainings.id, trainingEnrollments.trainingId))
+        .where(
+          and(
+            eq(trainingEnrollments.candidateId, input.candidateId),
+            eq(trainingEnrollments.status, "completed"),
+          ),
+        )
+        .orderBy(desc(trainingEnrollments.completedAt));
+    }),
 
   enroll: jobseekerProcedure
     .input(z.object({ slug: z.string() }))

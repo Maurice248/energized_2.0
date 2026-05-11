@@ -11,6 +11,7 @@ import {
   savedJobs,
   skillBadges,
   trainingEnrollments,
+  trainings,
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
@@ -154,6 +155,34 @@ export default async function DashboardPage() {
       ),
     );
   const completedTrainings = completedTrainingsRow?.count ?? 0;
+
+  // --- in-progress trainings (for "Continue learning" card) ----------
+  const inProgressTrainings = await db
+    .select({
+      id: trainingEnrollments.id,
+      progressJson: trainingEnrollments.progressJson,
+      startedAt: trainingEnrollments.startedAt,
+      trainingSlug: trainings.slug,
+      trainingTitle: trainings.title,
+      trainingMonogram: trainings.monogram,
+      trainingTileColor: trainings.tileColor,
+      trainingDurationLabel: trainings.durationLabel,
+      totalLessons: sql<number>`(
+        SELECT COUNT(*)::int FROM training_lessons tl
+        INNER JOIN training_modules tm ON tm.id = tl.module_id
+        WHERE tm.training_id = ${trainings.id}
+      )`,
+    })
+    .from(trainingEnrollments)
+    .innerJoin(trainings, eq(trainings.id, trainingEnrollments.trainingId))
+    .where(
+      and(
+        eq(trainingEnrollments.candidateId, userId),
+        eq(trainingEnrollments.status, "in_progress"),
+      ),
+    )
+    .orderBy(desc(trainingEnrollments.startedAt))
+    .limit(3);
 
   // --- profile views ----------
   const profileViews30d = await countJobseekerProfileViews30d(userId);
@@ -322,6 +351,11 @@ export default async function DashboardPage() {
 
               {/* Trainings promo */}
               <TrainingsCard completedCount={completedTrainings} />
+
+              {/* Continue learning — only renders if user has in-progress courses */}
+              {inProgressTrainings.length > 0 && (
+                <ContinueLearningCard trainings={inProgressTrainings} />
+              )}
 
               {/* Intro requests inbox */}
               <IntrosCard />
@@ -1141,6 +1175,133 @@ function TrainingsCard({ completedCount }: { completedCount: number }) {
           style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           My trainings <Icon name="arrowRight" size={14} />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- continue learning card ---------- */
+
+type InProgressItem = {
+  id: string;
+  progressJson: Record<string, { completedAt: string; score?: number }>;
+  startedAt: Date | null;
+  trainingSlug: string;
+  trainingTitle: string;
+  trainingMonogram: string;
+  trainingTileColor: string;
+  trainingDurationLabel: string;
+  totalLessons: number;
+};
+
+function ContinueLearningCard({ trainings: items }: { trainings: InProgressItem[] }) {
+  return (
+    <section className="v2-card">
+      <div className="v2-card-head">
+        <div>
+          <div className="v2-eyebrow">Continue learning</div>
+          <h2 className="v2-card-title" style={{ marginTop: 8 }}>
+            {items.length} course{items.length === 1 ? "" : "s"}{" "}
+            <em style={{ color: "var(--brand-dark-blue, #004984)" }}>in progress.</em>
+          </h2>
+        </div>
+      </div>
+      <div style={{ marginTop: 18, display: "grid", gap: 12 }}>
+        {items.map((t) => {
+          const done = Object.keys(t.progressJson ?? {}).length;
+          const total = Math.max(1, t.totalLessons);
+          const pct = Math.round((done / total) * 100);
+          return (
+            <Link
+              key={t.id}
+              href={`/trainings/${t.trainingSlug}`}
+              className="v2-link-row"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "12px 14px",
+                borderRadius: 12,
+                border: "1px solid var(--v2-ink-200, #e2e8f0)",
+                background: "white",
+                color: "inherit",
+                textDecoration: "none",
+                transition: "border-color .12s",
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  display: "grid",
+                  placeItems: "center",
+                  background: t.trainingTileColor,
+                  color: "white",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {t.trainingMonogram}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--v2-ink-900)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {t.trainingTitle}
+                </div>
+                <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      height: 5,
+                      flex: 1,
+                      background: "var(--v2-ink-100, #f1f5f9)",
+                      borderRadius: 999,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${pct}%`,
+                        background: "var(--brand-blue, #1CAAE2)",
+                        transition: "width .3s",
+                      }}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "var(--brand-dark-blue, #004984)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+              <Icon name="arrowRight" size={14} />
+            </Link>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <Link
+          href="/trainings/my-trainings"
+          className="v2-card-link"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          See all <Icon name="arrowRight" size={14} />
         </Link>
       </div>
     </section>
