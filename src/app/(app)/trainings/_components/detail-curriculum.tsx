@@ -33,11 +33,14 @@ export function DetailCurriculum({ modules }: { modules: Module[] }) {
         {modules.length} module{modules.length === 1 ? "" : "s"} &middot;{" "}
         {modules.reduce((n, m) => n + m.lessons.length, 0)} lessons
       </p>
-      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3">
         {modules.map((m) => {
           const isOpen = open === m.id;
           return (
-            <div key={m.id} className="border-b border-slate-200 last:border-b-0">
+            <div
+              key={m.id}
+              className="overflow-hidden rounded-xl border border-slate-200 mt-2 first:mt-0"
+            >
               <button
                 onClick={() => setOpen(isOpen ? null : m.id)}
                 className="flex w-full items-center gap-4 px-6 py-5 text-left transition hover:bg-slate-50"
