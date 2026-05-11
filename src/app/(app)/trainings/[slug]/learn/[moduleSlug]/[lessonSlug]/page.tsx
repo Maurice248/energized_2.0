@@ -20,6 +20,9 @@ export default async function LearnPage({
   if (!session) {
     redirect(`/sign-in?redirect=/trainings/${slug}`);
   }
+  if (session.user.role === "employer") {
+    redirect("/candidates");
+  }
 
   const data = await api.trainings.getBySlug({ slug }).catch(() => null);
   if (!data) notFound();

@@ -21,7 +21,7 @@ const fmtDate = (d: Date | string) =>
 export default async function MyTrainingsPage() {
   const session = await getSession();
   if (!session) redirect("/sign-in?redirect=/trainings/my-trainings");
-  if (session.user.role === "employer") redirect("/employer");
+  if (session.user.role === "employer") redirect("/candidates");
 
   const enrollments = await api.trainings.myEnrollments();
 

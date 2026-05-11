@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { api } from "@/lib/trpc/server";
 import { getSession } from "@/server/auth";
 import { db } from "@/server/db";
@@ -16,10 +16,13 @@ export default async function TrainingDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const session = await getSession();
+  if (session?.user?.role === "employer") {
+    redirect("/candidates");
+  }
   const data = await api.trainings.getBySlug({ slug }).catch(() => null);
   if (!data) notFound();
 
-  const session = await getSession();
   let isPlatinum = false;
   let existingEnrollment: {
     id: string;
