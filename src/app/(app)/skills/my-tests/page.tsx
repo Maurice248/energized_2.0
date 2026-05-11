@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default async function MyTestsPage() {
   const session = await getSession();
   if (!session) redirect("/sign-in?redirect=/skills/my-tests");
-  if (session.user.role === "employer") redirect("/employer");
+  if (session.user.role === "employer") redirect("/candidates");
 
   const attempts = await api.skillTests.myAttempts();
 
