@@ -185,7 +185,7 @@ function EmployerPanel() {
         </p>
         <Link
           href="/candidates"
-          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-blue)] px-5 py-2.5 text-sm font-bold text-[var(--brand-black)] transition hover:bg-white"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-blue)] px-5 py-2.5 text-sm font-bold text-[var(--brand-black)] transition hover:bg-[var(--brand-dark-blue)] hover:text-white"
         >
           Browse candidates <ArrowRight className="h-4 w-4" />
         </Link>
