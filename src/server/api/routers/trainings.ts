@@ -244,6 +244,99 @@ export const trainingsRouter = router({
         score: undefined,
       });
     }),
+
+  // ---------------------------------------------------------------------------
+  // Quiz + progress + certificate
+  // ---------------------------------------------------------------------------
+
+  submitQuiz: protectedProcedure
+    .input(
+      z.object({
+        enrollmentId: z.string().uuid(),
+        lessonId: z.string().uuid(),
+        answers: z.record(z.string(), z.number().int().min(0).max(3)),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [lesson] = await ctx.db
+        .select()
+        .from(trainingLessons)
+        .where(eq(trainingLessons.id, input.lessonId))
+        .limit(1);
+      if (!lesson || lesson.kind !== "quiz" || !lesson.quizQuestionsJson) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Lesson is not a quiz.",
+        });
+      }
+
+      let correct = 0;
+      for (const q of lesson.quizQuestionsJson) {
+        if (input.answers[q.id] === q.correctIdx) correct += 1;
+      }
+      const total = lesson.quizQuestionsJson.length;
+      const score = Math.round((correct / total) * 100);
+      const passed = score >= (lesson.quizPassThreshold ?? 70);
+
+      if (passed) {
+        const result = await finalizeLessonProgress(ctx, {
+          enrollmentId: input.enrollmentId,
+          lessonId: input.lessonId,
+          score,
+        });
+        return { score, passed, correct, total, ...result };
+      }
+
+      return { score, passed, correct, total, completed: false };
+    }),
+
+  getEnrollmentProgress: protectedProcedure
+    .input(z.object({ enrollmentId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [enr] = await ctx.db
+        .select()
+        .from(trainingEnrollments)
+        .where(eq(trainingEnrollments.id, input.enrollmentId))
+        .limit(1);
+      if (!enr) throw new TRPCError({ code: "NOT_FOUND" });
+      if (enr.candidateId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return enr;
+    }),
+
+  // Public so a recruiter can view a shared cert link without signing in.
+  // UUIDs are unguessable; cert exposes only the candidate's name + course.
+  getCertificate: publicProcedure
+    .input(z.object({ enrollmentId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          enrollmentId: trainingEnrollments.id,
+          status: trainingEnrollments.status,
+          completedAt: trainingEnrollments.completedAt,
+          finalScore: trainingEnrollments.finalScore,
+          candidateName: user.name,
+          trainingTitle: trainings.title,
+          trainingCertName: trainings.certName,
+          trainingDurationLabel: trainings.durationLabel,
+          trainingInstructorName: trainings.instructorName,
+        })
+        .from(trainingEnrollments)
+        .innerJoin(user, eq(user.id, trainingEnrollments.candidateId))
+        .innerJoin(trainings, eq(trainings.id, trainingEnrollments.trainingId))
+        .where(eq(trainingEnrollments.id, input.enrollmentId))
+        .limit(1);
+      const cert = rows[0];
+      if (!cert) throw new TRPCError({ code: "NOT_FOUND" });
+      if (cert.status !== "completed") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Training not yet completed.",
+        });
+      }
+      return cert;
+    }),
 });
 
 // ---------------------------------------------------------------------------
