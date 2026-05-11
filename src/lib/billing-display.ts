@@ -60,10 +60,10 @@ export const GOLD_FEATURES: string[] = [
 export const PLATINUM_FEATURES: string[] = [
   "Everything in Gold (incl. AI features when shipped)",
   "Cert expiry warnings in your profile",
-  "Trainings library — energy-sector courses (coming soon)",
+  "Trainings library — energy-sector courses",
   "Cert prep & practice tests, H2S / First Aid / CSTS / P.Eng (coming soon)",
-  "Renewal reminder emails before tickets expire (coming soon)",
-  "Early access to new training content as it launches (coming soon)",
+  "Renewal reminder emails before tickets expire",
+  "Early access to new training content as it launches",
 ];
 
 /* ---------- Free-tier delivered features (no Stripe product, no billing) ---------- */

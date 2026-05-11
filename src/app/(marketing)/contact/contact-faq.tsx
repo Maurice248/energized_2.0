@@ -19,7 +19,7 @@ const FAQ_DATA: FaqEntry[] = [
     q: "Is Energized free for jobseekers?",
     a: [
       "Yes for the core experience. Applying to unlimited roles, saved searches, your public profile, application tracking, and email alerts are all free — no credit card needed.",
-      "AI features (match scoring on every role, cover-letter generator, profile polish) are part of the Gold tier at C$59/mo. Platinum (C$149/mo) adds training-related features that are still being built. The free tier covers the entire core search-and-apply experience.",
+      "AI features (match scoring on every role, cover-letter generator, profile polish) are part of the Gold tier at C$59/mo. Platinum (C$149/mo) adds the trainings library — sector-specific courses graded by working senior engineers. The free tier covers the entire core search-and-apply experience.",
     ],
   },
   {
