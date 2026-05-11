@@ -43,7 +43,8 @@ export function DetailCurriculum({ modules }: { modules: Module[] }) {
             >
               <button
                 onClick={() => setOpen(isOpen ? null : m.id)}
-                className="flex w-full items-center gap-4 px-6 py-5 text-left transition hover:bg-slate-50"
+                className="flex w-full items-center gap-4 text-left transition hover:bg-slate-50"
+                style={{ padding: "20px 24px" }}
               >
                 <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
                   {m.number}
