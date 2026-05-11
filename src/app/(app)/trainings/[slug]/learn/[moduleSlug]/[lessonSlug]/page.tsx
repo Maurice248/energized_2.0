@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { api } from "@/lib/trpc/server";
 import { getSession } from "@/server/auth";
 import { db } from "@/server/db";
-import { trainings, trainingEnrollments } from "@/server/db/schema";
+import { trainingEnrollments } from "@/server/db/schema";
 import { PlayerClient } from "./player-client";
 
 export default async function LearnPage({
