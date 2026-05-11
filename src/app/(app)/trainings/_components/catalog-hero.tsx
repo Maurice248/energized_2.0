@@ -16,7 +16,7 @@ export function CatalogHero({ total }: { total: number }) {
           </em>
           .
         </h1>
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+        <p className="mt-10 max-w-xl text-lg leading-relaxed text-slate-600">
           {total}+ courses graded by working senior engineers across Canadian
           energy. Self-paced. Earn certificates that sit on your profile —
           recruiters notice.
