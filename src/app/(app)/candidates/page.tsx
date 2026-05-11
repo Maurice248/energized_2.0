@@ -33,6 +33,7 @@ type SearchParams = {
   setup?: string;
   minYears?: string;
   openToWork?: string;
+  badges?: string;
   page?: string;
 };
 
@@ -73,6 +74,12 @@ export default async function CandidatesPage({
   const minYears =
     Number.isInteger(minYearsRaw) && minYearsRaw >= 0 ? minYearsRaw : undefined;
   const openToWork = sp.openToWork !== "0";
+  const badgeSlugs = sp.badges
+    ? sp.badges
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined;
   const pageRaw = sp.page ? Number.parseInt(sp.page, 10) : 1;
   const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
 
@@ -83,6 +90,7 @@ export default async function CandidatesPage({
     setup,
     minYears,
     openToWork,
+    badgeSlugs,
     page,
   });
 
@@ -106,6 +114,7 @@ export default async function CandidatesPage({
               setup: setup ?? "",
               minYears: minYears != null ? String(minYears) : "",
               openToWork,
+              badges: sp.badges ?? "",
             }}
           />
           <SavedSearchesPanel surface="candidates" />
@@ -161,6 +170,7 @@ function CandidateCard({
     remotePreference: string | null;
     openToWork: boolean;
     skills: string[];
+    featured: boolean;
   };
 }) {
   const initial = (candidate.name?.trim()[0] ?? "?").toUpperCase();
@@ -170,10 +180,13 @@ function CandidateCard({
       style={{
         display: "block",
         background: "white",
-        border: "1px solid var(--v2-ink-200)",
+        border: candidate.featured
+          ? "1px solid var(--v2-accent-deep)"
+          : "1px solid var(--v2-ink-200)",
         borderRadius: 16,
         padding: 20,
         transition: "border-color 150ms, box-shadow 150ms",
+        position: "relative",
       }}
       className="hover:!border-[var(--v2-ink-400)] hover:shadow-sm"
     >
@@ -225,6 +238,26 @@ function CandidateCard({
             >
               {candidate.name ?? "Anonymous"}
             </h3>
+            {candidate.featured && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "white",
+                  background: "var(--v2-ink-950)",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+                title="Featured profile · Gold subscriber"
+              >
+                ★ Featured
+              </span>
+            )}
             {candidate.openToWork && (
               <span
                 style={{
@@ -361,6 +394,7 @@ function Pagination({
     if (searchParams.setup) params.set("setup", searchParams.setup);
     if (searchParams.minYears) params.set("minYears", searchParams.minYears);
     if (searchParams.openToWork) params.set("openToWork", searchParams.openToWork);
+    if (searchParams.badges) params.set("badges", searchParams.badges);
     if (next > 1) params.set("page", String(next));
     const qs = params.toString();
     return qs ? `/candidates?${qs}` : "/candidates";

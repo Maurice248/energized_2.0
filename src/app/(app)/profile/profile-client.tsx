@@ -1394,6 +1394,23 @@ function BasicsForm({
   const [location, setLocation] = useState(initialLocation);
   const [phone, setPhone] = useState(initialPhone);
   const [summary, setSummary] = useState(initialSummary);
+  const [preBetterSummary, setPreBetterSummary] = useState<string | null>(null);
+  const [polishError, setPolishError] = useState<string | null>(null);
+  const polish = api.profile.polishSummary.useMutation({
+    onSuccess: (data) => {
+      // Snapshot the FIRST pre-polish state so multi-tap polishing can still
+      // undo back to the user's hand-typed draft, not just the previous AI
+      // output.
+      setPreBetterSummary((prev) => prev ?? summary);
+      setSummary(data.polished);
+      setPolishError(null);
+    },
+    onError: (err) => {
+      setPolishError(err.message);
+      // Do NOT touch preBetterSummary — preserves Undo if a previous polish
+      // succeeded and a subsequent retry errored.
+    },
+  });
   const dirty =
     headline !== initialHeadline ||
     location !== initialLocation ||
@@ -1442,7 +1459,48 @@ function BasicsForm({
         />
         <LabeledInput label="Work email" value={email} readOnly full />
         <div className="ob-field" style={{ gridColumn: "1 / -1" }}>
-          <label>Professional summary · 1–3 sentences</label>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+              marginBottom: 6,
+            }}
+          >
+            <label style={{ margin: 0 }}>
+              Professional summary · 1–3 sentences
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {preBetterSummary !== null && (
+                <button
+                  type="button"
+                  className="v2-btn v2-btn-ghost v2-btn-sm"
+                  onClick={() => {
+                    setSummary(preBetterSummary);
+                    setPreBetterSummary(null);
+                  }}
+                  title="Restore the version before AI polish"
+                >
+                  <Icon name="x" size={12} /> Undo polish
+                </button>
+              )}
+              <button
+                type="button"
+                className="v2-btn v2-btn-outline v2-btn-sm"
+                disabled={polish.isPending || summary.trim().length === 0}
+                onClick={() => {
+                  setPolishError(null);
+                  polish.mutate({ current: summary });
+                }}
+                title="Rewrite this paragraph with AI to highlight measurable impact (Gold)"
+              >
+                <Icon name="sparkles" size={12} />
+                {polish.isPending ? "Polishing…" : "Polish with AI"}
+              </button>
+            </div>
+          </div>
           <textarea
             className="v2-input-block"
             value={summary}
@@ -1450,6 +1508,42 @@ function BasicsForm({
             rows={3}
             placeholder="A few lines on the work you do best and the sectors you&#39;ve shipped in."
           />
+          {polishError && (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 12,
+                color: "#A63A20",
+                lineHeight: 1.5,
+              }}
+            >
+              {polishError}{" "}
+              {polishError.toLowerCase().includes("gold") && (
+                <a
+                  href="#pp-billing"
+                  style={{
+                    color: "var(--v2-accent-deep)",
+                    textDecoration: "underline",
+                  }}
+                >
+                  See plans
+                </a>
+              )}
+            </div>
+          )}
+          {preBetterSummary !== null && !polishError && (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 12,
+                color: "var(--v2-ink-500)",
+                lineHeight: 1.5,
+              }}
+            >
+              <Icon name="sparkles" size={11} /> AI polish applied. Save basics
+              to keep it, or undo above.
+            </div>
+          )}
         </div>
       </div>
     </section>

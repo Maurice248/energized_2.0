@@ -43,8 +43,8 @@ type JobRow = inferRouterOutputs<AppRouter>["jobs"]["getById"];
 const STEPS = [
   { id: 1, eyebrow: "STEP 01 · THE ROLE", title: "What's the role?", hint: "The basics recruiters search by." },
   { id: 2, eyebrow: "STEP 02 · WHERE & HOW", title: "Where is this work?", hint: "Location, setup, rotation." },
-  { id: 3, eyebrow: "STEP 03 · PAY & TICKETS", title: "What does it pay, what does it need?", hint: "Range and required certifications." },
-  { id: 4, eyebrow: "STEP 04 · THE STORY", title: "Tell the candidate what this actually is.", hint: "Summary plus a real description." },
+  { id: 3, eyebrow: "STEP 03 · THE STORY", title: "Tell the candidate what this actually is.", hint: "Summary plus a real description." },
+  { id: 4, eyebrow: "STEP 04 · PAY & TICKETS", title: "What does it pay, what does it need?", hint: "Range, certs, and screening questions." },
 ] as const;
 
 const AUTOSAVE_DEBOUNCE_MS = 600;
@@ -55,10 +55,10 @@ const FIELD_TO_STEP: Record<string, number> = {
   experienceLevel: 1,
   location: 2,
   workSetup: 2,
-  salary: 3,
-  salaryRange: 3,
-  description: 4,
-  summary: 4,
+  description: 3,
+  summary: 3,
+  salary: 4,
+  salaryRange: 4,
 };
 
 function firstStepWithMissing(fields: string[]): number | null {
@@ -433,17 +433,14 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
           )}
 
           {step === 1 && (
-            <BasicsStep draft={draft} setDraft={setDraft} missing={missingFields} />
+            <BasicsStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
           )}
           {step === 2 && (
-            <LocationStep draft={draft} setDraft={setDraft} missing={missingFields} />
+            <LocationStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
           )}
           {step === 3 && (
-            <PayStep draft={draft} setDraft={setDraft} missing={missingFields} />
-          )}
-          {step === 4 && (
             <div style={{ display: "grid", gap: 28 }}>
-              <StoryStep draft={draft} setDraft={setDraft} missing={missingFields} />
+              <StoryStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
               <div className="v2-eyebrow">Live preview</div>
               <JobPreviewCard
                 job={{
@@ -463,6 +460,9 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
                 }}
               />
             </div>
+          )}
+          {step === 4 && (
+            <PayStep draft={draft} setDraft={setDraft} missing={missingFields} jobId={initial.id} />
           )}
 
           {publishError && (

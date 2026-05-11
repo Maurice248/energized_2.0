@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
+import { SkillBadgePill } from "@/components/applicants/skill-badge-pill";
 
 export type ApplicationStatus =
   | "submitted"
@@ -29,6 +30,10 @@ export type ApplicantRow = {
   headline: string | null;
   location: string | null;
   yearsExperience: number | null;
+  /** Cached AI fit score, null when not scored yet. */
+  fitScore: number | null;
+  /** The energy sector of the job being applied to, for badge filtering. */
+  jobSector: string | null;
 };
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -115,6 +120,19 @@ export function ApplicantCard({
     (s) => s !== applicant.status,
   );
 
+  // Fetch skill badges for this candidate, filtered to this job's sector.
+  const badgesQuery = api.skillTests.badgesForCandidate.useQuery(
+    { candidateId: applicant.candidateId },
+    { retry: false, staleTime: 5 * 60 * 1000 },
+  );
+  const matchingBadges = (badgesQuery.data ?? [])
+    .filter(
+      (b) =>
+        applicant.jobSector === null || b.jobSectorMatch === applicant.jobSector,
+    )
+    .sort((a, b) => Number(b.isVerifiedTop) - Number(a.isVerifiedTop))
+    .slice(0, 2);
+
   return (
     <div
       style={{
@@ -194,6 +212,28 @@ export function ApplicantCard({
             <span className={statusChipClass(applicant.status)}>
               {STATUS_LABELS[applicant.status]}
             </span>
+            {applicant.fitScore != null && (
+              <span
+                title="AI fit score · cached from scoreApplicantForEmployer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "white",
+                  background: "var(--v2-ink-950)",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  fontFamily: "var(--v2-font-mono)",
+                }}
+              >
+                <span style={{ color: "var(--v2-accent)" }}>★</span>
+                {applicant.fitScore}
+              </span>
+            )}
           </div>
           <div
             style={{
@@ -221,6 +261,19 @@ export function ApplicantCard({
           {applicationStatus === "interview" && (
             <div style={{ marginTop: 6 }}>
               <InterviewBadge applicationId={applicant.id} />
+            </div>
+          )}
+          {matchingBadges.length > 0 && (
+            <div
+              style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}
+            >
+              {matchingBadges.map((b) => (
+                <SkillBadgePill
+                  key={b.topicId}
+                  topicName={b.name}
+                  isVerifiedTop={b.isVerifiedTop}
+                />
+              ))}
             </div>
           )}
         </div>

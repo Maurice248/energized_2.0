@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import {
   applications,
   jobListings,
+  jobMatches,
   orgMembers,
   profiles,
   user,
@@ -42,6 +43,7 @@ export default async function JobApplicantsPage({
       orgId: jobListings.orgId,
       title: jobListings.title,
       status: jobListings.status,
+      sector: jobListings.sector,
     })
     .from(jobListings)
     .where(eq(jobListings.id, id))
@@ -75,10 +77,22 @@ export default async function JobApplicantsPage({
       headline: profiles.headline,
       location: profiles.location,
       yearsExperience: profiles.yearsExperience,
+      // Cached AI fit score from job_matches; null until first scored.
+      // Populated when an employer opens the per-applicant detail page
+      // (or when the candidate's Ember card runs). Avoids N+1 AI calls
+      // on kanban load.
+      fitScore: jobMatches.score,
     })
     .from(applications)
     .innerJoin(user, eq(user.id, applications.candidateId))
     .leftJoin(profiles, eq(profiles.userId, user.id))
+    .leftJoin(
+      jobMatches,
+      and(
+        eq(jobMatches.jobId, applications.jobId),
+        eq(jobMatches.candidateId, applications.candidateId),
+      ),
+    )
     .where(eq(applications.jobId, job.id))
     .orderBy(desc(applications.createdAt));
 
@@ -94,6 +108,8 @@ export default async function JobApplicantsPage({
     headline: r.headline,
     location: r.location,
     yearsExperience: r.yearsExperience,
+    fitScore: r.fitScore,
+    jobSector: job.sector ?? null,
   }));
 
   return (

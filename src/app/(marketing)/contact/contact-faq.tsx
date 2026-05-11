@@ -18,8 +18,8 @@ const FAQ_DATA: FaqEntry[] = [
     tag: "Seekers",
     q: "Is Energized free for jobseekers?",
     a: [
-      "Yes. Applying to roles, AI-assisted match scoring, saved searches, and your public profile are all free — no credit card needed.",
-      "Paid jobseeker tiers (skills assessments, recruiter messaging, coaching) are on the roadmap but not live yet. The free tier covers the entire core search-and-apply experience.",
+      "Yes for the core experience. Applying to unlimited roles, saved searches, your public profile, application tracking, and email alerts are all free — no credit card needed.",
+      "AI features (match scoring on every role, cover-letter generator, profile polish) are part of the Gold tier at C$59/mo. Platinum (C$149/mo) adds training-related features that are still being built. The free tier covers the entire core search-and-apply experience.",
     ],
   },
   {
@@ -55,9 +55,9 @@ const FAQ_DATA: FaqEntry[] = [
       "Three monthly subscription tiers, all in CAD:",
       {
         list: [
-          "Package A — C$299/mo, 1 published role per cycle",
-          "Package B — C$549/mo, 3 published roles per cycle",
-          "Package C — C$749/mo, 5 published roles per cycle",
+          "Package A — C$299/mo, 1 active job, 1 recruiter seat",
+          "Package B — C$549/mo, 2 active jobs, 3 recruiter seats",
+          "Package C — C$749/mo, 3 active jobs, 5 recruiter seats",
         ],
       },
       "Stripe-managed, monthly billing, cancel any time from your billing page. No per-hire bounty, no per-applicant fees.",

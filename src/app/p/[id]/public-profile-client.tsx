@@ -6,6 +6,8 @@ import { Icon, type IconName } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
 import { IntroRequestModal } from "@/components/profile/intro-request-modal";
 import { IntroContactPanel } from "@/components/profile/intro-contact-panel";
+import { ApplicantMatchCard } from "@/app/(app)/employer/jobs/[id]/applicants/[applicationId]/applicant-match-card";
+import { VerifiedSkillsSection } from "@/components/profile/verified-skills-section";
 
 type SectorEnum =
   | "oil_gas"
@@ -141,6 +143,7 @@ export function PublicProfileClient({
   viewerIsEmployer,
   viewerHasOrg,
   candidateUserId,
+  applicationIdInMyOrg,
 }: {
   user: PublicUser;
   profile: PublicProfile;
@@ -152,10 +155,18 @@ export function PublicProfileClient({
   viewerIsEmployer: boolean;
   viewerHasOrg: boolean;
   candidateUserId: string;
+  applicationIdInMyOrg: string | null;
 }) {
   const [firstName, lastName] = splitName(user.name);
   const initials = initialsOf(user.name);
   const showHiddenDetails = viewerIsAuthed || viewerIsSelf;
+
+  // Fetch skill badges for this candidate. `badgesForCandidate` is a
+  // publicProcedure — badges are part of the public profile surface.
+  const badgesQuery = api.skillTests.badgesForCandidate.useQuery({
+    candidateId: candidateUserId,
+  });
+  const badges = badgesQuery.data ?? [];
 
   return (
     <div className="pub-page">
@@ -304,6 +315,26 @@ export function PublicProfileClient({
       </header>
 
       <div className="pub-body">
+        {/* AI fit score — only when the viewer is an org member and this
+            candidate has applied to one of the org's jobs. Shares cache
+            with the kanban applicant detail page. */}
+        {applicationIdInMyOrg && (
+          <section className="pub-section" style={{ borderTop: "none" }}>
+            <div className="pub-section-head">
+              <div className="pub-section-kicker">00 · AI fit score</div>
+              <div>
+                <h2 className="pub-section-title">
+                  How they line up with <em>your role.</em>
+                </h2>
+                <p className="pub-section-lede">
+                  Scored against the job they applied to in your org.
+                </p>
+              </div>
+            </div>
+            <ApplicantMatchCard applicationId={applicationIdInMyOrg} />
+          </section>
+        )}
+
         {/* pitch */}
         {profile.summary && (
           <section className="pub-section" style={{ borderTop: "none" }}>
@@ -413,6 +444,58 @@ export function PublicProfileClient({
             </div>
           </section>
         )}
+
+        {/* verified skill badges */}
+        {badges.length > 0 ? (
+          <section className="pub-section">
+            <div className="pub-section-head">
+              <div className="pub-section-kicker">03.5 · Verified skills</div>
+              <div>
+                <h2 className="pub-section-title">
+                  Tested &amp; <em>verified.</em>
+                </h2>
+                <p className="pub-section-lede">
+                  Scored on Energized&apos;s proctored assessments.
+                </p>
+              </div>
+            </div>
+            <VerifiedSkillsSection badges={badges} />
+          </section>
+        ) : viewerIsSelf ? (
+          <section className="pub-section">
+            <div className="pub-section-head">
+              <div className="pub-section-kicker">03.5 · Verified skills</div>
+              <div>
+                <h2 className="pub-section-title">
+                  Start your <em>verified track.</em>
+                </h2>
+                <p className="pub-section-lede">
+                  Take a sector test to earn a badge that recruiters can filter
+                  for.
+                </p>
+              </div>
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <Link
+                href="/skills"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "11px 22px",
+                  borderRadius: 8,
+                  background: "var(--brand-blue, #1CAAE2)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  textDecoration: "none",
+                }}
+              >
+                Take a skill test <Icon name="arrowRight" size={14} />
+              </Link>
+            </div>
+          </section>
+        ) : null}
 
         {/* certifications */}
         {certs.length > 0 && (

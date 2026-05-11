@@ -162,6 +162,20 @@
       "when": 1778197200000,
       "tag": "0022_reset_unpaid_plan_rows",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1778252368751,
+      "tag": "0023_curious_killraven",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1778270515040,
+      "tag": "0024_lame_mandarin",
+      "breakpoints": true
     }
   ]
 }

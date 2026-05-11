@@ -11,7 +11,11 @@ import {
   EVENT_JOB_PUBLISHED,
   EVENT_JOB_REOPENED,
 } from "@/lib/analytics-events";
-import { TIERS, isPlanTier } from "@/lib/billing-tiers";
+import {
+  TIERS,
+  isEntitledSubscriptionStatus,
+  isPlanTier,
+} from "@/lib/billing-tiers";
 
 const sectorValues = [
   "oil_gas",
@@ -229,11 +233,15 @@ export const jobsRouter = router({
         });
       }
 
-      // Billing gate: must have an active subscription, and must be under
-      // the tier's per-cycle quota. Errors use prefixes so the client can
-      // route them to the upgrade modal (the global errorFormatter only
-      // propagates zodError, not custom cause).
-      if (!isPlanTier(org.plan) || org.subscriptionStatus !== "active") {
+      // Billing gate: must have a paid plan with an entitled subscription
+      // status (active OR trialing — Stripe trial users are paying us in
+      // spirit), and must be under the tier's per-cycle quota. Errors use
+      // prefixes so the client can route them to the upgrade modal (the
+      // global errorFormatter only propagates zodError, not custom cause).
+      if (
+        !isPlanTier(org.plan) ||
+        !isEntitledSubscriptionStatus(org.subscriptionStatus)
+      ) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "BILLING_REQUIRED",
@@ -423,5 +431,107 @@ export const jobsRouter = router({
         .limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       return row;
+    }),
+
+  /**
+   * AI: rewrite the draft description so it leads with the role, drops
+   * clichés, keeps specific certs/sites the source named, and avoids
+   * biased phrasing. Gated to active employer subscribers (paid plan +
+   * active|trialing status). Caller must hold an EDIT_ROLES seat in the
+   * org owning the job.
+   */
+  polishDescription: protectedProcedure
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        current: z.string().min(1).max(4000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { polishJobDescription } = await import("@/lib/ai");
+      const { orgId } = await requireOrgRole(ctx, EDIT_ROLES);
+      const job = await getJobForOrg(ctx, input.jobId, orgId);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [org] = await ctx.db
+        .select({
+          plan: employerOrgs.plan,
+          subscriptionStatus: employerOrgs.subscriptionStatus,
+        })
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, orgId))
+        .limit(1);
+      if (
+        !org ||
+        !isPlanTier(org.plan) ||
+        !isEntitledSubscriptionStatus(org.subscriptionStatus)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "AI assist is included with any active employer subscription. Subscribe to enable it.",
+        });
+      }
+
+      try {
+        const polished = await polishJobDescription({
+          current: input.current,
+          title: job.title,
+          sector: job.sector,
+          summary: job.summary,
+        });
+        return { polished };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Polish failed.";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+      }
+    }),
+
+  /**
+   * AI: suggest 3-5 sector-aware screening questions based on the
+   * current draft. Returns plain {q, required}[] — the wizard merges
+   * them into draft.screeningQuestions. Same gate as polishDescription.
+   */
+  suggestScreeningQuestions: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const { suggestScreeningQuestions } = await import("@/lib/ai");
+      const { orgId } = await requireOrgRole(ctx, EDIT_ROLES);
+      const job = await getJobForOrg(ctx, input.jobId, orgId);
+      if (!job) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [org] = await ctx.db
+        .select({
+          plan: employerOrgs.plan,
+          subscriptionStatus: employerOrgs.subscriptionStatus,
+        })
+        .from(employerOrgs)
+        .where(eq(employerOrgs.id, orgId))
+        .limit(1);
+      if (
+        !org ||
+        !isPlanTier(org.plan) ||
+        !isEntitledSubscriptionStatus(org.subscriptionStatus)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "AI assist is included with any active employer subscription. Subscribe to enable it.",
+        });
+      }
+
+      try {
+        const questions = await suggestScreeningQuestions({
+          title: job.title,
+          sector: job.sector,
+          summary: job.summary,
+          description: job.description,
+          requiredCertifications: job.requiredCertifications,
+        });
+        return { questions };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Suggestion failed.";
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
+      }
     }),
 });

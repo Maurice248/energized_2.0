@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
 
@@ -23,6 +24,7 @@ export function EmberCard({
   const data = matchQuery.data;
   const loading = matchQuery.isLoading;
   const disabled = data?.enabled === false;
+  const lockedReason = data?.lockedReason ?? null;
   const score = data?.score ?? null;
   const reason = data?.reason ?? null;
 
@@ -65,7 +67,7 @@ export function EmberCard({
               marginBottom: 8,
             }}
           >
-            Coming soon.
+            {lockedReason === "gold_required" ? "Gold only." : "Coming soon."}
           </div>
           <p
             style={{
@@ -74,8 +76,26 @@ export function EmberCard({
               lineHeight: 1.5,
             }}
           >
-            AI match scoring lights up once an Anthropic key is configured on
-            this environment.
+            {lockedReason === "gold_required" ? (
+              <>
+                Match scoring is a Gold feature. See how your profile lines up
+                with this role at a glance.{" "}
+                <Link
+                  href="/profile#pp-billing"
+                  style={{
+                    color: "var(--v2-accent)",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Upgrade to Gold →
+                </Link>
+              </>
+            ) : (
+              <>
+                AI match scoring lights up once an OpenAI key is configured on
+                this environment.
+              </>
+            )}
           </p>
         </div>
       ) : loading ? (

@@ -45,22 +45,25 @@ export const PACKAGE_C_FEATURES: string[] = [
 /* ---------- Jobseeker paid-tier delivered features ---------- */
 
 export const GOLD_FEATURES: string[] = [
-  "Featured profile — top of employer searches",
+  "AI match scoring on every role — instant fit at a glance",
+  "AI cover-letter generator — drafts a tailored note from your profile + the job",
+  "AI profile polish — rewrites your summary to highlight impact",
+  "AI-generated skill tests — sector-specific, verifiable badges",
   "\"Open to work\" badge with sector preferences",
-  "See which employers viewed your profile",
-  "Application insights (views, last-viewed timestamp)",
-  "48-hour early access to new postings",
+  "Profile-views counter — see how often employers view your profile",
   "Unlimited saved searches with daily digest",
-  "AI cover-letter generator (coming soon)",
-  "AI profile polish — rewrites bullets to highlight impact (coming soon)",
+  "Featured profile — top of every employer search",
+  "Application insights — see when employers opened your application",
+  "48-hour early access — apply to new roles before everyone else",
 ];
 
 export const PLATINUM_FEATURES: string[] = [
   "Everything in Gold (incl. AI features when shipped)",
+  "Cert expiry warnings in your profile",
   "Trainings library — energy-sector courses (coming soon)",
-  "Cert prep & practice tests (H2S, First Aid, CSTS, P.Eng…)",
-  "Ticket renewal tracking + expiry reminders",
-  "Early access to new training content as it launches",
+  "Cert prep & practice tests, H2S / First Aid / CSTS / P.Eng (coming soon)",
+  "Renewal reminder emails before tickets expire (coming soon)",
+  "Early access to new training content as it launches (coming soon)",
 ];
 
 /* ---------- Free-tier delivered features (no Stripe product, no billing) ---------- */
@@ -72,6 +75,7 @@ export const JOBSEEKER_FREE_FEATURES: string[] = [
   "Save unlimited jobs",
   "Application status tracking",
   "Email alerts for new matches",
+  "1 free skill assessment — sector-specific badge if you pass",
 ];
 
 export const JOBSEEKER_FREE_FUTURE_FEATURES: string[] = [

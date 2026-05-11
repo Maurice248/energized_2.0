@@ -22,6 +22,15 @@ export type ApplyViewerState =
   | { kind: "incomplete" }
   | { kind: "applied" }
   | {
+      // Job is in the 48h Gold-early-access window AND the viewer is a
+      // Free jobseeker. Apply button shows a disabled-with-countdown
+      // state that links to the upgrade flow. Server-side
+      // applications.submit also enforces this so the gate doesn't rely
+      // on the client.
+      kind: "early_access_only";
+      publicAt: Date;
+    }
+  | {
       kind: "eligible";
       candidateName: string;
       candidateHeadline: string | null;
@@ -50,10 +59,19 @@ export function ApplyButtonAndModal({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const apply = api.applications.submit.useMutation({
     onSuccess: () => setSuccess(true),
     onError: (e) => setError(e.message),
+  });
+
+  const draft = api.matches.draftCoverNote.useMutation({
+    onSuccess: (data) => {
+      setCoverNote(data.draft);
+      setDraftError(null);
+    },
+    onError: (e) => setDraftError(e.message),
   });
 
   const firstRequiredMissing = useMemo(() => {
@@ -113,6 +131,44 @@ export function ApplyButtonAndModal({
       >
         <Icon name="check" size={14} /> Applied
       </button>
+    );
+  }
+
+  if (viewer.kind === "early_access_only") {
+    const hours = Math.max(
+      1,
+      Math.ceil((viewer.publicAt.getTime() - Date.now()) / (60 * 60 * 1000)),
+    );
+    const label = hours >= 24
+      ? `${Math.ceil(hours / 24)} day${Math.ceil(hours / 24) === 1 ? "" : "s"}`
+      : `${hours}h`;
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 4,
+        }}
+      >
+        <Link
+          href="/profile#pp-billing"
+          className="v2-btn v2-btn-primary"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          ★ Gold-only · upgrade to apply <Icon name="arrowUpRight" size={14} />
+        </Link>
+        <span
+          style={{
+            fontSize: 11,
+            color: "var(--v2-ink-500)",
+            fontFamily: "var(--v2-font-mono)",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Free members can apply in {label}
+        </span>
+      </div>
     );
   }
 
@@ -239,19 +295,43 @@ export function ApplyButtonAndModal({
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label
+                <div
                   style={{
-                    display: "block",
-                    fontFamily: "var(--v2-font-mono)",
-                    fontSize: 11,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "var(--v2-ink-500)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
                     marginBottom: 8,
                   }}
                 >
-                  Cover note · optional
-                </label>
+                  <label
+                    style={{
+                      display: "block",
+                      fontFamily: "var(--v2-font-mono)",
+                      fontSize: 11,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--v2-ink-500)",
+                      margin: 0,
+                    }}
+                  >
+                    Cover note · optional
+                  </label>
+                  <button
+                    type="button"
+                    className="v2-btn v2-btn-outline v2-btn-sm"
+                    disabled={draft.isPending}
+                    onClick={() => {
+                      setDraftError(null);
+                      draft.mutate({ jobId });
+                    }}
+                    title="Draft a cover note from your profile and this role (Gold)"
+                  >
+                    <Icon name="sparkles" size={12} />
+                    {draft.isPending ? "Drafting…" : "Draft for me"}
+                  </button>
+                </div>
                 <textarea
                   className="v2-input-block"
                   rows={4}
@@ -262,13 +342,46 @@ export function ApplyButtonAndModal({
                 />
                 <div
                   style={{
-                    fontSize: 11,
-                    color: "var(--v2-ink-500)",
-                    textAlign: "right",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
                     marginTop: 4,
                   }}
                 >
-                  {coverNote.length}/1000
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#A63A20",
+                      lineHeight: 1.5,
+                      flex: 1,
+                    }}
+                  >
+                    {draftError && (
+                      <>
+                        {draftError}{" "}
+                        {draftError.toLowerCase().includes("gold") && (
+                          <Link
+                            href="/profile#pp-billing"
+                            style={{
+                              color: "var(--v2-accent-deep)",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            See plans
+                          </Link>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--v2-ink-500)",
+                    }}
+                  >
+                    {coverNote.length}/1000
+                  </div>
                 </div>
               </div>
 

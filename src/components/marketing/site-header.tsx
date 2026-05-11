@@ -8,6 +8,7 @@ import { NotificationBell } from "./notification-bell";
 export type SiteHeaderActive =
   | "home"
   | "jobs"
+  | "skill-tests"
   | "seekers"
   | "employers"
   | "about"
@@ -25,6 +26,7 @@ type NavLink = { id: SiteHeaderActive; label: string; href: string };
 const NAV_LINKS: NavLink[] = [
   { id: "home", label: "Home", href: "/" },
   { id: "jobs", label: "Jobs", href: "/jobs" },
+  { id: "skill-tests", label: "Skill tests", href: "/skills" },
   { id: "seekers", label: "For job seekers", href: "/for-seekers" },
   { id: "employers", label: "For employers", href: "/for-employers" },
   { id: "about", label: "About", href: "/about" },
@@ -62,14 +64,32 @@ export async function SiteHeader({ active }: { active?: SiteHeaderActive }) {
         <nav className="v2-nav-links">
           {NAV_LINKS.map((l) => {
             const isActive = active === l.id;
+            const isAi = l.id === "skill-tests";
             return (
               <Link
                 key={l.id}
                 href={l.href}
                 className={`v2-nav-link ${isActive ? "active" : ""}`}
-                style={isActive ? activeLinkStyle : undefined}
+                style={
+                  isAi
+                    ? { ...(isActive ? activeLinkStyle : {}), display: "inline-flex", alignItems: "center", gap: 6 }
+                    : isActive
+                      ? activeLinkStyle
+                      : undefined
+                }
                 aria-current={isActive ? "page" : undefined}
               >
+                {isAi && (
+                  <Icon
+                    name="sparkles"
+                    size={14}
+                    color={
+                      isActive
+                        ? "var(--brand-black, #101820)"
+                        : "var(--brand-blue, #1CAAE2)"
+                    }
+                  />
+                )}
                 {l.label}
               </Link>
             );

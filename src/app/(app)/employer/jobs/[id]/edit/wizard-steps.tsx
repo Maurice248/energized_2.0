@@ -1,7 +1,9 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/shared/icon";
+import { api } from "@/lib/trpc/client";
 import {
   CERTIFICATION_OPTIONS,
   EXPERIENCE_LEVEL_LABELS,
@@ -40,6 +42,7 @@ type Props = {
   draft: WizardDraft;
   setDraft: Dispatch<SetStateAction<WizardDraft>>;
   missing: string[];
+  jobId: string;
 };
 
 function errCls(missing: string[], field: string) {
@@ -223,7 +226,22 @@ export function LocationStep({ draft, setDraft, missing }: Props) {
   );
 }
 
-export function PayStep({ draft, setDraft, missing }: Props) {
+export function PayStep({ draft, setDraft, missing, jobId }: Props) {
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const suggest = api.jobs.suggestScreeningQuestions.useMutation({
+    onSuccess: (data) => {
+      setSuggestError(null);
+      setDraft((d) => ({
+        ...d,
+        screeningQuestions: [...d.screeningQuestions, ...data.questions].slice(
+          0,
+          8,
+        ),
+      }));
+    },
+    onError: (err) => setSuggestError(err.message),
+  });
+
   const addQuestion = () =>
     setDraft((d) => ({
       ...d,
@@ -347,7 +365,60 @@ export function PayStep({ draft, setDraft, missing }: Props) {
       </div>
 
       <div className="ob-field" style={{ gridColumn: "1/-1" }}>
-        <FieldLabel>Screening questions · optional, up to 8</FieldLabel>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <FieldLabel>Screening questions · optional, up to 8</FieldLabel>
+          {draft.screeningQuestions.length < 8 && (
+            <button
+              type="button"
+              className="v2-btn v2-btn-outline v2-btn-sm"
+              disabled={
+                suggest.isPending ||
+                !draft.title?.trim() ||
+                !draft.description?.trim()
+              }
+              onClick={() => {
+                setSuggestError(null);
+                suggest.mutate({ jobId });
+              }}
+              title="Generate 3-5 fair, sector-aware questions based on the role's title and description"
+            >
+              <Icon name="sparkles" size={12} />
+              {suggest.isPending ? "Suggesting…" : "Suggest questions"}
+            </button>
+          )}
+        </div>
+        {suggestError && (
+          <div
+            style={{
+              marginTop: 0,
+              marginBottom: 8,
+              fontSize: 12,
+              color: "#A63A20",
+              lineHeight: 1.5,
+            }}
+          >
+            {suggestError}{" "}
+            {suggestError.toLowerCase().includes("subscription") && (
+              <Link
+                href="/employer/profile#ep-billing"
+                style={{
+                  color: "var(--v2-accent-deep)",
+                  textDecoration: "underline",
+                }}
+              >
+                Manage billing
+              </Link>
+            )}
+          </div>
+        )}
         {draft.screeningQuestions.map((row, idx) => (
           <div
             key={idx}
@@ -405,7 +476,22 @@ export function PayStep({ draft, setDraft, missing }: Props) {
   );
 }
 
-export function StoryStep({ draft, setDraft, missing }: Props) {
+export function StoryStep({ draft, setDraft, missing, jobId }: Props) {
+  const [preBetterDescription, setPreBetterDescription] = useState<
+    string | null
+  >(null);
+  const [polishError, setPolishError] = useState<string | null>(null);
+  const polish = api.jobs.polishDescription.useMutation({
+    onSuccess: (data) => {
+      setPreBetterDescription((prev) => prev ?? draft.description);
+      setDraft((d) => ({ ...d, description: data.polished.slice(0, 4000) }));
+      setPolishError(null);
+    },
+    onError: (err) => {
+      setPolishError(err.message);
+    },
+  });
+
   return (
     <div className="ob-grid">
       <div className="ob-field" style={{ gridColumn: "1/-1" }}>
@@ -431,7 +517,49 @@ export function StoryStep({ draft, setDraft, missing }: Props) {
       </div>
 
       <div className="ob-field" style={{ gridColumn: "1/-1" }}>
-        <label>Description</label>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 6,
+          }}
+        >
+          <label style={{ margin: 0 }}>Description</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {preBetterDescription !== null && (
+              <button
+                type="button"
+                className="v2-btn v2-btn-ghost v2-btn-sm"
+                onClick={() => {
+                  setDraft((d) => ({
+                    ...d,
+                    description: preBetterDescription,
+                  }));
+                  setPreBetterDescription(null);
+                }}
+                title="Restore the version before AI polish"
+              >
+                <Icon name="x" size={12} /> Undo polish
+              </button>
+            )}
+            <button
+              type="button"
+              className="v2-btn v2-btn-outline v2-btn-sm"
+              disabled={polish.isPending || draft.description.trim().length === 0}
+              onClick={() => {
+                setPolishError(null);
+                polish.mutate({ jobId, current: draft.description });
+              }}
+              title="Rewrite this description with AI to lead with the role and drop clichés"
+            >
+              <Icon name="sparkles" size={12} />
+              {polish.isPending ? "Polishing…" : "Polish with AI"}
+            </button>
+          </div>
+        </div>
         <textarea
           className={errCls(missing, "description")}
           rows={10}
@@ -454,6 +582,42 @@ export function StoryStep({ draft, setDraft, missing }: Props) {
         >
           {draft.description.length}/4000 · 100 min
         </div>
+        {polishError && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: "#A63A20",
+              lineHeight: 1.5,
+            }}
+          >
+            {polishError}{" "}
+            {polishError.toLowerCase().includes("subscription") && (
+              <Link
+                href="/employer/profile#ep-billing"
+                style={{
+                  color: "var(--v2-accent-deep)",
+                  textDecoration: "underline",
+                }}
+              >
+                Manage billing
+              </Link>
+            )}
+          </div>
+        )}
+        {preBetterDescription !== null && !polishError && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: "var(--v2-ink-500)",
+              lineHeight: 1.5,
+            }}
+          >
+            <Icon name="sparkles" size={11} /> AI polish applied. Save the
+            wizard to keep it, or undo above.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -15,8 +15,7 @@ import {
 } from "./apply-modal";
 import { SaveButton, type SaveViewer } from "./save-button";
 import { CopyLinkButton } from "../jobs-client-bits";
-// Ember match scoring is deferred — see commented JSX in the sidebar below.
-// import { EmberCard } from "./ember-card";
+import { EmberCard } from "./ember-card";
 
 type ScreeningQuestion = { q: string; required: boolean };
 
@@ -550,13 +549,12 @@ export function JobDetailClient({
       </div>
 
       <aside style={{ display: "grid", gap: 16 }}>
-        {/* Ember match scoring — deferred. Re-enable by restoring:
-            <EmberCard
-              jobId={job.id}
-              showForViewer={
-                viewer.kind === "eligible" || viewer.kind === "applied"
-              }
-            /> */}
+        <EmberCard
+          jobId={job.id}
+          showForViewer={
+            viewer.kind === "eligible" || viewer.kind === "applied"
+          }
+        />
         <div
           style={{
             background: "white",

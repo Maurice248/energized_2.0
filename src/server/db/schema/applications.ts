@@ -30,6 +30,9 @@ export const applications = pgTable(
       .notNull()
       .default([]),
     status: applicationStatusEnum("status").notNull().default("submitted"),
+    // Set on every employer-side detail-page view of this application.
+    // Surfaced to Gold candidates as "Last viewed by employer Xh ago".
+    lastViewedByEmployerAt: timestamp("last_viewed_by_employer_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
       .notNull()
