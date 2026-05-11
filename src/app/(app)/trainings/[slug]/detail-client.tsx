@@ -76,7 +76,8 @@ export function DetailClient({
       return;
     }
     if (!isPlatinum) {
-      setError("paywall:trainings");
+      // Take them straight to the billing section instead of a 2-step banner.
+      router.push("/profile#pp-billing");
       return;
     }
     enrollMut.mutate({ slug: training.slug });
@@ -96,7 +97,7 @@ export function DetailClient({
                 Trainings are a Platinum feature. Upgrade to enroll, get certificates, and surface
                 verified badges to recruiters.{" "}
                 <Link
-                  href="/sign-up?plan=platinum"
+                  href="/profile#pp-billing"
                   className="font-bold underline underline-offset-2 hover:text-amber-950"
                 >
                   Upgrade to Platinum →
