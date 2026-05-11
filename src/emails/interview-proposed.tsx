@@ -1,14 +1,7 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Section, Text } from "@react-email/components";
+import { EmailShell } from "./_components/email-shell";
+import { EmailButtonPrimary, EmailHeading } from "./_components/email-ui";
+import { INK_200, INK_500, INK_900, NAVY } from "./_components/email-tokens";
 
 type Props = {
   candidateName: string | null;
@@ -16,10 +9,10 @@ type Props = {
   jobTitle: string;
   proposerName: string;
   notes?: string | null;
-  slots: { startsAt: Date; label: string }[]; // label is pre-formatted in viewer-tz friendly form
+  slots: { startsAt: Date; label: string }[];
   durationMin: number;
   applicationUrl: string;
-  expiresAtLabel: string; // "May 9, 2026"
+  expiresAtLabel: string;
   wasRescheduled?: boolean;
 };
 
@@ -29,39 +22,62 @@ export default function InterviewProposedEmail(p: Props) {
     : `Pick a time for your interview at ${p.companyName}`;
 
   return (
-    <Html>
-      <Head />
-      <Preview>
-        {p.wasRescheduled ? "Updated times for your" : "Pick a time for your"} interview ({p.jobTitle})
-      </Preview>
-      <Body style={{ backgroundColor: "#f6f8fa", fontFamily: "Lato, Arial, sans-serif" }}>
-        <Container style={{ maxWidth: 560, margin: "32px auto", background: "white", borderRadius: 16, padding: 32 }}>
-          <Heading as="h1" style={{ fontSize: 22, color: "#101820" }}>{heading}</Heading>
-          <Text>Hey {p.candidateName ?? "there"},</Text>
-          <Text>
-            {p.proposerName} from <strong>{p.companyName}</strong> has proposed the following times for your <strong>{p.jobTitle}</strong> interview ({p.durationMin} min). Pick one in the app.
+    <EmailShell
+      preview={`${p.wasRescheduled ? "Updated times for your" : "Pick a time for your"} interview (${p.jobTitle})`}
+      footer={
+        <Text style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: INK_500 }}>
+          Offer expires {p.expiresAtLabel}. If none of these times work, you can request a different time from the same screen.
+        </Text>
+      }
+    >
+      <EmailHeading>{heading}</EmailHeading>
+      <Text style={{ marginTop: 16, fontSize: 15, lineHeight: 1.55, color: INK_900 }}>
+        Hey {p.candidateName ?? "there"},
+      </Text>
+      <Text style={{ marginTop: 8, fontSize: 15, lineHeight: 1.55, color: INK_900 }}>
+        {p.proposerName} from <strong>{p.companyName}</strong> has proposed the following times for your{" "}
+        <strong>{p.jobTitle}</strong> interview ({p.durationMin} min). Pick one in the app.
+      </Text>
+      {p.notes ? (
+        <Section
+          style={{
+            background: "#f0f7fb",
+            border: `1px solid ${INK_200}`,
+            borderRadius: 12,
+            padding: 14,
+            margin: "16px 0",
+          }}
+        >
+          <Text style={{ margin: 0, fontStyle: "italic", fontSize: 14, color: NAVY }}>
+            {p.notes}
           </Text>
-          {p.notes && (
-            <Section style={{ background: "#f0f7fb", borderRadius: 8, padding: 12, margin: "16px 0" }}>
-              <Text style={{ margin: 0, fontStyle: "italic", color: "#004984" }}>{p.notes}</Text>
-            </Section>
-          )}
-          <Section style={{ margin: "16px 0" }}>
-            {p.slots.map((s, i) => (
-              <Text key={i} style={{ margin: "4px 0", color: "#101820" }}>• {s.label}</Text>
-            ))}
-          </Section>
-          <Section style={{ margin: "24px 0" }}>
-            <Button href={p.applicationUrl} style={{ background: "#1CAAE2", color: "white", padding: "12px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>
-              Pick a time
-            </Button>
-          </Section>
-          <Text style={{ fontSize: 12, color: "#666" }}>
-            Offer expires {p.expiresAtLabel}. If none of these times work, you can request a different time from the same screen.
+        </Section>
+      ) : null}
+      <Section style={{ margin: "16px 0" }}>
+        {p.slots.map((s, i) => (
+          <Text key={i} style={{ margin: "4px 0", fontSize: 15, color: INK_900 }}>
+            • {s.label}
           </Text>
-          <Text style={{ fontSize: 11, color: "#999", marginTop: 32 }}>— Energized</Text>
-        </Container>
-      </Body>
-    </Html>
+        ))}
+      </Section>
+      <EmailButtonPrimary href={p.applicationUrl}>Pick a time</EmailButtonPrimary>
+    </EmailShell>
   );
 }
+
+InterviewProposedEmail.PreviewProps = {
+  candidateName: "Mara Solis",
+  companyName: "Trillium Wind",
+  jobTitle: "Wind Technician II",
+  proposerName: "Avery Tran",
+  notes: "Happy to do video or phone — whichever's easier for you.",
+  slots: [
+    { startsAt: new Date(), label: "Tue, May 19 · 2:00 PM (America/Edmonton)" },
+    { startsAt: new Date(), label: "Wed, May 20 · 10:30 AM (America/Edmonton)" },
+    { startsAt: new Date(), label: "Thu, May 21 · 4:00 PM (America/Edmonton)" },
+  ],
+  durationMin: 45,
+  applicationUrl: "https://energized.biz/applications/preview",
+  expiresAtLabel: "May 18, 2026",
+  wasRescheduled: false,
+} satisfies Props;
