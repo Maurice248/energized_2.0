@@ -63,7 +63,7 @@ export function CatalogFilters({
         <select
           value={filters.sort}
           onChange={(e) => onChange({ ...filters, sort: e.target.value as Filters["sort"] })}
-          className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+          className="rounded-full border border-slate-300 bg-white py-1.5 pl-4 pr-9 text-sm font-medium text-slate-700"
         >
           {SORTS.map((s) => (
             <option key={s.id} value={s.id}>
