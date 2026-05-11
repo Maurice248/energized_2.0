@@ -1,14 +1,7 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Section, Text } from "@react-email/components";
+import { EmailShell } from "./_components/email-shell";
+import { EmailButtonPrimary, EmailHeading } from "./_components/email-ui";
+import { INK_200, INK_900, NAVY } from "./_components/email-tokens";
 
 type Props = {
   recipientName: string | null;
@@ -28,28 +21,42 @@ const MEDIUM_LABEL: Record<Props["medium"], string> = {
 
 export default function InterviewReminderEmail(p: Props) {
   return (
-    <Html>
-      <Head />
-      <Preview>Reminder: interview tomorrow at {p.startsAtLabel}</Preview>
-      <Body style={{ backgroundColor: "#f6f8fa", fontFamily: "Lato, Arial, sans-serif" }}>
-        <Container style={{ maxWidth: 560, margin: "32px auto", background: "white", borderRadius: 16, padding: 32 }}>
-          <Heading as="h1" style={{ fontSize: 22, color: "#101820" }}>Interview tomorrow</Heading>
-          <Text>Hey {p.recipientName ?? "there"},</Text>
-          <Text>
-            This is a reminder: your <strong>{p.jobTitle}</strong> interview at <strong>{p.companyName}</strong> is tomorrow at <strong>{p.startsAtLabel}</strong>.
-          </Text>
-          <Section style={{ background: "#f0f7fb", borderRadius: 8, padding: 16, margin: "16px 0" }}>
-            <Text style={{ margin: 0, fontWeight: 700, color: "#004984" }}>{MEDIUM_LABEL[p.medium]}</Text>
-            <Text style={{ margin: "4px 0 0", wordBreak: "break-all", color: "#101820" }}>{p.details}</Text>
-          </Section>
-          <Section style={{ margin: "24px 0" }}>
-            <Button href={p.detailUrl} style={{ background: "#1CAAE2", color: "white", padding: "12px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 700 }}>
-              View in Energized
-            </Button>
-          </Section>
-          <Text style={{ fontSize: 11, color: "#999", marginTop: 32 }}>— Energized</Text>
-        </Container>
-      </Body>
-    </Html>
+    <EmailShell preview={`Reminder: interview tomorrow at ${p.startsAtLabel}`}>
+      <EmailHeading>Interview tomorrow</EmailHeading>
+      <Text style={{ marginTop: 16, fontSize: 15, lineHeight: 1.55, color: INK_900 }}>
+        Hey {p.recipientName ?? "there"},
+      </Text>
+      <Text style={{ marginTop: 8, fontSize: 15, lineHeight: 1.55, color: INK_900 }}>
+        This is a reminder: your <strong>{p.jobTitle}</strong> interview at{" "}
+        <strong>{p.companyName}</strong> is tomorrow at <strong>{p.startsAtLabel}</strong>.
+      </Text>
+      <Section
+        style={{
+          background: "#f0f7fb",
+          border: `1px solid ${INK_200}`,
+          borderRadius: 12,
+          padding: 16,
+          margin: "16px 0",
+        }}
+      >
+        <Text style={{ margin: 0, fontWeight: 700, fontSize: 13, color: NAVY }}>
+          {MEDIUM_LABEL[p.medium]}
+        </Text>
+        <Text style={{ margin: "4px 0 0", wordBreak: "break-all", fontSize: 14, color: INK_900 }}>
+          {p.details}
+        </Text>
+      </Section>
+      <EmailButtonPrimary href={p.detailUrl}>View in Energized</EmailButtonPrimary>
+    </EmailShell>
   );
 }
+
+InterviewReminderEmail.PreviewProps = {
+  recipientName: "Mara Solis",
+  companyName: "Trillium Wind",
+  jobTitle: "Wind Technician II",
+  startsAtLabel: "Tue, May 19 · 2:00 PM (America/Edmonton)",
+  medium: "video",
+  details: "https://meet.example.com/abc-defg-hij",
+  detailUrl: "https://energized.biz/applications/preview",
+} satisfies Props;
