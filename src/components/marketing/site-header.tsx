@@ -9,6 +9,7 @@ export type SiteHeaderActive =
   | "home"
   | "jobs"
   | "skill-tests"
+  | "trainings"
   | "seekers"
   | "employers"
   | "about"
