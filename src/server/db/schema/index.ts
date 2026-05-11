@@ -20,3 +20,4 @@ export * from "./test-topics";
 export * from "./skill-test-attempts";
 export * from "./skill-badges";
 export * from "./trainings";
+export * from "./training-modules";
