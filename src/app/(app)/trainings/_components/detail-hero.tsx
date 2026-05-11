@@ -48,7 +48,10 @@ export function DetailHero({
         <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight md:text-5xl">
           {training.title}
         </h1>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
+        <p
+          className="max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg"
+          style={{ marginTop: 32 }}
+        >
           {training.longBlurb}
         </p>
         <div className="mt-8">
@@ -95,8 +98,8 @@ export function DetailHero({
           <Row l="Instructor" v={training.instructorName} />
         </dl>
         <p
-          className="mt-3 text-xs leading-relaxed"
-          style={{ color: "rgba(255,255,255,0.7)" }}
+          className="text-xs leading-relaxed"
+          style={{ marginTop: 12, color: "rgba(255,255,255,0.7)" }}
         >
           {training.instructorRole}
         </p>
