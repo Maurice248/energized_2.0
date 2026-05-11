@@ -76,8 +76,11 @@ export function DetailClient({
       return;
     }
     if (!isPlatinum) {
-      // Take them straight to the billing section instead of a 2-step banner.
-      router.push("/profile#pp-billing");
+      // Hard navigation (not router.push) so the browser honors the
+      // #pp-billing hash and scrolls to the billing section. Next.js
+      // client routing doesn't reliably re-scroll on first paint when
+      // the target lives inside a useQuery-gated component.
+      window.location.href = "/profile#pp-billing";
       return;
     }
     enrollMut.mutate({ slug: training.slug });
