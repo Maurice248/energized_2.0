@@ -115,6 +115,9 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
             <DropdownMenuItem asChild>
               <Link href="/skills/my-tests">Skill tests</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/trainings/my-trainings">My trainings</Link>
+            </DropdownMenuItem>
           </>
         )}
         <DropdownMenuSeparator />

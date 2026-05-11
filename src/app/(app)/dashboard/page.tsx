@@ -10,6 +10,7 @@ import {
   profiles,
   savedJobs,
   skillBadges,
+  trainingEnrollments,
   workHistory,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
@@ -141,6 +142,18 @@ export default async function DashboardPage() {
     .from(skillBadges)
     .where(eq(skillBadges.candidateId, userId));
   const badgeCount = badgeCountRow?.count ?? 0;
+
+  // --- completed trainings ----------
+  const [completedTrainingsRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(trainingEnrollments)
+    .where(
+      and(
+        eq(trainingEnrollments.candidateId, userId),
+        eq(trainingEnrollments.status, "completed"),
+      ),
+    );
+  const completedTrainings = completedTrainingsRow?.count ?? 0;
 
   // --- profile views ----------
   const profileViews30d = await countJobseekerProfileViews30d(userId);
@@ -306,6 +319,9 @@ export default async function DashboardPage() {
             <div style={{ display: "grid", gap: 24 }}>
               {/* Skill tests promo */}
               <SkillTestsCard badgeCount={badgeCount} />
+
+              {/* Trainings promo */}
+              <TrainingsCard completedCount={completedTrainings} />
 
               {/* Intro requests inbox */}
               <IntrosCard />
@@ -1056,6 +1072,75 @@ function SkillTestsCard({ badgeCount }: { badgeCount: number }) {
           style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           View history <Icon name="arrowRight" size={14} />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- trainings card ---------- */
+
+function TrainingsCard({ completedCount }: { completedCount: number }) {
+  if (completedCount === 0) {
+    return (
+      <section
+        className="v2-card"
+        style={{ background: "var(--brand-black, #101820)", border: "none" }}
+      >
+        <div className="v2-card-head">
+          <div>
+            <div className="v2-eyebrow" style={{ color: "rgba(255,255,255,0.7)" }}>
+              Trainings · Platinum
+            </div>
+            <h2 className="v2-card-title" style={{ marginTop: 8, color: "#fff" }}>
+              Build the{" "}
+              <em style={{ color: "var(--brand-blue, #1CAAE2)" }}>credentials</em> employers want.
+            </h2>
+          </div>
+        </div>
+        <p style={{ marginTop: 12, fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
+          GWO, H2S, PLC programming, P.Eng prep — graded by working seniors.
+        </p>
+        <div style={{ marginTop: 20, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <Link
+            href="/trainings"
+            className="v2-card-link"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#fff" }}
+          >
+            Browse trainings <Icon name="arrowRight" size={14} />
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="v2-card">
+      <div className="v2-card-head">
+        <div>
+          <div className="v2-eyebrow">Trainings</div>
+          <h2 className="v2-card-title" style={{ marginTop: 8 }}>
+            {completedCount} completed{" "}
+            <em style={{ color: "var(--brand-dark-blue, #004984)" }}>
+              course{completedCount === 1 ? "" : "s"}.
+            </em>
+          </h2>
+        </div>
+      </div>
+      <div style={{ marginTop: 20, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <Link
+          href="/trainings"
+          className="v2-card-link"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          Browse <Icon name="arrowRight" size={14} />
+        </Link>
+        <Link
+          href="/trainings/my-trainings"
+          className="v2-card-link"
+          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          My trainings <Icon name="arrowRight" size={14} />
         </Link>
       </div>
     </section>
