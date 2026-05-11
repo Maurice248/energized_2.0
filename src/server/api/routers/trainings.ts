@@ -1,8 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { publicProcedure, router } from "@/server/api/trpc";
 import {
+  jobseekerProcedure,
+  protectedProcedure,
+  publicProcedure,
+  router,
+  type Context,
+} from "@/server/api/trpc";
+import { isPlatinumEntitled } from "@/lib/billing-tiers";
+import { user } from "@/server/db/schema/auth";
+import {
+  trainingEnrollments,
   trainingLessons,
   trainingModules,
   trainings,
@@ -136,4 +145,177 @@ export const trainingsRouter = router({
         })),
       };
     }),
+
+  // ---------------------------------------------------------------------------
+  // Enrollment
+  // ---------------------------------------------------------------------------
+
+  myEnrollments: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select({
+        id: trainingEnrollments.id,
+        status: trainingEnrollments.status,
+        progressJson: trainingEnrollments.progressJson,
+        enrolledAt: trainingEnrollments.enrolledAt,
+        startedAt: trainingEnrollments.startedAt,
+        completedAt: trainingEnrollments.completedAt,
+        finalScore: trainingEnrollments.finalScore,
+        trainingSlug: trainings.slug,
+        trainingTitle: trainings.title,
+        trainingMonogram: trainings.monogram,
+        trainingTileColor: trainings.tileColor,
+        trainingHours: trainings.hours,
+        trainingDurationLabel: trainings.durationLabel,
+      })
+      .from(trainingEnrollments)
+      .innerJoin(trainings, eq(trainings.id, trainingEnrollments.trainingId))
+      .where(eq(trainingEnrollments.candidateId, ctx.session.user.id))
+      .orderBy(desc(trainingEnrollments.enrolledAt));
+  }),
+
+  enroll: jobseekerProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [userRow] = await ctx.db
+        .select({
+          plan: user.jobseekerPlan,
+          status: user.jobseekerSubscriptionStatus,
+        })
+        .from(user)
+        .where(eq(user.id, ctx.session.user.id))
+        .limit(1);
+      if (
+        !userRow ||
+        !isPlatinumEntitled({ plan: userRow.plan, status: userRow.status })
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "paywall:trainings",
+        });
+      }
+
+      const [t] = await ctx.db
+        .select({ id: trainings.id })
+        .from(trainings)
+        .where(and(eq(trainings.slug, input.slug), eq(trainings.isActive, true)))
+        .limit(1);
+      if (!t) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Training not found." });
+      }
+
+      const existing = await ctx.db
+        .select({ id: trainingEnrollments.id })
+        .from(trainingEnrollments)
+        .where(
+          and(
+            eq(trainingEnrollments.candidateId, ctx.session.user.id),
+            eq(trainingEnrollments.trainingId, t.id),
+          ),
+        )
+        .limit(1);
+      if (existing[0]) {
+        return { enrollmentId: existing[0].id, alreadyEnrolled: true };
+      }
+
+      const [created] = await ctx.db
+        .insert(trainingEnrollments)
+        .values({
+          candidateId: ctx.session.user.id,
+          trainingId: t.id,
+          status: "enrolled",
+          progressJson: {},
+        })
+        .returning({ id: trainingEnrollments.id });
+
+      return { enrollmentId: created.id, alreadyEnrolled: false };
+    }),
+
+  markLessonComplete: protectedProcedure
+    .input(
+      z.object({
+        enrollmentId: z.string().uuid(),
+        lessonId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return finalizeLessonProgress(ctx, {
+        enrollmentId: input.enrollmentId,
+        lessonId: input.lessonId,
+        score: undefined,
+      });
+    }),
 });
+
+// ---------------------------------------------------------------------------
+// Internal helper — shared by markLessonComplete and submitQuiz
+// ---------------------------------------------------------------------------
+
+async function finalizeLessonProgress(
+  ctx: Context & { session: NonNullable<Context["session"]> },
+  args: { enrollmentId: string; lessonId: string; score?: number },
+) {
+  const [enr] = await ctx.db
+    .select()
+    .from(trainingEnrollments)
+    .where(eq(trainingEnrollments.id, args.enrollmentId))
+    .limit(1);
+  if (!enr) throw new TRPCError({ code: "NOT_FOUND" });
+  if (enr.candidateId !== ctx.session.user.id) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+
+  const [training] = await ctx.db
+    .select({ id: trainings.id })
+    .from(trainings)
+    .where(eq(trainings.id, enr.trainingId))
+    .limit(1);
+  if (!training) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const allModules = await ctx.db
+    .select({ id: trainingModules.id })
+    .from(trainingModules)
+    .where(eq(trainingModules.trainingId, training.id));
+  const allLessons = await ctx.db
+    .select({ id: trainingLessons.id, kind: trainingLessons.kind })
+    .from(trainingLessons)
+    .where(inArray(trainingLessons.moduleId, allModules.map((m) => m.id)));
+
+  if (!allLessons.find((l) => l.id === args.lessonId)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Lesson does not belong to this enrollment.",
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextProgress = {
+    ...enr.progressJson,
+    [args.lessonId]: {
+      completedAt: nowIso,
+      ...(args.score !== undefined ? { score: args.score } : {}),
+    },
+  };
+
+  const completed = allLessons.every((l) => nextProgress[l.id]);
+  const quizScores = allLessons
+    .filter((l) => l.kind === "quiz")
+    .map((l) => nextProgress[l.id]?.score)
+    .filter((s): s is number => typeof s === "number");
+  const finalScore =
+    completed && quizScores.length > 0
+      ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
+      : null;
+
+  await ctx.db
+    .update(trainingEnrollments)
+    .set({
+      progressJson: nextProgress,
+      status: completed ? "completed" : "in_progress",
+      startedAt: enr.startedAt ?? new Date(),
+      completedAt: completed ? new Date() : enr.completedAt,
+      finalScore: completed ? finalScore : enr.finalScore,
+    })
+    .where(eq(trainingEnrollments.id, enr.id));
+
+  return { ok: true, completed, finalScore };
+}
