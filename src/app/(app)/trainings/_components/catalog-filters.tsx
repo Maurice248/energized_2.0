@@ -60,24 +60,21 @@ export function CatalogFilters({
         active={filters.durations}
         onToggle={(id) => toggle("durations", id)}
       />
-      <div className="ml-auto inline-flex items-center gap-2 text-sm">
-        <span className="text-slate-500">Sort:</span>
-        <div className="relative inline-block">
-          <select
-            value={filters.sort}
-            onChange={(e) => onChange({ ...filters, sort: e.target.value as Filters["sort"] })}
-            className="appearance-none rounded-full border border-slate-300 bg-white py-1.5 pl-4 pr-8 text-sm font-medium text-slate-700"
-          >
-            {SORTS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
-          />
-        </div>
+      <div className="relative inline-block">
+        <select
+          value={filters.sort}
+          onChange={(e) => onChange({ ...filters, sort: e.target.value as Filters["sort"] })}
+          className="appearance-none rounded-full border border-slate-300 bg-white py-1.5 pl-4 pr-8 text-sm font-medium text-slate-700"
+        >
+          {SORTS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+        />
       </div>
     </div>
   );
