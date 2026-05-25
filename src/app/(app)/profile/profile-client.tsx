@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { PasswordInput } from "@/components/shared/password-input";
@@ -25,6 +25,14 @@ import { LOCATION_SUGGESTIONS } from "@/components/shared/add-role-dialog";
 import { api } from "@/lib/trpc/client";
 import { authClient, signOut } from "@/lib/auth/client";
 import { JobseekerBillingSection } from "./jobseeker-billing-section";
+import {
+  PROFILE_SIDEBAR_SCROLL_SPY_HOLD_MS,
+  useProfileSidebarScrollSpy,
+} from "@/hooks/use-profile-sidebar-scroll-spy";
+import { ResumeAutofillModal } from "@/components/profile/resume-autofill-modal";
+import type { ResumeAutofillDraft } from "@/lib/resume-extraction-map";
+import { resumeAutofillSkipMessage } from "@/lib/resume-autofill-messages";
+import { toast } from "sonner";
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: "user" as IconName },
@@ -37,6 +45,11 @@ const NAV_ITEMS = [
   { id: "billing", label: "Plan & billing", icon: "dollar" as IconName },
   { id: "account", label: "Account & privacy", icon: "lock" as IconName },
 ];
+
+/** Stable order for scroll-spy anchors (`#pp-{id}`) in DOM order */
+const JOBSEEKER_PROFILE_SCROLL_IDS: readonly string[] = NAV_ITEMS.map(
+  (n) => n.id,
+);
 
 type SectorEnum =
   | "oil_gas"
@@ -105,6 +118,10 @@ export function ProfileClient({
   const setResume = api.profile.setResume.useMutation({
     onSuccess: () => void profileQuery.refetch(),
   });
+  const previewResumeExtraction = api.profile.previewResumeExtraction.useMutation();
+  const applyResumeExtraction = api.profile.applyResumeExtraction.useMutation({
+    onSuccess: () => void profileQuery.refetch(),
+  });
   const removeCert = api.profile.removeCertification.useMutation({
     onSuccess: () => void profileQuery.refetch(),
   });
@@ -127,8 +144,42 @@ export function ProfileClient({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialImage);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [resumeAutofillOpen, setResumeAutofillOpen] = useState(false);
+  const [resumeAutofillDraft, setResumeAutofillDraft] =
+    useState<ResumeAutofillDraft | null>(null);
+  const [resumeAutofillSession, setResumeAutofillSession] = useState(0);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const sidebarLocationAlignRef = useRef<HTMLDivElement | null>(null);
+  /** Grey rule atop “Profile strength” when `.pp-location` is missing */
+  const sidebarDividerFallbackAlignRef = useRef<HTMLDivElement | null>(null);
+  const programmaticScrollHoldUntilRef = useRef(0);
   const setAvatar = api.profile.setAvatar.useMutation();
+
+  useProfileSidebarScrollSpy({
+    navIdsOrdered: JOBSEEKER_PROFILE_SCROLL_IDS,
+    sectionIdPrefix: "pp",
+    setActive,
+    enabled: true,
+    layoutKey: profileQuery.data?.profile?.id ?? "",
+    sidebarLocationAlignRef,
+    sidebarDividerFallbackAlignRef,
+    programmaticScrollHoldUntilRef,
+  });
+
+  useEffect(() => {
+    function syncFromHash() {
+      const h = window.location.hash.slice(1);
+      if (!h.startsWith("pp-")) return;
+      const id = h.slice(3);
+      if (!(JOBSEEKER_PROFILE_SCROLL_IDS as readonly string[]).includes(id)) {
+        return;
+      }
+      setActive(id);
+    }
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, [setActive]);
 
   const handleAvatar = async (file: File) => {
     setAvatarError(null);
@@ -237,12 +288,15 @@ export function ProfileClient({
               {profile?.headline || "Add a headline"}
             </div>
             {profile?.location && (
-              <div className="pp-location">
+              <div ref={sidebarLocationAlignRef} className="pp-location">
                 <Icon name="mapPin" size={11} /> {profile.location}
               </div>
             )}
 
-            <div className="pp-completeness">
+            <div
+              ref={sidebarDividerFallbackAlignRef}
+              className="pp-completeness"
+            >
               <div className="pp-completeness-head">
                 <span className="pp-completeness-label">Profile strength</span>
                 <span className="pp-completeness-pct">{completeness}%</span>
@@ -274,6 +328,8 @@ export function ProfileClient({
                 key={n.id}
                 className={`pp-nav-item ${active === n.id ? "active" : ""}`}
                 onClick={() => {
+                  programmaticScrollHoldUntilRef.current =
+                    Date.now() + PROFILE_SIDEBAR_SCROLL_SPY_HOLD_MS;
                   setActive(n.id);
                   document
                     .getElementById(`pp-${n.id}`)
@@ -388,6 +444,23 @@ export function ProfileClient({
                 filename: string;
               };
               await setResume.mutateAsync(body);
+              try {
+                const preview = await previewResumeExtraction.mutateAsync({
+                  url: body.url,
+                  filename: body.filename,
+                });
+                if (preview.hasSuggestions && "draft" in preview) {
+                  setResumeAutofillSession((s) => s + 1);
+                  setResumeAutofillDraft(preview.draft);
+                  setResumeAutofillOpen(true);
+                } else if (!preview.hasSuggestions) {
+                  toast.info(resumeAutofillSkipMessage(preview.reason));
+                }
+              } catch {
+                toast.error(
+                  "Could not analyze the resume. Your file was saved — try again later.",
+                );
+              }
             }}
           />
 
@@ -727,7 +800,7 @@ export function ProfileClient({
           <div id="pp-skills" style={{ scrollMarginTop: 100 }} />
           {profile && (
             <SkillsSection
-              key={`skills-${profile.id}`}
+              key={`skills-${profile.id}-${String(profile.updatedAt)}`}
               initial={profile.skills}
               saving={update.isPending}
               onSave={(next) =>
@@ -820,6 +893,21 @@ export function ProfileClient({
         }}
         onCreated={() => void profileQuery.refetch()}
         initial={editingEdu ?? undefined}
+      />
+      <ResumeAutofillModal
+        key={resumeAutofillSession}
+        open={resumeAutofillOpen}
+        onOpenChange={(v) => {
+          setResumeAutofillOpen(v);
+          if (!v) setResumeAutofillDraft(null);
+        }}
+        draft={resumeAutofillDraft}
+        applying={applyResumeExtraction.isPending}
+        onApply={async (payload) => {
+          await applyResumeExtraction.mutateAsync(payload);
+          setResumeAutofillOpen(false);
+          setResumeAutofillDraft(null);
+        }}
       />
     </div>
   );

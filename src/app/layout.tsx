@@ -10,6 +10,7 @@ import "./v2.css";
 import "./v2-dashboard.css";
 import "./v2-about.css";
 import "./v2-contact.css";
+import "./v2-admin.css";
 
 const lato = Lato({
   variable: "--font-lato",

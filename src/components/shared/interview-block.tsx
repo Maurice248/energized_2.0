@@ -122,9 +122,9 @@ export function InterviewBlock({
                 {iv.slots.map((s) => (
                   <li key={s.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     {iv.status === "proposed" && viewer === "candidate" ? (
-                      <Button
-                        size="sm"
-                        variant={tentativePicks[iv.id] === s.id ? "default" : "outline"}
+                      <button
+                        type="button"
+                        className={`v2-interview-slot${tentativePicks[iv.id] === s.id ? " is-selected" : ""}`}
                         disabled={confirm.isPending}
                         onClick={() =>
                           setTentativePicks((p) => ({ ...p, [iv.id]: s.id }))
@@ -132,7 +132,7 @@ export function InterviewBlock({
                       >
                         {tentativePicks[iv.id] === s.id ? "✓ " : ""}
                         {fmtSlot(s.startsAt)}
-                      </Button>
+                      </button>
                     ) : (
                       <span style={{ fontSize: 13, fontWeight: s.isConfirmed ? 700 : 400, color: "var(--v2-ink-900)" }}>
                         {s.isConfirmed ? "✓ " : ""}{fmtSlot(s.startsAt)}
@@ -165,7 +165,9 @@ export function InterviewBlock({
                     </strong>
                     . This locks the interview in for both sides — confirm it below.
                   </div>
-                  <Button
+                  <button
+                    type="button"
+                    className="v2-interview-slot"
                     disabled={confirm.isPending}
                     onClick={() =>
                       confirm.mutate({
@@ -175,10 +177,10 @@ export function InterviewBlock({
                     }
                   >
                     {confirm.isPending ? "Confirming…" : "Confirm this time"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  </button>
+                  <button
+                    type="button"
+                    className="v2-interview-slot"
                     disabled={confirm.isPending}
                     onClick={() =>
                       setTentativePicks((p) => {
@@ -189,7 +191,7 @@ export function InterviewBlock({
                     }
                   >
                     Change pick
-                  </Button>
+                  </button>
                 </div>
               )}
 
@@ -212,9 +214,9 @@ export function InterviewBlock({
 
               {(iv.status === "proposed" || iv.status === "confirmed") && (
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  <button
+                    type="button"
+                    className="v2-btn v2-btn-coral-soft v2-btn-sm"
                     disabled={cancel.isPending}
                     onClick={() => {
                       const reason = window.prompt("Reason (optional)", "") ?? undefined;
@@ -224,12 +226,11 @@ export function InterviewBlock({
                     }}
                   >
                     Cancel
-                  </Button>
+                  </button>
                   {viewer === "employer" && (
                     <ScheduleInterviewModal
                       applicationId={applicationId}
                       rescheduleInterviewId={iv.id}
-                      trigger={<Button size="sm" variant="ghost">Reschedule</Button>}
                       onDone={invalidate}
                     />
                   )}
@@ -256,9 +257,13 @@ export function InterviewBlock({
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="ghost" onClick={() => setShowRequest(iv.id)}>
+                      <button
+                        type="button"
+                        className="v2-btn v2-btn-accent-soft v2-btn-sm"
+                        onClick={() => setShowRequest(iv.id)}
+                      >
                         Request a different time
-                      </Button>
+                      </button>
                     )
                   )}
                 </div>

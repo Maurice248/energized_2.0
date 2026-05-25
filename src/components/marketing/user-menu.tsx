@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/shared/icon";
 import { signOut } from "@/lib/auth/client";
 
 type Props = {
@@ -17,9 +18,10 @@ type Props = {
   email: string;
   image: string | null;
   isEmployer: boolean;
+  isAdmin?: boolean;
 };
 
-export function UserMenu({ name, email, image, isEmployer }: Props) {
+export function UserMenu({ name, email, image, isEmployer, isAdmin }: Props) {
   const router = useRouter();
   const initial = (name?.trim()[0] || email[0] || "?").toUpperCase();
   const displayName = name?.trim() || email.split("@")[0];
@@ -120,6 +122,29 @@ export function UserMenu({ name, email, image, isEmployer }: Props) {
             </DropdownMenuItem>
           </>
         )}
+        {isAdmin ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link
+                href="/admin"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: "var(--v2-accent)",
+                }}
+              >
+                <Icon
+                  name="shield"
+                  size={14}
+                  className="shrink-0 !stroke-[var(--v2-accent)]"
+                />
+                Admin dashboard
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void handleSignOut()}>
           Sign out

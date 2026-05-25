@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
+import { authClient } from "@/lib/auth/client";
 import { api } from "@/lib/trpc/client";
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -28,7 +29,9 @@ function ensureInit() {
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const session = authClient.useSession();
   const me = api.account.me.useQuery(undefined, {
+    enabled: Boolean(session.data?.user),
     staleTime: Infinity,
     retry: false,
   });
@@ -38,12 +41,12 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!initialized || !me.data) return;
+    if (!initialized || !session.data?.user || !me.data) return;
     posthog.identify(me.data.id, {
       email: me.data.email,
       role: me.data.role,
     });
-  }, [me.data]);
+  }, [me.data, session.data?.user]);
 
   useEffect(() => {
     if (!initialized) return;

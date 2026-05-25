@@ -36,6 +36,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["unpdf"],
+  async redirects() {
+    return [
+      {
+        source: "/admin/tickets",
+        destination: "/admin/support",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

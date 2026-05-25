@@ -48,11 +48,31 @@ export const AVATAR_ALLOWED_MIME = [
   "image/webp",
 ] as const;
 
+/** Admin profile-settings page matches Greenopia-style copy (PNG/JPG/WEBP, max 5MB). */
+export const STAFF_PROFILE_AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+
 export function validateAvatarFile(
   file: File | null,
 ): { ok: true; file: File } | ResumeValidationError {
   if (!file) return { ok: false, reason: "missing_file" };
   if (file.size > AVATAR_MAX_BYTES) {
+    return { ok: false, reason: "too_large", size: file.size };
+  }
+  if (
+    !AVATAR_ALLOWED_MIME.includes(
+      file.type as (typeof AVATAR_ALLOWED_MIME)[number],
+    )
+  ) {
+    return { ok: false, reason: "bad_mime", mime: file.type };
+  }
+  return { ok: true, file };
+}
+
+export function validateStaffProfileAvatarFile(
+  file: File | null,
+): { ok: true; file: File } | ResumeValidationError {
+  if (!file) return { ok: false, reason: "missing_file" };
+  if (file.size > STAFF_PROFILE_AVATAR_MAX_BYTES) {
     return { ok: false, reason: "too_large", size: file.size };
   }
   if (
@@ -77,6 +97,19 @@ export async function uploadAvatar(userId: string, file: File) {
     },
   );
   return { url };
+}
+
+/** Best-effort: URLs we created via Vercel Blob `put()` for avatars. */
+export function isManagedAvatarBlobUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname;
+    return (
+      h.endsWith(".public.blob.vercel-storage.com") ||
+      h.endsWith(".blob.vercel-storage.com")
+    );
+  } catch {
+    return false;
+  }
 }
 
 export const COVER_MAX_BYTES = 5 * 1024 * 1024;

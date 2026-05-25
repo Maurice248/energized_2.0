@@ -64,11 +64,7 @@ export default async function MyTrainingsPage() {
               <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-600">
                 Browse the catalog and enroll in your first course.
               </p>
-              <Link
-                href="/trainings"
-                className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white"
-                style={{ background: "var(--brand-black, #101820)" }}
-              >
+              <Link href="/trainings" className="v2-btn v2-btn-primary mt-6">
                 Browse trainings <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

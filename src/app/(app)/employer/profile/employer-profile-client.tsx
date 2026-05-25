@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Icon, type IconName } from "@/components/shared/icon";
@@ -14,6 +14,10 @@ import {
 } from "@/lib/jobs-options";
 import { BillingSection } from "./billing-section";
 import { DangerZone } from "./danger-zone";
+import {
+  PROFILE_SIDEBAR_SCROLL_SPY_HOLD_MS,
+  useProfileSidebarScrollSpy,
+} from "@/hooks/use-profile-sidebar-scroll-spy";
 
 type JobRow = inferRouterOutputs<AppRouter>["jobs"]["listForOrg"][number];
 
@@ -159,6 +163,10 @@ const NAV_ITEMS: { id: string; label: string; icon: IconName }[] = [
   { id: "verify", label: "Verification", icon: "shield" },
 ];
 
+const EMPLOYER_PROFILE_SCROLL_IDS: readonly string[] = NAV_ITEMS.map(
+  (n) => n.id,
+);
+
 /* ---------- client ---------- */
 
 export function EmployerProfileClient({
@@ -173,6 +181,36 @@ export function EmployerProfileClient({
   const kpisQuery = api.employer.getKpis.useQuery();
 
   const [active, setActive] = useState<string>("overview");
+
+  const programmaticScrollHoldUntilRef = useRef(0);
+  const sidebarLocationAlignRef = useRef<HTMLDivElement | null>(null);
+  const sidebarDividerFallbackAlignRef = useRef<HTMLDivElement | null>(null);
+
+  useProfileSidebarScrollSpy({
+    navIdsOrdered: EMPLOYER_PROFILE_SCROLL_IDS,
+    sectionIdPrefix: "ep",
+    setActive,
+    enabled: true,
+    layoutKey: orgQuery.data?.org?.id ?? "",
+    sidebarLocationAlignRef,
+    sidebarDividerFallbackAlignRef,
+    programmaticScrollHoldUntilRef,
+  });
+
+  useEffect(() => {
+    function syncFromHash() {
+      const h = window.location.hash.slice(1);
+      if (!h.startsWith("ep-")) return;
+      const id = h.slice(3);
+      if (!(EMPLOYER_PROFILE_SCROLL_IDS as readonly string[]).includes(id)) {
+        return;
+      }
+      setActive(id);
+    }
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, [setActive]);
 
   const closeJob = api.jobs.close.useMutation({
     onSuccess: () => void jobsQuery.refetch(),
@@ -436,7 +474,9 @@ export function EmployerProfileClient({
                 {logoError}
               </div>
             )}
-            <div className="pp-name">{org?.name ?? "Untitled company"}</div>
+            <div className="pp-name">
+              {org?.name ?? "Untitled company"}
+            </div>
             {org?.tagline && (
               <div
                 style={{
@@ -470,12 +510,13 @@ export function EmployerProfileClient({
               </div>
             )}
             {org?.hq && (
-              <div className="pp-location">
+              <div ref={sidebarLocationAlignRef} className="pp-location">
                 <Icon name="mapPin" size={11} /> {org.hq}
               </div>
             )}
             {org?.domain && (
               <div
+                ref={org?.hq ? undefined : sidebarLocationAlignRef}
                 className="pp-location"
                 style={{ marginTop: 4 }}
               >
@@ -524,7 +565,10 @@ export function EmployerProfileClient({
               </div>
             )}
 
-            <div className="pp-completeness">
+            <div
+              ref={sidebarDividerFallbackAlignRef}
+              className="pp-completeness"
+            >
               <div className="pp-completeness-head">
                 <span className="pp-completeness-label">Profile strength</span>
                 <span className="pp-completeness-pct">{completion}%</span>
@@ -556,6 +600,8 @@ export function EmployerProfileClient({
                 key={n.id}
                 className={`pp-nav-item ${active === n.id ? "active" : ""}`}
                 onClick={() => {
+                  programmaticScrollHoldUntilRef.current =
+                    Date.now() + PROFILE_SIDEBAR_SCROLL_SPY_HOLD_MS;
                   setActive(n.id);
                   document
                     .getElementById(`ep-${n.id}`)

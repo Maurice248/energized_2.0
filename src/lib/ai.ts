@@ -8,10 +8,17 @@ import {
   buildResultNarrativePrompt,
   type GeneratePromptInput,
 } from "./skill-test-prompts";
+import type { ResumeAutofillDraft } from "./resume-extraction-map";
+import {
+  flexParseToIsoDate,
+  mapCertificationTypeFromAi,
+  normalizeSectorFromAi,
+  normalizeYear,
+} from "./resume-extraction-map";
 
 export const EMBER_ENABLED = Boolean(env.OPENAI_API_KEY);
 
-const openaiClient = EMBER_ENABLED
+const openaiClient = env.OPENAI_API_KEY
   ? createOpenAI({ apiKey: env.OPENAI_API_KEY })
   : null;
 
@@ -384,4 +391,244 @@ export async function narrateSkillResult(input: {
     maxOutputTokens: 300,
   });
   return text.trim().replace(/^["']|["']$/g, "");
+}
+
+// ---------------------------------------------------------------------------
+// Resume → profile autofill (structured extraction)
+// ---------------------------------------------------------------------------
+
+const resumeAiWorkRowSchema = z.object({
+  employerName: z.string(),
+  roleTitle: z.string(),
+  site: z.string().nullable().optional(),
+  sector: z.string().nullable().optional(),
+  commodity: z.string().nullable().optional(),
+  rotation: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  roleSkills: z.array(z.string()).optional().default([]),
+  startDate: z.string(),
+  endDate: z.string().nullable().optional(),
+  isCurrent: z.boolean().optional(),
+});
+
+const resumeAiEducationRowSchema = z.object({
+  school: z.string(),
+  degree: z.string().nullable().optional(),
+  startedYear: z.string().nullable().optional(),
+  endedYear: z.string().nullable().optional(),
+  details: z.string().nullable().optional(),
+});
+
+const resumeAiCertRowSchema = z.object({
+  name: z.string(),
+  typeHint: z.string().nullable().optional(),
+  issuer: z.string().nullable().optional(),
+  issuedAt: z.string().nullable().optional(),
+  expiresAt: z.string().nullable().optional(),
+});
+
+const resumeAiResponseSchema = z.object({
+  workHistory: z.array(resumeAiWorkRowSchema).max(15).default([]),
+  education: z.array(resumeAiEducationRowSchema).max(12).default([]),
+  certifications: z.array(resumeAiCertRowSchema).max(20).default([]),
+  coreSkills: z.array(z.string()).max(40).default([]),
+});
+
+function stripResumeFences(raw: string): string {
+  const t = raw.trim();
+  const fence = /^```(?:json)?\s*([\s\S]*?)\s*```$/im.exec(t);
+  if (fence?.[1]) return fence[1].trim();
+  return t;
+}
+
+function dedupeTrimmedSkills(list: string[], cap: number): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const s of list) {
+    const t = s.trim();
+    if (!t) continue;
+    const k = t.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(t.slice(0, 60));
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+export function emptyResumeAutofillDraft(): ResumeAutofillDraft {
+  return {
+    workHistory: [],
+    education: [],
+    certifications: [],
+    coreSkills: [],
+  };
+}
+
+export function resumeAutofillDraftHasSuggestions(d: ResumeAutofillDraft): boolean {
+  return (
+    d.workHistory.length > 0 ||
+    d.education.length > 0 ||
+    d.certifications.length > 0 ||
+    d.coreSkills.length > 0
+  );
+}
+
+function mapAiJsonToResumeDraft(
+  parsed: z.infer<typeof resumeAiResponseSchema>,
+): ResumeAutofillDraft {
+  const workHistory = parsed.workHistory
+    .map((row) => {
+      const startedAt = flexParseToIsoDate(row.startDate);
+      if (
+        !row.employerName?.trim() ||
+        !row.roleTitle?.trim() ||
+        !startedAt
+      ) {
+        return null;
+      }
+      const endedAt =
+        row.isCurrent === true
+          ? null
+          : flexParseToIsoDate(row.endDate ?? null);
+      return {
+        employerName: row.employerName.trim().slice(0, 160),
+        roleTitle: row.roleTitle.trim().slice(0, 160),
+        site: row.site?.trim().length ? row.site.trim().slice(0, 160) : null,
+        sector: normalizeSectorFromAi(row.sector ?? null),
+        commodity: row.commodity?.trim().length
+          ? row.commodity.trim().slice(0, 120)
+          : null,
+        rotation: row.rotation?.trim().length
+          ? row.rotation.trim().slice(0, 40)
+          : null,
+        summary: row.summary?.trim().length
+          ? row.summary.trim().slice(0, 2000)
+          : null,
+        skills: dedupeTrimmedSkills(row.roleSkills ?? [], 20),
+        startedAt,
+        endedAt,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+
+  const education = parsed.education
+    .map((row) => {
+      if (!row.school?.trim()) return null;
+      return {
+        school: row.school.trim().slice(0, 160),
+        degree: row.degree?.trim().length ? row.degree.trim().slice(0, 160) : null,
+        startedYear: normalizeYear(row.startedYear ?? null),
+        endedYear: normalizeYear(row.endedYear ?? null),
+        details: row.details?.trim().length ? row.details.trim().slice(0, 500) : null,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+
+  const certifications = parsed.certifications
+    .map((row) => {
+      if (!row.name?.trim()) return null;
+      const name = row.name.trim().slice(0, 120);
+      return {
+        type: mapCertificationTypeFromAi(row.typeHint ?? null, name),
+        name,
+        issuer: row.issuer?.trim().length ? row.issuer.trim().slice(0, 120) : null,
+        issuedAt: flexParseToIsoDate(row.issuedAt ?? null),
+        expiresAt: flexParseToIsoDate(row.expiresAt ?? null),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+
+  const coreSkills = dedupeTrimmedSkills(parsed.coreSkills ?? [], 30);
+
+  return { workHistory, education, certifications, coreSkills };
+}
+
+/**
+ * Uses the configured OpenAI model to turn resume plain text into profile-shaped data.
+ * Returns an empty draft when AI is disabled or the model output cannot be parsed.
+ */
+export async function extractResumeAutofillDraftFromPlainText(
+  plainText: string,
+): Promise<ResumeAutofillDraft> {
+  if (!openaiClient || plainText.trim().length < 40) {
+    return emptyResumeAutofillDraft();
+  }
+
+  const clipped = plainText.slice(0, 22_000);
+  const allowedSectors =
+    "oil_gas | renewables | nuclear | utilities | hydrogen | power | other";
+  const allowedCertHints =
+    "h2s_alive | first_aid | csts | red_seal | p_eng | nace | fall_protection | other";
+
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { text } = await generateText({
+        model: openaiClient(env.OPENAI_MODEL),
+        system:
+          "You extract structured resume data for Energized, a Canadian energy-sector job platform. " +
+          "Read the resume text and return ONLY compact JSON (no markdown, no prose). " +
+          "Rules: " +
+          "(1) Copy employers, roles, schools, and certification names faithfully — do not invent employers, degrees, or tickets. " +
+          "(2) If a field is unknown, use null or omit optional arrays. " +
+          `(3) Sector on each job must be one of: ${allowedSectors}, or null if unsure. ` +
+          `(4) For certifications, set typeHint to the closest bucket: ${allowedCertHints}. ` +
+          "(5) Dates: prefer ISO YYYY-MM-DD for startDate, endDate, issuedAt, expiresAt; use null when missing. " +
+          "(6) isCurrent true means the role has no end date yet. " +
+          "(7) coreSkills: up to 25 concise tools / methods / disciplines (no soft skills). " +
+          "(8) roleSkills: skills specifically tied to that job row. " +
+          "(9) Keep summaries under 600 characters when possible.",
+        prompt:
+          "Return JSON with this exact shape: {\n" +
+          '  \"workHistory\": [{\n' +
+          '      \"employerName\": string,\n' +
+          '      \"roleTitle\": string,\n' +
+          '      \"site\": string | null,\n' +
+          '      \"sector\": string | null,\n' +
+          '      \"commodity\": string | null,\n' +
+          '      \"rotation\": string | null,\n' +
+          '      \"summary\": string | null,\n' +
+          '      \"roleSkills\": string[],\n' +
+          '      \"startDate\": string,\n' +
+          '      \"endDate\": string | null,\n' +
+          "      \"isCurrent\": boolean\n" +
+          "  }],\n" +
+          '  \"education\": [{\n' +
+          '      \"school\": string,\n' +
+          '      \"degree\": string | null,\n' +
+          '      \"startedYear\": string | null,\n' +
+          '      \"endedYear\": string | null,\n' +
+          '      \"details\": string | null\n' +
+          "  }],\n" +
+          '  \"certifications\": [{\n' +
+          '      \"name\": string,\n' +
+          '      \"typeHint\": string | null,\n' +
+          '      \"issuer\": string | null,\n' +
+          '      \"issuedAt\": string | null,\n' +
+          '      \"expiresAt\": string | null\n' +
+          "  }],\n" +
+          '  \"coreSkills\": string[]\n' +
+          "}\n\nRESUME:\n" +
+          clipped,
+        maxOutputTokens: 4000,
+      });
+
+      const cleaned = stripResumeFences(text);
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      const raw = match ? match[0] : cleaned;
+      try {
+        const parsed = resumeAiResponseSchema.parse(JSON.parse(raw));
+        return mapAiJsonToResumeDraft(parsed);
+      } catch {
+        if (attempt === 1) return emptyResumeAutofillDraft();
+      }
+    }
+    return emptyResumeAutofillDraft();
+  } catch (e) {
+    console.error({
+      event: "resume_ai_extract_failed",
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return emptyResumeAutofillDraft();
+  }
 }

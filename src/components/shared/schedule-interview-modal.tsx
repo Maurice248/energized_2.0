@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/shared/datetime-picker";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/trpc/client";
 
@@ -20,11 +21,15 @@ export function ScheduleInterviewModal({
   applicationId,
   rescheduleInterviewId,
   trigger,
+  triggerClassName,
+  triggerLabel,
   onDone,
 }: {
   applicationId: string;
   rescheduleInterviewId?: string;
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
+  triggerClassName?: string;
+  triggerLabel?: string;
   onDone?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -92,6 +97,15 @@ export function ScheduleInterviewModal({
 
   const isPending = propose.isPending || reschedule.isPending;
 
+  const defaultTriggerLabel =
+    triggerLabel ??
+    (rescheduleInterviewId ? "Reschedule" : "Schedule interview");
+  const defaultTriggerClassName =
+    triggerClassName ??
+    (rescheduleInterviewId
+      ? "v2-btn v2-btn-accent-soft v2-btn-sm"
+      : "v2-btn v2-btn-accent-deep v2-btn-sm");
+
   return (
     <Dialog
       open={open}
@@ -100,7 +114,13 @@ export function ScheduleInterviewModal({
         if (!next) setErrorMessage(null);
       }}
     >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <button type="button" className={defaultTriggerClassName}>
+            {defaultTriggerLabel}
+          </button>
+        )}
+      </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{rescheduleInterviewId ? "Reschedule interview" : "Schedule interview"}</DialogTitle>
@@ -168,12 +188,12 @@ export function ScheduleInterviewModal({
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
               {slots.map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 6 }}>
-                  <Input
-                    type="datetime-local"
+                  <DateTimePicker
+                    className="min-w-0 flex-1"
                     value={s}
-                    onChange={(e) => {
+                    onChange={(nextValue) => {
                       const next = [...slots];
-                      next[i] = e.target.value;
+                      next[i] = nextValue;
                       setSlots(next);
                     }}
                   />

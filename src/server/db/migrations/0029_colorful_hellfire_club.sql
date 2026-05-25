@@ -1,0 +1,1 @@
+ALTER TABLE "pages" ADD COLUMN "outro" text DEFAULT '' NOT NULL;

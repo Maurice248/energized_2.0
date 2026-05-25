@@ -49,9 +49,23 @@ export function IntroRequestsClient() {
 
   return (
     <main style={{ maxWidth: 960, margin: "32px auto", padding: "0 24px" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 900, color: "#101820", marginBottom: 8 }}>
-        Intro requests
-      </h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        <h1 style={{ fontSize: 24, fontWeight: 900, color: "#101820", margin: 0 }}>
+          Intro requests
+        </h1>
+        <Link href="/employer" className="v2-btn v2-btn-link" style={{ flexShrink: 0 }}>
+          To dashboard →
+        </Link>
+      </div>
       <p style={{ color: "var(--v2-ink-700)", marginBottom: 16 }}>
         Requests your team has sent from candidate profiles.
       </p>

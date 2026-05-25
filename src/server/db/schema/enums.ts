@@ -113,3 +113,56 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "incomplete_expired",
   "unpaid",
 ]);
+
+export const moderationKindEnum = pgEnum("moderation_kind", [
+  "job",
+  "user",
+  "employer",
+  "message",
+  "application",
+  "duplicate",
+  "geo",
+]);
+
+export const moderationSeverityEnum = pgEnum("moderation_severity", [
+  "high",
+  "medium",
+  "low",
+  "spam",
+]);
+
+export const moderationStatusEnum = pgEnum("moderation_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "escalated",
+]);
+
+export const moderationFlagSourceEnum = pgEnum("moderation_flag_source", [
+  "auto",
+  "user",
+  "agent",
+]);
+
+export const supportTicketPriorityEnum = pgEnum("support_ticket_priority", [
+  "p1",
+  "p2",
+  "p3",
+]);
+
+export const supportTicketStatusEnum = pgEnum("support_ticket_status", [
+  "open",
+  "in_progress",
+  "closed",
+]);
+
+export const systemServiceStatusEnum = pgEnum("system_service_status", [
+  "operational",
+  "degraded",
+  "outage",
+]);
+
+export const certificationVerificationStatusEnum = pgEnum(
+  "certification_verification_status",
+  ["pending", "approved", "rejected"],
+);

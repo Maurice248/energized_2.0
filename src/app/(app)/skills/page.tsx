@@ -7,6 +7,8 @@ import { SectorGrid } from "./_components/sector-grid";
 import { PopularRoles } from "./_components/popular-roles";
 import { HowItWorksStrip } from "./_components/how-it-works-strip";
 import { RecentAttemptsStrip } from "./_components/recent-attempts-strip";
+import { getPublishedSurfaceSectionHtml } from "@/lib/cms-surface-loader";
+import { SURFACE_SECTION_IDS } from "@/lib/surface-cms-seeds";
 
 export default async function SkillsPage() {
   const session = await getSession();
@@ -17,6 +19,11 @@ export default async function SkillsPage() {
     isEmployer ? Promise.resolve([]) : api.skillTests.myAttempts().catch(() => []),
   ]);
   const recent = attempts.slice(0, 3);
+
+  const [cmsJobseekerHeroHtml, cmsEmployerHeroHtml] = await Promise.all([
+    getPublishedSurfaceSectionHtml("skills", SURFACE_SECTION_IDS.skillsJobseeker),
+    getPublishedSurfaceSectionHtml("skills", SURFACE_SECTION_IDS.skillsEmployer),
+  ]);
 
   return (
     <div
@@ -31,7 +38,12 @@ export default async function SkillsPage() {
       <SiteHeader active="skill-tests" />
       <main className="flex-1 bg-slate-50 py-14 lg:py-20">
         <div className="mx-auto max-w-6xl px-4">
-          <CatalogHero sectors={sectors} isEmployer={isEmployer} />
+          <CatalogHero
+            sectors={sectors}
+            isEmployer={isEmployer}
+            cmsJobseekerHeroHtml={cmsJobseekerHeroHtml}
+            cmsEmployerHeroHtml={cmsEmployerHeroHtml}
+          />
           {!isEmployer && recent.length > 0 && (
             <section className="mt-12">
               <RecentAttemptsStrip

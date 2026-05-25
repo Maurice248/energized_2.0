@@ -14,6 +14,8 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   role: text("role").default("jobseeker").notNull(),
+  /** Platform staff title (admin console directory); jobseeker headline stays on profiles. */
+  staffPosition: text("staff_position"),
   onboardedAt: timestamp("onboarded_at"),
   // Jobseeker subscription state — mirrors employerOrgs billing columns,
   // namespaced. "none" = free tier (no Stripe subscription).

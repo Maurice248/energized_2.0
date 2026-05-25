@@ -12,7 +12,6 @@ import {
   user,
 } from "@/server/db/schema";
 import { getSession } from "@/server/auth";
-import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { STAGE_FROM_DB, STAGE_LABEL } from "@/lib/application-stages";
 import { InterviewBlock } from "@/components/shared/interview-block";
@@ -336,10 +335,7 @@ export default async function EmployerApplicantDetailPage({
             applicationId={applicationId}
             viewer="employer"
             scheduleSlot={
-              <ScheduleInterviewModal
-                applicationId={applicationId}
-                trigger={<Button size="sm">Schedule interview</Button>}
-              />
+              <ScheduleInterviewModal applicationId={applicationId} />
             }
           />
         </div>

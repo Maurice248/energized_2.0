@@ -70,6 +70,16 @@ function firstStepWithMissing(fields: string[]): number | null {
   return min;
 }
 
+/** Role basics untouched — discard draft instead of persisting on save & exit. */
+function hasNoBasicsCaptured(d: WizardDraft): boolean {
+  return (
+    d.title.trim().length === 0 &&
+    d.sector == null &&
+    d.subSectors.length === 0 &&
+    d.experienceLevel == null
+  );
+}
+
 function toDraft(row: JobRow): WizardDraft {
   return {
     title: row.title ?? "",
@@ -106,6 +116,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
 
   const utils = api.useUtils();
   const updateDraft = api.jobs.updateDraft.useMutation();
+  const deleteDraft = api.jobs.deleteDraft.useMutation();
   const publish = api.jobs.publish.useMutation();
   const billing = api.billing.getCurrent.useQuery();
   const noSubscription =
@@ -162,9 +173,24 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
     };
   }, [draft, flushSave, status]);
 
-  // Per-step required fields. Aligns with the server-side publish validator
-  // in src/server/api/routers/jobs.ts so users hit the same wall at Next as
-  // they would at Publish — but earlier and tied to the step they're on.
+  const saveAndExit = async () => {
+    if (status === "draft" && hasNoBasicsCaptured(draft)) {
+      if (pendingTimerRef.current) {
+        window.clearTimeout(pendingTimerRef.current);
+        pendingTimerRef.current = null;
+      }
+      await deleteDraft.mutateAsync({ id: initial.id });
+      await utils.jobs.listForOrg.invalidate();
+      await utils.jobs.getById.invalidate({ id: initial.id });
+      router.push("/employer");
+      return;
+    }
+    await flushSave();
+    router.push("/employer");
+  };
+
+  // Per-step required fields. Step numbers match STEPS + step panels below;
+  // rules mirror `findMissingPublishFields` in src/server/api/routers/jobs.ts.
   const findMissingForStep = (s: number, d: WizardDraft): string[] => {
     const m: string[] = [];
     if (s === 1) {
@@ -176,7 +202,12 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
       if (!d.location || d.location.trim().length < 2) m.push("location");
       if (!d.workSetup) m.push("workSetup");
     }
+    // Steps 3–4 match STEPS + rendered panels: 3 = story/description, 4 = pay.
     if (s === 3) {
+      if (!d.description || d.description.trim().length < 100)
+        m.push("description");
+    }
+    if (s === 4) {
       if (d.salaryMin == null && d.salaryMax == null) m.push("salary");
       if (
         d.salaryMin != null &&
@@ -185,10 +216,6 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
       ) {
         m.push("salaryRange");
       }
-    }
-    if (s === 4) {
-      if (!d.description || d.description.trim().length < 1)
-        m.push("description");
     }
     return m;
   };
@@ -315,10 +342,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
           )}
           <button
             className="v2-btn v2-btn-link"
-            onClick={async () => {
-              await flushSave();
-              router.push("/employer");
-            }}
+            onClick={() => void saveAndExit()}
           >
             Save &amp; exit →
           </button>
@@ -485,13 +509,13 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
               <span>{publishError}</span>
               {(publishError.includes("Subscribe") ||
                 publishError.includes("Upgrade")) && (
-                <a
+                <Link
                   href="/employer/profile#ep-billing"
                   className="v2-btn v2-btn-primary v2-btn-sm"
                   style={{ flexShrink: 0 }}
                 >
                   Go to billing →
-                </a>
+                </Link>
               )}
             </div>
           )}
@@ -524,10 +548,7 @@ export function JobWizardClient({ initial }: { initial: JobRow }) {
               <div style={{ display: "flex", gap: 12 }}>
                 <button
                   className="v2-btn v2-btn-ghost"
-                  onClick={async () => {
-                    await flushSave();
-                    router.push("/employer");
-                  }}
+                  onClick={() => void saveAndExit()}
                 >
                   Save draft &amp; exit
                 </button>

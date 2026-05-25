@@ -12,8 +12,17 @@ import {
 import { safeCapture } from "@/lib/posthog";
 import {
   EVENT_PROFILE_UPDATED,
+  EVENT_RESUME_AUTOFILL_APPLIED,
+  EVENT_RESUME_AUTOFILL_PREVIEWED,
   EVENT_RESUME_UPLOADED,
 } from "@/lib/analytics-events";
+import {
+  EMBER_ENABLED,
+  extractResumeAutofillDraftFromPlainText,
+  resumeAutofillDraftHasSuggestions,
+} from "@/lib/ai";
+import { assertResumeBlobUrlForUser } from "@/lib/resume-blob-guard";
+import { extractPlainTextFromResumeStorage } from "@/lib/resume-plain-text";
 import { polishProfileSummary } from "@/lib/ai";
 import {
   isEntitledSubscriptionStatus,
@@ -82,23 +91,24 @@ const certificationInputSchema = z.object({
   documentUrl: z.string().url().optional().nullable(),
 });
 
-const workHistoryInputSchema = z
-  .object({
-    employerName: z.string().min(1).max(160),
-    roleTitle: z.string().min(1).max(160),
-    site: z.string().max(160).optional().nullable(),
-    sector: z.enum(sectorValues).optional().nullable(),
-    commodity: z.string().max(120).optional().nullable(),
-    rotation: z.string().max(40).optional().nullable(),
-    summary: z.string().max(2000).optional().nullable(),
-    skills: z.array(z.string().min(1).max(60)).max(20).optional(),
-    startedAt: z.date(),
-    endedAt: z.date().optional().nullable(),
-  })
-  .refine(
-    ({ startedAt, endedAt }) => !endedAt || endedAt >= startedAt,
-    { message: "endedAt must be on or after startedAt", path: ["endedAt"] },
-  );
+/** Plain object only — Zod 4 disallows `.omit()` on schemas that already use `.refine()`. */
+const workHistoryRowShapeSchema = z.object({
+  employerName: z.string().min(1).max(160),
+  roleTitle: z.string().min(1).max(160),
+  site: z.string().max(160).optional().nullable(),
+  sector: z.enum(sectorValues).optional().nullable(),
+  commodity: z.string().max(120).optional().nullable(),
+  rotation: z.string().max(40).optional().nullable(),
+  summary: z.string().max(2000).optional().nullable(),
+  skills: z.array(z.string().min(1).max(60)).max(20).optional(),
+  startedAt: z.date(),
+  endedAt: z.date().optional().nullable(),
+});
+
+const workHistoryInputSchema = workHistoryRowShapeSchema.refine(
+  ({ startedAt, endedAt }) => !endedAt || endedAt >= startedAt,
+  { message: "endedAt must be on or after startedAt", path: ["endedAt"] },
+);
 
 const resumeInputSchema = z.object({
   url: z.string().url(),
@@ -119,6 +129,31 @@ const educationInputSchema = z.object({
     .optional()
     .nullable(),
   details: z.string().max(500).optional().nullable(),
+});
+
+const applyWorkHistoryRowSchema = workHistoryRowShapeSchema
+  .omit({ startedAt: true, endedAt: true })
+  .extend({
+    startedAt: z.coerce.date(),
+    endedAt: z.coerce.date().optional().nullable(),
+  })
+  .refine(
+    ({ startedAt, endedAt }) => !endedAt || endedAt >= startedAt,
+    { message: "endedAt must be on or after startedAt", path: ["endedAt"] },
+  );
+
+const applyCertificationRowSchema = certificationInputSchema
+  .omit({ issuedAt: true, expiresAt: true })
+  .extend({
+    issuedAt: z.coerce.date().optional().nullable(),
+    expiresAt: z.coerce.date().optional().nullable(),
+  });
+
+const applyResumeExtractionInputSchema = z.object({
+  workHistory: z.array(applyWorkHistoryRowSchema).max(25).default([]),
+  education: z.array(educationInputSchema).max(20).default([]),
+  certifications: z.array(applyCertificationRowSchema).max(30).default([]),
+  mergeCoreSkills: z.array(z.string().min(1).max(60)).max(30).optional(),
 });
 
 async function requireProfile(
@@ -387,6 +422,141 @@ export const profileRouter = router({
       if (!deleted) throw new TRPCError({ code: "NOT_FOUND" });
       await bumpProfileUpdatedAt(ctx.db, profile.id);
       return deleted;
+    }),
+
+  previewResumeExtraction: protectedProcedure
+    .input(resumeInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      assertResumeBlobUrlForUser(input.url, ctx.session.user.id);
+
+      let plain = "";
+      try {
+        plain = await extractPlainTextFromResumeStorage({
+          url: input.url,
+          filename: input.filename,
+        });
+      } catch (e) {
+        console.error({
+          event: "resume_preview_extract_failed",
+          userId: ctx.session.user.id,
+          message: e instanceof Error ? e.message : String(e),
+        });
+        await safeCapture({
+          distinctId: ctx.session.user.id,
+          event: EVENT_RESUME_AUTOFILL_PREVIEWED,
+          properties: { hasSuggestions: false, reason: "extract_failed" },
+        });
+        return {
+          hasSuggestions: false as const,
+          reason: "extract_failed" as const,
+        };
+      }
+
+      if (plain.length < 40) {
+        await safeCapture({
+          distinctId: ctx.session.user.id,
+          event: EVENT_RESUME_AUTOFILL_PREVIEWED,
+          properties: { hasSuggestions: false, reason: "too_short" },
+        });
+        return {
+          hasSuggestions: false as const,
+          reason: "too_short" as const,
+        };
+      }
+
+      if (!EMBER_ENABLED) {
+        await safeCapture({
+          distinctId: ctx.session.user.id,
+          event: EVENT_RESUME_AUTOFILL_PREVIEWED,
+          properties: { hasSuggestions: false, reason: "ai_not_configured" },
+        });
+        return {
+          hasSuggestions: false as const,
+          reason: "ai_not_configured" as const,
+        };
+      }
+
+      const draft = await extractResumeAutofillDraftFromPlainText(plain);
+      const hasSuggestions = resumeAutofillDraftHasSuggestions(draft);
+
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_RESUME_AUTOFILL_PREVIEWED,
+        properties: {
+          hasSuggestions,
+          work: draft.workHistory.length,
+          education: draft.education.length,
+          certs: draft.certifications.length,
+          skills: draft.coreSkills.length,
+        },
+      });
+
+      if (!hasSuggestions) {
+        return { hasSuggestions: false as const, reason: "no_sections" as const };
+      }
+
+      return { hasSuggestions: true as const, draft };
+    }),
+
+  applyResumeExtraction: protectedProcedure
+    .input(applyResumeExtractionInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const profile = await requireProfile(ctx);
+
+      function dedupeSkills(a: string[], b: string[]): string[] {
+        const out: string[] = [];
+        const seen = new Set<string>();
+        for (const s of [...a, ...b]) {
+          const t = s.trim();
+          if (!t) continue;
+          const k = t.toLowerCase();
+          if (seen.has(k)) continue;
+          seen.add(k);
+          out.push(t.slice(0, 60));
+          if (out.length >= 30) break;
+        }
+        return out;
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        for (const row of input.workHistory) {
+          await tx.insert(workHistory).values({ ...row, profileId: profile.id });
+        }
+        for (const row of input.education) {
+          await tx.insert(education).values({ ...row, profileId: profile.id });
+        }
+        for (const row of input.certifications) {
+          await tx.insert(certifications).values({ ...row, profileId: profile.id });
+        }
+        if (input.mergeCoreSkills && input.mergeCoreSkills.length > 0) {
+          const next = dedupeSkills(profile.skills, input.mergeCoreSkills);
+          await tx
+            .update(profiles)
+            .set({ skills: next })
+            .where(eq(profiles.id, profile.id));
+        }
+      });
+
+      await bumpProfileUpdatedAt(ctx.db, profile.id);
+
+      await safeCapture({
+        distinctId: ctx.session.user.id,
+        event: EVENT_RESUME_AUTOFILL_APPLIED,
+        properties: {
+          workAdded: input.workHistory.length,
+          educationAdded: input.education.length,
+          certsAdded: input.certifications.length,
+          skillsMerged: input.mergeCoreSkills?.length ?? 0,
+        },
+      });
+
+      const [nextProfile] = await ctx.db
+        .select({ skills: profiles.skills })
+        .from(profiles)
+        .where(eq(profiles.id, profile.id))
+        .limit(1);
+
+      return { skills: nextProfile?.skills ?? profile.skills };
     }),
 
   setResume: protectedProcedure

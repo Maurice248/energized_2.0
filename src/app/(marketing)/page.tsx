@@ -13,6 +13,9 @@ import {
   type CardCta,
   type ViewerContext,
 } from "@/lib/card-cta";
+import { getPublishedSurfaceSectionHtml } from "@/lib/cms-surface-loader";
+import { SURFACE_SECTION_IDS } from "@/lib/surface-cms-seeds";
+import { sanitizeCmsHtml } from "@/lib/sanitize-cms-html";
 
 function PlanCardButton({ cta }: { cta: CardCta }) {
   if (cta.disabled) {
@@ -59,11 +62,16 @@ export default async function LandingPage() {
       .where(eq(user.role, "jobseeker")),
   ]);
 
+  const landingHeroHtml = await getPublishedSurfaceSectionHtml(
+    "home",
+    SURFACE_SECTION_IDS.defaultHero,
+  );
+
   return (
     <>
       <SiteHeader active="home" />
       <main style={{ flex: 1 }}>
-        <Hero liveRoles={liveRoles} />
+        <Hero liveRoles={liveRoles} landingHeroHtml={landingHeroHtml} />
         <Marquee />
         <SectorIndex />
         <AIShowcase liveRoles={liveRoles} candidateCount={candidateCount} />
@@ -78,12 +86,26 @@ export default async function LandingPage() {
 
 /* ---------- hero ---------- */
 
-function Hero({ liveRoles }: { liveRoles: number }) {
+function Hero({
+  liveRoles,
+  landingHeroHtml,
+}: {
+  liveRoles: number;
+  landingHeroHtml: string | null;
+}) {
   return (
     <section className="v2-hero">
       <div className="v2-container v2-hero-inner">
         <div className="v2-hero-copy">
-          <div className="v2-eyebrow">Est. 2026 · Calgary → National</div>
+          {landingHeroHtml ? (
+            <div
+              dangerouslySetInnerHTML={{
+                __html: sanitizeCmsHtml(landingHeroHtml),
+              }}
+            />
+          ) : (
+            <>
+              <div className="v2-eyebrow">Est. 2026 · Calgary → National</div>
           <h1
             className="v2-display v2-hero-headline"
             style={{ color: "var(--v2-ink-950)" }}
@@ -104,6 +126,8 @@ function Hero({ liveRoles }: { liveRoles: number }) {
             fairer, with AI that actually understands sector-specific
             expertise.
           </p>
+            </>
+          )}
           <div className="v2-hero-actions">
             <Link href="/sign-up" className="v2-btn v2-btn-primary v2-btn-lg">
               Find my role <Icon name="arrowUpRight" size={18} />

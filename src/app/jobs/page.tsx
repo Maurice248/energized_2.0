@@ -35,6 +35,9 @@ import { JobsSearchInput } from "./search-input";
 import { SalarySlider } from "./salary-slider";
 import { CopyLinkButton, LiveTime } from "./jobs-client-bits";
 import { SavedSearchesPanel } from "@/components/jobs/saved-searches-panel";
+import { getPublishedSurfaceSectionHtml } from "@/lib/cms-surface-loader";
+import { SURFACE_SECTION_IDS } from "@/lib/surface-cms-seeds";
+import { sanitizeCmsHtml } from "@/lib/sanitize-cms-html";
 
 const PAGE_SIZE = 12;
 
@@ -335,6 +338,11 @@ export default async function JobsBrowsePage({
   // Two small reads scoped to the visible page, joined into Sets for O(1)
   // lookup during render.
   const session = await getSession();
+
+  const cmsJobsHeroHtml = await getPublishedSurfaceSectionHtml(
+    "jobs",
+    SURFACE_SECTION_IDS.defaultHero,
+  );
   const isJobseeker = session?.user.role === "jobseeker";
   const visibleJobIds = rows.map((r) => r.id);
   const appliedJobIds = new Set<string>();
@@ -380,18 +388,30 @@ export default async function JobsBrowsePage({
             {total} open {total === 1 ? "role" : "roles"} · updated{" "}
             <LiveTime since={renderedAt} />
           </div>
-          <h1
-            className="v2-h2"
-            style={{
-              fontStyle: "italic",
-              fontWeight: 900,
-              marginTop: 14,
-              marginBottom: 20,
-            }}
-          >
-            Find work that{" "}
-            <em style={{ color: "var(--v2-accent-deep)" }}>actually</em> fits.
-          </h1>
+          {cmsJobsHeroHtml ? (
+            <div
+              style={{
+                marginTop: 14,
+                marginBottom: 20,
+              }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeCmsHtml(cmsJobsHeroHtml),
+              }}
+            />
+          ) : (
+            <h1
+              className="v2-h2"
+              style={{
+                fontStyle: "italic",
+                fontWeight: 900,
+                marginTop: 14,
+                marginBottom: 20,
+              }}
+            >
+              Find work that{" "}
+              <em style={{ color: "var(--v2-accent-deep)" }}>actually</em> fits.
+            </h1>
+          )}
           <JobsSearchInput
             initialQ={filters.q ?? ""}
             initialLoc={filters.loc ?? ""}

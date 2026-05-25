@@ -81,11 +81,7 @@ export default async function MyTestsPage() {
           )}
 
           <div className="mt-8 text-center">
-            <Link
-              href="/skills"
-              className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition"
-              style={{ background: "var(--brand-black, #101820)" }}
-            >
+            <Link href="/skills" className="v2-btn v2-btn-primary">
               <Sparkles className="h-4 w-4" />
               Take another test
             </Link>
@@ -257,11 +253,7 @@ function EmptyState() {
         Take your first sector-specific assessment. Pass and a verified badge
         lands on your public profile.
       </p>
-      <Link
-        href="/skills"
-        className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition"
-        style={{ background: "var(--brand-black, #101820)" }}
-      >
+      <Link href="/skills" className="v2-btn v2-btn-primary mt-6">
         Browse tests <ArrowRight className="h-4 w-4" />
       </Link>
     </div>

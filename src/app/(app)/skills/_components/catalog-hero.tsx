@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight } from "lucide-react";
 import posthog from "posthog-js";
+import { sanitizeCmsHtml } from "@/lib/sanitize-cms-html";
 
 type Sector = {
   slug: string;
@@ -14,9 +15,13 @@ type Sector = {
 export function CatalogHero({
   sectors,
   isEmployer,
+  cmsJobseekerHeroHtml,
+  cmsEmployerHeroHtml,
 }: {
   sectors: Sector[];
   isEmployer: boolean;
+  cmsJobseekerHeroHtml: string | null;
+  cmsEmployerHeroHtml: string | null;
 }) {
   const [text, setText] = useState("");
   const router = useRouter();
@@ -49,27 +54,43 @@ export function CatalogHero({
   return (
     <div className="grid gap-14 border-b border-slate-200 pb-12 lg:grid-cols-[1.4fr_1fr] lg:items-end">
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-          {isEmployer ? "Skill assessments · proof of talent" : "Skill assessments"}
-        </div>
-        <h1 className="mt-6 text-5xl font-bold leading-[0.95] tracking-tight md:text-7xl lg:text-8xl">
-          {isEmployer ? (
-            <>
-              Hire <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
-              Not self-claimed.
-            </>
-          ) : (
-            <>
-              Get <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
-              One sitting. 25 minutes.
-            </>
-          )}
-        </h1>
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
-          {isEmployer
-            ? "Every candidate on Energized can prove what they know — same AI-built test, real scenarios, sector-specific. Filter by badge and shortlist with confidence."
-            : "AI builds a fresh test for your sector and role — multiple choice, real scenarios, calcs. Pass and a badge lands on your profile that recruiters can filter by."}
-        </p>
+        {isEmployer && cmsEmployerHeroHtml ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: sanitizeCmsHtml(cmsEmployerHeroHtml),
+            }}
+          />
+        ) : !isEmployer && cmsJobseekerHeroHtml ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: sanitizeCmsHtml(cmsJobseekerHeroHtml),
+            }}
+          />
+        ) : (
+          <>
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              {isEmployer ? "Skill assessments · proof of talent" : "Skill assessments"}
+            </div>
+            <h1 className="mt-6 text-5xl font-bold leading-[0.95] tracking-tight md:text-7xl lg:text-8xl">
+              {isEmployer ? (
+                <>
+                  Hire <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
+                  Not self-claimed.
+                </>
+              ) : (
+                <>
+                  Get <em className="not-italic font-bold italic text-[var(--brand-dark-blue)]">verified</em>.<br />
+                  One sitting. 25 minutes.
+                </>
+              )}
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+              {isEmployer
+                ? "Every candidate on Energized can prove what they know — same AI-built test, real scenarios, sector-specific. Filter by badge and shortlist with confidence."
+                : "AI builds a fresh test for your sector and role — multiple choice, real scenarios, calcs. Pass and a badge lands on your profile that recruiters can filter by."}
+            </p>
+          </>
+        )}
         <div className="mt-8 flex flex-wrap gap-9">
           <Stat v={String(sectors.length)} l="Sectors covered" />
           <Stat v="Fresh" l="Test built each attempt — no two alike" />

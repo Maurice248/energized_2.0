@@ -18,6 +18,10 @@ import {
   type EducationDialogInitial,
 } from "@/components/shared/add-education-dialog";
 import { api } from "@/lib/trpc/client";
+import { toast } from "sonner";
+import { ResumeAutofillModal } from "@/components/profile/resume-autofill-modal";
+import { resumeAutofillSkipMessage } from "@/lib/resume-autofill-messages";
+import type { ResumeAutofillDraft } from "@/lib/resume-extraction-map";
 import {
   consumePendingBillingRedirect,
   parsePendingBillingChoice,
@@ -196,6 +200,15 @@ export function OnboardingClient({
 
   const profileQuery = api.profile.get.useQuery();
   const update = api.profile.update.useMutation();
+  const previewResumeExtraction = api.profile.previewResumeExtraction.useMutation();
+  const applyResumeExtraction = api.profile.applyResumeExtraction.useMutation({
+    onSuccess: async (data, vars) => {
+      await profileQuery.refetch();
+      if (vars.mergeCoreSkills && vars.mergeCoreSkills.length > 0) {
+        setSkills(data.skills);
+      }
+    },
+  });
   const markComplete = api.onboarding.markComplete.useMutation();
   const [hydrated, setHydrated] = useState(false);
 
@@ -206,39 +219,41 @@ export function OnboardingClient({
     if (hydrated) return;
     const p = profileQuery.data?.profile;
     if (!p) return;
-    if (Array.isArray(p.skills) && p.skills.length > 0) {
-      setSkills(p.skills);
-    }
-    setPrefs((prev) => {
-      const remoteLabel = p.remotePreference
-        ? ENUM_TO_REMOTE_LABEL[p.remotePreference as RemoteEnum]
-        : null;
-      const remote = (WORK_SETUPS as readonly string[]).includes(
-        remoteLabel ?? "",
-      )
-        ? (remoteLabel as (typeof WORK_SETUPS)[number])
-        : prev.remote;
-      const availability = p.availability
-        ? ENUM_TO_AVAILABILITY_LABEL[p.availability as AvailabilityEnum] ??
-          prev.availability
-        : prev.availability;
-      const sectorLabels = Array.isArray(p.sectors)
-        ? p.sectors
-            .map((s) => ENUM_TO_SECTOR_LABEL[s as SectorEnum] ?? null)
-            .filter((s): s is string => Boolean(s))
-        : [];
-      return {
-        ...prev,
-        openToWork: p.openToWork ?? prev.openToWork,
-        fifo: p.fifoRotational ?? prev.fifo,
-        relocation: p.willingToRelocate ?? prev.relocation,
-        remote,
-        minComp: p.minCompCad ?? prev.minComp,
-        sectors: sectorLabels.length > 0 ? sectorLabels : prev.sectors,
-        availability,
-      };
+    queueMicrotask(() => {
+      if (Array.isArray(p.skills) && p.skills.length > 0) {
+        setSkills(p.skills);
+      }
+      setPrefs((prev) => {
+        const remoteLabel = p.remotePreference
+          ? ENUM_TO_REMOTE_LABEL[p.remotePreference as RemoteEnum]
+          : null;
+        const remote = (WORK_SETUPS as readonly string[]).includes(
+          remoteLabel ?? "",
+        )
+          ? (remoteLabel as (typeof WORK_SETUPS)[number])
+          : prev.remote;
+        const availability = p.availability
+          ? ENUM_TO_AVAILABILITY_LABEL[p.availability as AvailabilityEnum] ??
+            prev.availability
+          : prev.availability;
+        const sectorLabels = Array.isArray(p.sectors)
+          ? p.sectors
+              .map((s) => ENUM_TO_SECTOR_LABEL[s as SectorEnum] ?? null)
+              .filter((s): s is string => Boolean(s))
+          : [];
+        return {
+          ...prev,
+          openToWork: p.openToWork ?? prev.openToWork,
+          fifo: p.fifoRotational ?? prev.fifo,
+          relocation: p.willingToRelocate ?? prev.relocation,
+          remote,
+          minComp: p.minCompCad ?? prev.minComp,
+          sectors: sectorLabels.length > 0 ? sectorLabels : prev.sectors,
+          availability,
+        };
+      });
+      setHydrated(true);
     });
-    setHydrated(true);
   }, [profileQuery.data, hydrated]);
   const [finishError, setFinishError] = useState<string | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -249,6 +264,10 @@ export function OnboardingClient({
   const [educationDialogOpen, setEducationDialogOpen] = useState(false);
   const [editingEducation, setEditingEducation] =
     useState<EducationDialogInitial | null>(null);
+  const [resumeAutofillOpen, setResumeAutofillOpen] = useState(false);
+  const [resumeAutofillDraft, setResumeAutofillDraft] =
+    useState<ResumeAutofillDraft | null>(null);
+  const [resumeAutofillSession, setResumeAutofillSession] = useState(0);
 
   const finishing = update.isPending || markComplete.isPending;
 
@@ -368,6 +387,25 @@ export function OnboardingClient({
                 <ResumeStep
                   existing={profileQuery.data?.profile.resumeFilename ?? null}
                   onUploaded={() => profileQuery.refetch()}
+                  onUploadAnalyzed={async ({ url, filename }) => {
+                    try {
+                      const preview = await previewResumeExtraction.mutateAsync({
+                        url,
+                        filename,
+                      });
+                      if (preview.hasSuggestions && "draft" in preview) {
+                        setResumeAutofillSession((s) => s + 1);
+                        setResumeAutofillDraft(preview.draft);
+                        setResumeAutofillOpen(true);
+                      } else if (!preview.hasSuggestions) {
+                        toast.info(resumeAutofillSkipMessage(preview.reason));
+                      }
+                    } catch {
+                      toast.error(
+                        "Could not analyze the resume. Your file was saved — try again later.",
+                      );
+                    }
+                  }}
                 />
               )}
               {stepId === "review" && (
@@ -509,6 +547,21 @@ export function OnboardingClient({
         }}
         onCreated={() => profileQuery.refetch()}
         initial={editingEducation ?? undefined}
+      />
+      <ResumeAutofillModal
+        key={resumeAutofillSession}
+        open={resumeAutofillOpen}
+        onOpenChange={(v) => {
+          setResumeAutofillOpen(v);
+          if (!v) setResumeAutofillDraft(null);
+        }}
+        draft={resumeAutofillDraft}
+        applying={applyResumeExtraction.isPending}
+        onApply={async (payload) => {
+          await applyResumeExtraction.mutateAsync(payload);
+          setResumeAutofillOpen(false);
+          setResumeAutofillDraft(null);
+        }}
       />
     </div>
   );
@@ -701,9 +754,11 @@ function WelcomeCard({
 function ResumeStep({
   existing,
   onUploaded,
+  onUploadAnalyzed,
 }: {
   existing: string | null;
   onUploaded: () => void;
+  onUploadAnalyzed?: (payload: { url: string; filename: string }) => void | Promise<void>;
 }) {
   const setResume = api.profile.setResume.useMutation();
   const [drag, setDrag] = useState(false);
@@ -751,6 +806,7 @@ function ResumeStep({
       };
       await setResume.mutateAsync({ url, filename });
       onUploaded();
+      await onUploadAnalyzed?.({ url, filename });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
       setUploaded(null);
@@ -770,8 +826,9 @@ function ResumeStep({
       </h1>
       <p className="ob-sub">
         Drop your most recent resume. We&rsquo;ll save it to your profile so
-        employers can see your full story &mdash; then you&rsquo;ll add your
-        work history and certifications on the next steps.
+        employers can see your full story. When we can read the file, we&rsquo;ll
+        offer to auto-fill work history, education, certifications, and skills —
+        you&rsquo;ll review before anything is saved.
       </p>
 
       <div
@@ -944,8 +1001,9 @@ function ReviewStep({
         Does this look <em>right</em>?
       </h1>
       <p className="ob-sub">
-        Everything below was extracted from your resume. Edit anything out of
-        place, or remove it. The closer to truth, the better your matches.
+        Confirm your work history and skills. If you used resume auto-fill, those
+        entries are already on your profile — edit or remove anything that is off.
+        The closer to truth, the better your matches.
       </p>
 
       <div className="ob-review-banner">
@@ -1613,12 +1671,10 @@ function Finish({
   onReviewProfile: () => void;
   counts: { roles: number; skills: number; certs: number };
 }) {
-  const [pending, setPending] = useState<PendingBillingChoice | null>(null);
+  const [pending] = useState<PendingBillingChoice | null>(() =>
+    parsePendingBillingChoice(peekPendingBillingRedirect()),
+  );
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPending(parsePendingBillingChoice(peekPendingBillingRedirect()));
-  }, []);
 
   const checkout = api.jobseekerBilling.createCheckoutSession.useMutation({
     onSuccess: ({ url }) => {

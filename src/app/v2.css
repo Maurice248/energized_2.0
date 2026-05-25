@@ -110,6 +110,39 @@
 .v2-btn-primary:hover { background: var(--v2-accent-deep); color: white; transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(0,73,132,0.45); }
 .v2-btn-accent { background: var(--v2-accent); color: var(--v2-ink-950); }
 .v2-btn-accent:hover { background: var(--v2-accent-deep); color: white; }
+.v2-btn-accent-deep { background: var(--v2-accent-deep); color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.v2-btn-accent-deep:hover { background: var(--v2-accent); color: white; transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(0,73,132,0.45); }
+.v2-btn-accent-soft { background: var(--v2-accent-soft); color: var(--v2-accent-deep); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.v2-btn-accent-soft:hover { background: var(--v2-accent); color: white; transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(28,170,226,0.35); }
+.v2-btn-coral-soft { background: var(--v2-coral-soft); color: #A63A20; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.v2-btn-coral-soft:hover { background: var(--v2-coral); color: white; transform: translateY(-1px); box-shadow: 0 8px 20px -8px rgba(255,122,89,0.35); }
+.v2 .v2-interview-slot {
+  display: inline-flex; align-items: center;
+  padding: 8px 14px;
+  border-radius: var(--v2-r-pill);
+  border: 1px solid var(--v2-ink-200);
+  background: white;
+  color: var(--v2-ink-900);
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
+}
+.v2 .v2-interview-slot:hover:not(:disabled) {
+  transform: scale(1.04);
+  border-color: var(--v2-ink-300);
+  background: var(--v2-ink-100);
+  color: var(--v2-ink-900);
+  box-shadow: 0 4px 12px -4px rgba(11,13,18,0.08);
+}
+.v2 .v2-interview-slot.is-selected {
+  background: var(--v2-accent-soft);
+  border-color: var(--v2-accent-deep);
+  color: var(--v2-accent-deep);
+}
+.v2 .v2-interview-slot:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .v2-btn-ghost { border: 1px solid var(--v2-ink-200); background: white; color: var(--v2-ink-900); }
 .v2-btn-ghost:hover { border-color: var(--v2-ink-900); background: var(--v2-ink-50); }
 .v2-btn-invert { background: white; color: var(--v2-ink-950); }
@@ -197,12 +230,6 @@
   color: var(--v2-accent);
   font-family: var(--v2-font-serif);
   font-size: 22px; font-weight: 700;
-  position: relative;
-}
-.v2-logomark::after {
-  content: ''; position: absolute; right: -2px; top: -2px;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--v2-accent);
 }
 .v2-wordmark {
   font-family: var(--v2-font-serif);

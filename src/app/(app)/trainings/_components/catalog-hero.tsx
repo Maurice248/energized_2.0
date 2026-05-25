@@ -1,50 +1,72 @@
+import { sanitizeCmsHtml } from "@/lib/sanitize-cms-html";
+
 export function CatalogHero({
   total,
   isEmployer,
+  cmsJobseekerHeroHtml,
+  cmsEmployerHeroHtml,
 }: {
   total: number;
   isEmployer: boolean;
+  cmsJobseekerHeroHtml: string | null;
+  cmsEmployerHeroHtml: string | null;
 }) {
   return (
     <div className="grid gap-12 border-b border-slate-200 pb-12 lg:grid-cols-[1.4fr_1fr] lg:items-end">
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-          {isEmployer ? "Training catalog · talent depth" : "Training services · Platinum"}
-        </div>
-        <h1 className="mt-6 text-5xl font-bold leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">
-          {isEmployer ? (
-            <>
-              See the talent{" "}
-              <em
-                className="not-italic italic font-bold"
-                style={{ color: "var(--brand-dark-blue, #004984)" }}
-              >
-                investing
-              </em>{" "}
-              in their skills.
-            </>
-          ) : (
-            <>
-              Skill up for the<br />
-              roles that{" "}
-              <em
-                className="not-italic italic font-bold"
-                style={{ color: "var(--brand-dark-blue, #004984)" }}
-              >
-                actually pay
-              </em>
-              .
-            </>
-          )}
-        </h1>
-        <p
-          className="max-w-xl text-lg leading-relaxed text-slate-600"
-          style={{ marginTop: 40 }}
-        >
-          {isEmployer
-            ? `Energized candidates train across ${total}+ courses graded by working senior engineers. Certificates show on their profile — filter by badge to shortlist with confidence.`
-            : `${total}+ courses graded by working senior engineers across Canadian energy. Self-paced. Earn certificates that sit on your profile — recruiters notice.`}
-        </p>
+        {isEmployer && cmsEmployerHeroHtml ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: sanitizeCmsHtml(cmsEmployerHeroHtml),
+            }}
+          />
+        ) : !isEmployer && cmsJobseekerHeroHtml ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: sanitizeCmsHtml(cmsJobseekerHeroHtml),
+            }}
+          />
+        ) : (
+          <>
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              {isEmployer ? "Training catalog · talent depth" : "Training services · Platinum"}
+            </div>
+            <h1 className="mt-6 text-5xl font-bold leading-[0.95] tracking-tight md:text-6xl lg:text-7xl">
+              {isEmployer ? (
+                <>
+                  See the talent{" "}
+                  <em
+                    className="not-italic italic font-bold"
+                    style={{ color: "var(--brand-dark-blue, #004984)" }}
+                  >
+                    investing
+                  </em>{" "}
+                  in their skills.
+                </>
+              ) : (
+                <>
+                  Skill up for the<br />
+                  roles that{" "}
+                  <em
+                    className="not-italic italic font-bold"
+                    style={{ color: "var(--brand-dark-blue, #004984)" }}
+                  >
+                    actually pay
+                  </em>
+                  .
+                </>
+              )}
+            </h1>
+            <p
+              className="max-w-xl text-lg leading-relaxed text-slate-600"
+              style={{ marginTop: 40 }}
+            >
+              {isEmployer
+                ? `Energized candidates train across ${total}+ courses graded by working senior engineers. Certificates show on their profile — filter by badge to shortlist with confidence.`
+                : `${total}+ courses graded by working senior engineers across Canadian energy. Self-paced. Earn certificates that sit on your profile — recruiters notice.`}
+            </p>
+          </>
+        )}
       </div>
       <div className="grid gap-7">
         <Stat n={String(total)} l="Live courses across safety, technical, professional and transition tracks" />

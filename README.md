@@ -34,3 +34,28 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Admin access
+
+Admin accounts can't be created through signup — the signup hook clamps the
+`role` column to `jobseeker | employer`. There are two ways to mint one.
+
+**Preferred — one-shot script** (creates the account if missing, rotates the
+password if it already exists, marks the email verified, and inserts an
+audit-log entry):
+
+```bash
+pnpm dlx tsx --env-file=.env.local scripts/create-admin-user.ts \
+  "you@energized.ca" "your-password" "Your Name"
+```
+
+**Manual fallback** — if you've already signed up via the UI and just want to
+promote that row:
+
+```sql
+UPDATE "user" SET role = 'admin', "emailVerified" = true
+WHERE email = 'you@energized.ca';
+```
+
+Either way, sign out and back in (sessions are role-aware) and `/admin` will
+be reachable.

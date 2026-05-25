@@ -41,3 +41,5 @@ export const EVENT_INTRO_CONTACT_UNLOCKED_VIEWED = "intro.contact_unlocked.viewe
 // Profile
 export const EVENT_PROFILE_UPDATED = "profile.updated";
 export const EVENT_RESUME_UPLOADED = "resume.uploaded";
+export const EVENT_RESUME_AUTOFILL_PREVIEWED = "resume.autofill.previewed";
+export const EVENT_RESUME_AUTOFILL_APPLIED = "resume.autofill.applied";

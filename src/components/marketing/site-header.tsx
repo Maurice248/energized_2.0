@@ -45,6 +45,7 @@ export async function SiteHeader({ active }: { active?: SiteHeaderActive }) {
   const session = await getSession();
   const user = session?.user ?? null;
   const isEmployer = user?.role === "employer";
+  const isAdmin = user?.role === "admin";
 
   return (
     <header className="v2-nav">
@@ -121,6 +122,7 @@ export async function SiteHeader({ active }: { active?: SiteHeaderActive }) {
                 email={user.email}
                 image={user.image ?? null}
                 isEmployer={isEmployer}
+                isAdmin={isAdmin}
               />
             </div>
           )}
