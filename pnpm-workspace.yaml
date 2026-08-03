@@ -1,3 +1,9 @@
-ignoredBuiltDependencies:
+# pnpm 10 blocks install scripts unless allowlisted (see Vercel install logs).
+onlyBuiltDependencies:
+  - "@depot/cli"
+  - core-js
+  - esbuild
+  - msw
+  - protobufjs
   - sharp
   - unrs-resolver
