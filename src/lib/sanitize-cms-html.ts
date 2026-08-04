@@ -1,12 +1,12 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 
 /**
  * Sanitize HTML authored in the admin CMS before persist and before
  * `dangerouslySetInnerHTML` on the public site.
  */
 export function sanitizeCmsHtml(dirty: string): string {
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: [
+  return sanitizeHtml(dirty, {
+    allowedTags: [
       "p",
       "br",
       "strong",
@@ -31,7 +31,10 @@ export function sanitizeCmsHtml(dirty: string): string {
       "code",
       "hr",
     ],
-    ALLOWED_ATTR: ["href", "target", "rel", "class"],
-    ALLOW_DATA_ATTR: false,
+    allowedAttributes: {
+      "*": ["class"],
+      a: ["href", "target", "rel"],
+    },
+    allowedSchemes: ["http", "https", "mailto", "tel"],
   });
 }
