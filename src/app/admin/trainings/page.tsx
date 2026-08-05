@@ -1,5 +1,5 @@
 import type { inferRouterOutputs } from "@trpc/server";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ListTree, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/lib/trpc/server";
@@ -150,6 +150,20 @@ function TrainingProgramCard({ row }: { row: TrainingRow }) {
       </header>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 18px", marginBottom: 14 }}>
+        <Link
+          href={`/admin/trainings/${row.id}/edit`}
+          className="v2-acard-link inline-flex items-center gap-1"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+          Edit program
+        </Link>
+        <Link
+          href={`/admin/trainings/${row.id}/curriculum`}
+          className="v2-acard-link inline-flex items-center gap-1"
+        >
+          <ListTree className="h-3.5 w-3.5" aria-hidden />
+          Manage curriculum
+        </Link>
         <Link href={`/trainings/${row.slug}`} className="v2-acard-link" target="_blank" rel="noreferrer">
           View learner catalog page
         </Link>
@@ -236,7 +250,10 @@ export default async function AdminTrainingsPage() {
 
   return (
     <div>
-      <header className="v2-ahead" style={{ gridTemplateColumns: "1fr" }}>
+      <header
+        className="v2-ahead"
+        style={{ gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "start", gap: 24 }}
+      >
         <div>
           <span className="v2-eyebrow">Workforce</span>
           <h1>
@@ -271,10 +288,28 @@ export default async function AdminTrainingsPage() {
             ) : null}
           </p>
         </div>
+        <div style={{ alignSelf: "start" }}>
+          <Link
+            href="/admin/trainings/new"
+            className="v2-btn v2-btn-primary inline-flex items-center gap-1.5 shrink-0"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            New training
+          </Link>
+        </div>
       </header>
 
       {programs.length === 0 ? (
-        <div className="v2-tbl-empty">No training programs in the database yet.</div>
+        <div className="v2-tbl-empty">
+          No training programs in the database yet.{" "}
+          <Link
+            href="/admin/trainings/new"
+            className="font-semibold text-[var(--v2-accent-deep)] underline-offset-2 hover:underline"
+          >
+            Create the first one
+          </Link>
+          .
+        </div>
       ) : (
         <div className="v2-org-grid">
           {programs.map((row) => (

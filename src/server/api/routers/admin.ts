@@ -26,7 +26,6 @@ import {
   revenueSnapshots,
   supportTickets,
   systemServices,
-  trainings,
   user,
 } from "@/server/db/schema";
 import { fetchTopPages } from "@/lib/posthog";
@@ -36,6 +35,7 @@ import { adminPagesRouter } from "./admin-pages";
 import { adminProfileSettingsRouter } from "./admin-profile-settings";
 import { adminSettingsRouter } from "./admin-settings";
 import { adminTeamsRouter } from "./admin-teams";
+import { adminTrainingsRouter } from "./admin-trainings";
 import { adminUsersRouter } from "./admin-users";
 import { adminVerificationsRouter } from "./admin-verifications";
 
@@ -305,36 +305,6 @@ const adminJobsRouter = router({
       .innerJoin(employerOrgs, eq(employerOrgs.id, jobListings.orgId))
       .leftJoin(user, eq(user.id, jobListings.createdByUserId))
       .orderBy(desc(jobListings.updatedAt));
-
-    return rows;
-  }),
-});
-
-/* ------------------------ Training programs ------------------------ */
-
-const adminTrainingsRouter = router({
-  list: adminProcedure.query(async ({ ctx }) => {
-    // Correlated counts: `${trainings.id}` in sql`...` becomes bare "id" and breaks
-    // correlation (see topEmployers note). Qualify the outer row as "trainings"."id".
-    const rows = await ctx.db
-      .select({
-        ...getTableColumns(trainings),
-        moduleCount: sql<number>`(
-          SELECT COUNT(*)::int FROM "training_modules" tm
-          WHERE tm.training_id = "trainings"."id"
-        )`,
-        lessonCount: sql<number>`(
-          SELECT COUNT(*)::int FROM "training_lessons" tl
-          INNER JOIN "training_modules" tm ON tm.id = tl.module_id
-          WHERE tm.training_id = "trainings"."id"
-        )`,
-        enrollmentCount: sql<number>`(
-          SELECT COUNT(*)::int FROM "training_enrollments" te
-          WHERE te.training_id = "trainings"."id"
-        )`,
-      })
-      .from(trainings)
-      .orderBy(asc(trainings.sortOrder), asc(trainings.title));
 
     return rows;
   }),
