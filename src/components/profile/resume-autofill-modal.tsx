@@ -20,6 +20,7 @@ import type {
   ResumeCertTypeValue,
   ResumeSectorValue,
 } from "@/lib/resume-extraction-map";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { Icon } from "@/components/shared/icon";
 
 const SECTORS: { value: ResumeSectorValue | ""; label: string }[] = [
@@ -237,15 +238,18 @@ export function ResumeAutofillModal({
                     </div>
                     <div>
                       <Label className="text-xs">Site / location</Label>
-                      <Input
+                      <AddressPicker
+                        variant="compact"
                         value={row.site ?? ""}
-                        onChange={(e) =>
+                        onChange={(site) =>
                           setWork((xs) =>
                             xs.map((r, j) =>
-                              j === i ? { ...r, site: e.target.value || null } : r,
+                              j === i ? { ...r, site: site || null } : r,
                             ),
                           )
                         }
+                        placeholder="Search a site"
+                        dialogTitle="Site / location"
                       />
                     </div>
                     <div>

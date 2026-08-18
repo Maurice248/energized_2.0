@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { inferRouterOutputs } from "@trpc/server";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuggestionCombobox } from "@/components/shared/suggestion-combobox";
@@ -1118,11 +1119,11 @@ function AboutSection({
         </div>
         <div className="ob-field">
           <label>Headquarters</label>
-          <input
-            className="v2-input-block"
+          <AddressPicker
             value={hq}
-            onChange={(e) => setHq(e.target.value)}
+            onChange={setHq}
             placeholder="Calgary, AB"
+            dialogTitle="Headquarters"
           />
         </div>
         <div className="ob-field">

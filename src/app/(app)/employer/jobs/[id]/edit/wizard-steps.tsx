@@ -2,6 +2,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
 import {
@@ -152,13 +153,12 @@ export function LocationStep({ draft, setDraft, missing }: Props) {
     <div className="ob-grid">
       <div className="ob-field" style={{ gridColumn: "1/-1" }}>
         <label>Location</label>
-        <input
-          className={errCls(missing, "location")}
+        <AddressPicker
           value={draft.location}
-          onChange={(e) =>
-            setDraft((d) => ({ ...d, location: e.target.value }))
-          }
+          onChange={(location) => setDraft((d) => ({ ...d, location }))}
           placeholder="e.g. Calgary, AB or Remote — Canada"
+          error={missing.includes("location")}
+          dialogTitle="Job location"
         />
       </div>
 

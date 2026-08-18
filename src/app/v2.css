@@ -4910,3 +4910,158 @@
   background: var(--v2-ink-950);
   color: white;
 }
+
+/* ============ ADDRESS PICKER (Google Maps) ============ */
+.amap-trigger-wrap {
+  position: relative;
+}
+.amap-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: var(--v2-ink-800);
+}
+.amap-trigger.v2-input-block {
+  padding-right: 36px;
+}
+.amap-trigger-value,
+.amap-trigger-placeholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.amap-trigger-placeholder {
+  color: var(--v2-ink-400);
+  font-weight: 400;
+}
+.amap-trigger-compact {
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--v2-ink-200);
+  background: transparent;
+  font-size: 14px;
+}
+.amap-trigger-inline {
+  height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  box-shadow: none;
+}
+.amap-trigger-inline:focus,
+.amap-trigger-inline:hover {
+  box-shadow: none;
+}
+.amap-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--v2-ink-600);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.amap-trigger-wrap:has(.amap-trigger-inline) .amap-clear {
+  right: 0;
+}
+.amap-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  height: 48px;
+  border: 1px solid var(--v2-ink-200);
+  border-radius: var(--v2-r-md);
+  background: white;
+  color: var(--v2-ink-500);
+}
+.amap-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--v2-ink-800);
+}
+.amap-predictions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: white;
+  border: 1px solid var(--v2-ink-200);
+  border-radius: var(--v2-r-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.amap-predictions button {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: calc(var(--v2-r-md) - 4px);
+  color: var(--v2-ink-700);
+}
+.amap-predictions button:hover {
+  background: var(--v2-ink-50);
+}
+.amap-predictions strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+.amap-predictions em {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--v2-ink-500);
+}
+.amap-canvas {
+  width: 100%;
+  height: 340px;
+  border-radius: var(--v2-r-md);
+  border: 1px solid var(--v2-ink-200);
+  overflow: hidden;
+  background: var(--v2-ink-50);
+}
+.amap-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--v2-ink-600);
+}
+.amap-selected {
+  margin: 0;
+  min-width: 0;
+  padding: 0 8px 0 0;
+  font-size: 14px;
+  color: var(--v2-ink-700);
+}
+.amap-jobs-search {
+  flex: 1;
+  min-width: 0;
+}

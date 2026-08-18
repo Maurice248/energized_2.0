@@ -9,6 +9,7 @@ import {
 } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { Icon } from "@/components/shared/icon";
 import { api } from "@/lib/trpc/client";
 import {
@@ -695,11 +696,11 @@ const CompanyStep = forwardRef<
             />
           </Field>
           <Field label="Headquarters">
-            <input
-              className="v2-input-block"
+            <AddressPicker
               value={hq}
-              onChange={(e) => setHq(e.target.value)}
+              onChange={setHq}
               placeholder="Calgary, AB"
+              dialogTitle="Headquarters"
             />
           </Field>
           <Field label="Founded">

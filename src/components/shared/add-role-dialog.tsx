@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SkillsPicker } from "@/components/shared/skills-picker";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { SuggestionCombobox } from "@/components/shared/suggestion-combobox";
 import { api } from "@/lib/trpc/client";
 
@@ -51,44 +52,6 @@ const ROLE_SUGGESTIONS = [
   "Nuclear Operator",
   "Red Seal Electrician",
   "Millwright",
-];
-
-export const LOCATION_SUGGESTIONS = [
-  "Calgary, AB",
-  "Edmonton, AB",
-  "Fort McMurray, AB",
-  "Grande Prairie, AB",
-  "Red Deer, AB",
-  "Medicine Hat, AB",
-  "Lloydminster, AB",
-  "Vancouver, BC",
-  "Victoria, BC",
-  "Prince George, BC",
-  "Kitimat, BC",
-  "Fort St. John, BC",
-  "Kamloops, BC",
-  "Regina, SK",
-  "Saskatoon, SK",
-  "Estevan, SK",
-  "Winnipeg, MB",
-  "Toronto, ON",
-  "Ottawa, ON",
-  "Hamilton, ON",
-  "Sarnia, ON",
-  "Sudbury, ON",
-  "Thunder Bay, ON",
-  "Windsor, ON",
-  "Montréal, QC",
-  "Québec City, QC",
-  "Halifax, NS",
-  "Saint John, NB",
-  "St. John's, NL",
-  "Charlottetown, PE",
-  "Yellowknife, NT",
-  "Whitehorse, YT",
-  "Iqaluit, NU",
-  "Offshore · Atlantic Canada",
-  "Remote (FIFO camp)",
 ];
 
 type SectorValue = (typeof SECTORS)[number]["value"];
@@ -227,14 +190,12 @@ export function AddRoleDialog({
               otherLabel="Other — type your own role"
               required
             />
-            <SuggestionCombobox
+            <AddressPicker
               label="Site / location"
               value={site}
               onChange={setSite}
-              suggestions={LOCATION_SUGGESTIONS}
-              pickPlaceholder="Pick a Canadian city or site"
-              customPlaceholder="Enter a custom location"
-              otherLabel="Other — enter a custom location"
+              placeholder="Search a Canadian city or site"
+              dialogTitle="Site / location"
             />
             <SuggestionCombobox
               label="Sector"

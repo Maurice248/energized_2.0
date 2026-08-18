@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Building2, User } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { PasswordInput } from "@/components/shared/password-input";
 import { PasswordStrength } from "@/components/shared/password-strength";
 import {
@@ -612,13 +613,12 @@ export default function SignUpPage() {
                   <label className="v2-field-label" htmlFor="location">
                     Primary location
                   </label>
-                  <input
+                  <AddressPicker
                     id="location"
-                    className="v2-input-block"
-                    placeholder="Calgary, AB"
                     value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    autoComplete="address-level2"
+                    onChange={setLocation}
+                    placeholder="Calgary, AB"
+                    dialogTitle="Primary location"
                   />
                 </div>
               </div>

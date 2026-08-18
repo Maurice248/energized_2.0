@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { Icon } from "@/components/shared/icon";
 
 export function JobsSearchInput({
@@ -134,39 +135,17 @@ export function JobsSearchInput({
           maxWidth: 280,
         }}
       >
-        <Icon name="mapPin" size={16} />
-        <input
+        <AddressPicker
+          variant="inline"
           value={loc}
-          onChange={(e) => setLoc(e.target.value)}
-          placeholder="All of Canada"
-          style={{
-            flex: 1,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            fontSize: 15,
-            minWidth: 0,
+          onChange={(next) => {
+            setLoc(next);
+            if (!next) clearParam("loc");
           }}
+          placeholder="All of Canada"
+          dialogTitle="Search by location"
+          className="amap-jobs-search"
         />
-        {loc && (
-          <button
-            type="button"
-            onClick={() => clearParam("loc")}
-            aria-label="Clear location"
-            style={{
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              color: "var(--v2-ink-600)",
-              display: "inline-flex",
-              alignItems: "center",
-              padding: 4,
-              borderRadius: 6,
-            }}
-          >
-            <Icon name="x" size={14} />
-          </button>
-        )}
       </div>
       <button type="submit" className="v2-btn v2-btn-primary v2-btn-sm">
         Search

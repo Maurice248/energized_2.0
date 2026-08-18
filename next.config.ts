@@ -8,13 +8,16 @@ const cspDirectives = [
   // We drop it in production. 'unsafe-inline' is kept both ways because
   // React inline style attributes are pervasive in this codebase; moving
   // to nonces would require a refactor.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com https://*.gstatic.com`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // data: + blob: cover Next.js image optimization, base64 placeholders,
-  // and Vercel Blob uploads. https: covers org cover images and OG images.
+  // and Vercel Blob uploads. https: covers org cover images, OG images,
+  // and Google Maps tiles.
   "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://*.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com https://*.googleapis.com https://*.gstatic.com",
+  "worker-src 'self' blob:",
+  "frame-src https://www.google.com https://maps.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -27,7 +30,7 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    value: "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
   },
   {
     key: "Strict-Transport-Security",

@@ -18,10 +18,7 @@ import {
   type EducationDialogInitial,
 } from "@/components/shared/add-education-dialog";
 import { SkillsPicker } from "@/components/shared/skills-picker";
-import {
-  SuggestionCombobox,
-} from "@/components/shared/suggestion-combobox";
-import { LOCATION_SUGGESTIONS } from "@/components/shared/add-role-dialog";
+import { AddressPicker } from "@/components/shared/address-picker";
 import { api } from "@/lib/trpc/client";
 import { authClient, signOut } from "@/lib/auth/client";
 import { JobseekerBillingSection } from "./jobseeker-billing-section";
@@ -1530,14 +1527,12 @@ function BasicsForm({
           placeholder="e.g. Controls Engineer · Oil & Gas / Renewables"
           full
         />
-        <SuggestionCombobox
+        <AddressPicker
           label="Location"
           value={location}
           onChange={setLocation}
-          suggestions={LOCATION_SUGGESTIONS}
-          pickPlaceholder="Pick a Canadian city or site"
-          customPlaceholder="Enter a custom location"
-          otherLabel="Other — enter a custom location"
+          placeholder="Search a Canadian city or site"
+          dialogTitle="Your location"
         />
         <LabeledInput
           label="Phone"
