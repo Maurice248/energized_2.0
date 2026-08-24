@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminNotificationBell } from "./admin-notification-bell";
 
@@ -27,10 +28,27 @@ export function AdminTopbar({ env }: { env: string }) {
 
   return (
     <div className="v2-atop">
-      <div className="v2-atop-crumb">
-        Energized <span style={{ opacity: 0.4, margin: "0 6px" }}>/</span>{" "}
-        <strong>Admin / {title}</strong>
-      </div>
+      <nav className="v2-atop-crumb" aria-label="Breadcrumb">
+        <Link href="/admin" className="v2-atop-crumb-home">
+          Energized
+        </Link>
+        <span className="v2-atop-crumb-sep" aria-hidden>
+          /
+        </span>
+        {seg === "" ? (
+          <strong>Admin / {title}</strong>
+        ) : (
+          <>
+            <Link href="/admin" className="v2-atop-crumb-home">
+              Admin
+            </Link>
+            <span className="v2-atop-crumb-sep" aria-hidden>
+              /
+            </span>
+            <strong>{title}</strong>
+          </>
+        )}
+      </nav>
       <div className="v2-atop-spacer" />
       <div className="v2-atop-env">
         <span className="dot" /> {env}

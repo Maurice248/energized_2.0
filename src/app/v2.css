@@ -95,6 +95,18 @@
 .v2-eyebrow-light { color: var(--v2-ink-300); }
 .v2-eyebrow-light::before { background: var(--v2-accent); box-shadow: 0 0 0 4px rgba(28,170,226,0.2); }
 
+/* CMS markdown/HTML body. Global .v2 p/h2 resets + Tailwind preflight
+   collapse headings to body size and strip margins. */
+.v2 .v2-prose p {
+  margin-bottom: 20px;
+}
+.v2 .v2-prose h2 {
+  font-weight: 700;
+  font-style: italic;
+  font-size: 19px; /* body is 17px; +2 */
+  margin-bottom: 6px;
+}
+
 /* ============ BUTTONS ============ */
 .v2-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;

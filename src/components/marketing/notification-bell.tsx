@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,7 +29,39 @@ function timeAgo(iso: string | Date): string {
   return date.toLocaleDateString();
 }
 
+const triggerStyle: React.CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: "50%",
+  border: "1px solid var(--v2-ink-200)",
+  background: "white",
+  color: "var(--v2-ink-700)",
+  display: "grid",
+  placeItems: "center",
+  position: "relative",
+  cursor: "pointer",
+  padding: 0,
+};
+
+/** Avoid tRPC hooks during SSR — SiteHeader is a nested RSC and the provider is client-only. */
 export function NotificationBell() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <span aria-label="Notifications" style={{ ...triggerStyle, cursor: "default" }}>
+        <Icon name="bell" size={18} />
+      </span>
+    );
+  }
+
+  return <NotificationBellLive />;
+}
+
+function NotificationBellLive() {
   const router = useRouter();
   const unread = api.notifications.unreadCount.useQuery(undefined, {
     refetchInterval: REFETCH_MS,
@@ -67,19 +100,7 @@ export function NotificationBell() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Notifications${count > 0 ? ` (${count} unread)` : ""}`}
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          border: "1px solid var(--v2-ink-200)",
-          background: "white",
-          color: "var(--v2-ink-700)",
-          display: "grid",
-          placeItems: "center",
-          position: "relative",
-          cursor: "pointer",
-          padding: 0,
-        }}
+        style={triggerStyle}
       >
         <Icon name="bell" size={18} />
         {count > 0 && (

@@ -312,7 +312,7 @@ export function AdminFaqsClient() {
           eyebrow="Published"
           icon="checkCircle"
           value={statsLoading ? "—" : stats?.published ?? 0}
-          note="Live for surfaces wired to CMS"
+          note="Live on /faqs"
         />
         <KpiCard
           eyebrow="Drafts"

@@ -50,10 +50,7 @@ We built Energized so the substance of your work — projects, sites, commoditie
 - Salary transparency by default.
 - Tickets and certifications are first-class data, not free-text noise.
 - AI-matched roles, not keyword spam.
-- Canadian energy hiring deserves Canadian-built infrastructure.
-
-_Edit this page from the admin **Pages** section._
-`,
+- Canadian energy hiring deserves Canadian-built infrastructure.`,
   },
   {
     slug: "for-seekers",
@@ -69,10 +66,7 @@ _Edit this page from the admin **Pages** section._
 - **AI-matched roles, not keyword spam.** Our match engine reads the substance of your work — projects, certifications, the actual systems you ran — not just job titles.
 - **Salary transparency by default.** Every published role posts a band. No hide-the-number games — you know what you're walking into before you apply.
 - **Tickets that surface.** H2S Alive, First Aid, CSTS, Red Seal, P.Eng, NACE — the credentials that actually decide a hire are first-class on your profile.
-- **Free forever.** Job seekers never pay.
-
-_Edit this page from the admin **Pages** section._
-`,
+- **Free forever.** Job seekers never pay.`,
   },
   {
     slug: "for-employers",
@@ -88,10 +82,7 @@ _Edit this page from the admin **Pages** section._
 - **Energy-aware posting templates.** Capture sector, certifications required, salary band, work setup, and experience level as first-class fields.
 - **AI-ranked shortlists.** We score and explain every candidate against your role, with the H2S, CSTS, rotation, and salary checks already done.
 - **Recruiter seats.** Bring your hiring managers and external recruiters into the same pipeline.
-- **Verified credentials.** We verify the certifications and licences that matter, so you don't have to.
-
-_Edit this page from the admin **Pages** section._
-`,
+- **Verified credentials.** We verify the certifications and licences that matter, so you don't have to.`,
   },
   {
     slug: "privacy",
@@ -101,10 +92,7 @@ _Edit this page from the admin **Pages** section._
     seoDescription: "How Energized handles your personal data.",
     body: `This page describes how Energized collects, uses, and protects your personal information.
 
-We're drafting our full policy. In the meantime, reach us at **dev@energized.biz** with any privacy questions.
-
-_Edit this page from the admin **Pages** section._
-`,
+We're drafting our full policy. In the meantime, reach us at **dev@energized.biz** with any privacy questions.`,
   },
   {
     slug: "terms",
@@ -114,10 +102,7 @@ _Edit this page from the admin **Pages** section._
     seoDescription: "Energized terms of service.",
     body: `These are the terms under which Energized provides its services.
 
-We're drafting our full terms of service. In the meantime, reach us at **dev@energized.biz** with any questions about using Energized.
-
-_Edit this page from the admin **Pages** section._
-`,
+We're drafting our full terms of service. In the meantime, reach us at **dev@energized.biz** with any questions about using Energized.`,
   },
   {
     slug: "contact",
@@ -132,10 +117,7 @@ _Edit this page from the admin **Pages** section._
 
 - Email: **dev@energized.biz**
 - Reply time: under one business day
-- Languages: English
-
-_Edit this page from the admin **Pages** section._
-`,
+- Languages: English`,
   },
   {
     slug: "accessibility",
@@ -145,10 +127,7 @@ _Edit this page from the admin **Pages** section._
     seoDescription: "Our commitment to an accessible energy job network.",
     body: `Energized is committed to a job network that everyone can use, regardless of ability.
 
-If you run into a barrier on the site, please write us at **dev@energized.biz** and we'll fix it.
-
-_Edit this page from the admin **Pages** section._
-`,
+If you run into a barrier on the site, please write us at **dev@energized.biz** and we'll fix it.`,
   },
 ];
 

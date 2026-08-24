@@ -10,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: "weekly", priority: 1.0 },
     { url: `${base}/jobs`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${base}/faqs`, changeFrequency: "weekly", priority: 0.7 },
   ];
 
   const jobs = await db

@@ -59,6 +59,21 @@ test.describe("marketing", () => {
 
     await expect(page).toHaveScreenshot("contact.png", { fullPage: true });
   });
+
+  test("faqs renders published library chrome", async ({ page }) => {
+    await page.goto("/faqs");
+    await freezeAnimations(page);
+    await waitForVisualStable(page);
+
+    await expect(page).toHaveTitle(/FAQs — Energized/);
+    await expect(
+      page.getByRole("heading", { level: 1 }),
+    ).toContainText(/Questions/);
+    await expect(page.locator(".v2-faq")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Contact us/i }),
+    ).toHaveAttribute("href", "/contact");
+  });
 });
 
 test.describe("nav", () => {

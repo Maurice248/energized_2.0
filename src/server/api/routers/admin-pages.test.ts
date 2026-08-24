@@ -75,7 +75,16 @@ describe("admin-pages: slugSchema", () => {
   }
 
   it("rejects reserved slugs", () => {
-    const reserved = ["admin", "api", "jobs", "dashboard", "sign-in", "p", "c"];
+    const reserved = [
+      "admin",
+      "api",
+      "jobs",
+      "dashboard",
+      "sign-in",
+      "p",
+      "c",
+      "faqs",
+    ];
     for (const r of reserved) {
       expect(RESERVED_SLUGS.has(r)).toBe(true);
       expect(slugSchema.safeParse(r).success).toBe(false);

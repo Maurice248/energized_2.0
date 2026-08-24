@@ -88,6 +88,7 @@ export function SiteFooter() {
           <div>
             <h5>Company</h5>
             <Link href="/about">About</Link>
+            <Link href="/faqs">FAQs</Link>
             <Link href="/contact">Contact</Link>
             <a href="mailto:dev@energized.biz">dev@energized.biz</a>
           </div>

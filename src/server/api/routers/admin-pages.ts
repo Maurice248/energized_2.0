@@ -46,6 +46,7 @@ const RESERVED_SLUGS = new Set<string>([
   "intro-requests",
   "p",
   "c",
+  "faqs",
 ]);
 
 export const MARKETING_STATIC_SLUGS = MARKETING_PAGE_FALLBACKS.map(

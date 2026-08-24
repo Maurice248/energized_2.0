@@ -542,6 +542,7 @@
   padding-bottom: 48px;
   border-bottom: 1px solid var(--v2-ink-200);
 }
+.v2-faq-head h1,
 .v2-faq-head h2 {
   font-family: var(--v2-font-serif);
   font-weight: 400;
@@ -549,6 +550,7 @@
   line-height: 0.95;
   letter-spacing: -0.025em;
 }
+.v2-faq-head h1 em,
 .v2-faq-head h2 em { font-style: italic; color: var(--v2-accent-deep); }
 .v2-faq-head p {
   font-size: 16px;
@@ -799,6 +801,7 @@
   background: radial-gradient(circle, rgba(199,249,86,0.15), transparent 70%);
 }
 .v2-faq-stuck > * { position: relative; z-index: 1; }
+.v2-faq-stuck h2,
 .v2-faq-stuck h3 {
   font-family: var(--v2-font-serif);
   font-weight: 400;
@@ -807,6 +810,7 @@
   color: white;
   line-height: 1.05;
 }
+.v2-faq-stuck h2 em,
 .v2-faq-stuck h3 em { font-style: italic; color: var(--v2-accent); }
 .v2-faq-stuck p {
   margin-top: 10px;
@@ -820,3 +824,47 @@
   flex-wrap: wrap;
 }
 @media (max-width: 700px) { .v2-faq-stuck { grid-template-columns: 1fr; padding: 28px; } }
+
+/* dedicated /faqs page */
+.v2-faq-page {
+  flex: 1;
+}
+.v2-faq-page .v2-faq {
+  border-top: none;
+  padding-top: 72px;
+}
+.v2-faq-item > .v2-faq-q {
+  list-style: none;
+}
+.v2-faq-item > .v2-faq-q::-webkit-details-marker,
+.v2-faq-item > .v2-faq-q::marker {
+  display: none;
+  content: "";
+}
+.v2-faq-item[open] { background: white; }
+.v2-faq-item[open] .v2-faq-num { color: var(--v2-accent-deep); }
+.v2-faq-item[open] .v2-faq-toggle {
+  background: var(--v2-ink-950);
+  color: var(--v2-accent);
+  border-color: var(--v2-ink-950);
+}
+.v2-faq-item[open] .v2-faq-toggle .bar.v { transform: rotate(90deg); }
+.v2-faq-empty {
+  padding: 48px 8px;
+  color: var(--v2-ink-600);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.v2-faq-a > .v2-faq-a-foot {
+  grid-column: 2 / 3;
+}
+.v2-faq-stuck-actions .v2-btn-ghost-on-dark {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: white;
+}
+.v2-faq-stuck-actions .v2-btn-ghost-on-dark:hover {
+  border-color: var(--v2-accent);
+  color: var(--v2-ink-950);
+  background: var(--v2-accent);
+}
