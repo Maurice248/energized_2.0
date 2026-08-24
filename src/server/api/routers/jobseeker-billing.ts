@@ -38,7 +38,19 @@ export const jobseekerBillingRouter = router({
   getCurrent: protectedProcedure.query(async ({ ctx }) => {
     const u = await loadUser(ctx.session.user.id);
     if (!u) throw new TRPCError({ code: "NOT_FOUND" });
-    requireJobseeker(u.role);
+
+    // Read-only: non-job-seekers have no plan. Mutations still throw FORBIDDEN.
+    if (u.role !== "jobseeker") {
+      return {
+        stripeEnabled: STRIPE_ENABLED,
+        tier: null,
+        status: "none" as const,
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        cancellationDisposition: null,
+      };
+    }
 
     const tier: JobseekerPlanTier | null = isJobseekerPlanTier(u.jobseekerPlan)
       ? u.jobseekerPlan

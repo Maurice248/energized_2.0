@@ -38,6 +38,9 @@ export const EVENT_INTRO_DECLINED = "intro.declined";
 export const EVENT_INTRO_CANCELED = "intro.canceled";
 export const EVENT_INTRO_CONTACT_UNLOCKED_VIEWED = "intro.contact_unlocked.viewed";
 
+// Contact
+export const EVENT_CONTACT_SUBMITTED = "contact.submitted";
+
 // Profile
 export const EVENT_PROFILE_UPDATED = "profile.updated";
 export const EVENT_RESUME_UPLOADED = "resume.uploaded";

@@ -104,6 +104,11 @@ function publicPathForSlug(slug: string): string {
   return slug === "home" ? "/" : `/${slug}`;
 }
 
+function getPageListLabel(slug: string, title: string): string {
+  if (slug === "contact") return "Contact";
+  return title;
+}
+
 /** Icons for seeded surface slugs plus title heuristics. */
 function getPageIcon(slug: string, pageTitle: string) {
   switch (slug) {
@@ -115,6 +120,8 @@ function getPageIcon(slug: string, pageTitle: string) {
       return Sparkles;
     case "trainings":
       return GraduationCap;
+    case "contact":
+      return Phone;
     default:
       break;
   }
@@ -669,7 +676,9 @@ export function AdminPagesClient() {
                         >
                           <IconComponent className="h-4 w-4" />
                         </div>
-                        <span className="truncate text-sm font-bold">{page.title}</span>
+                        <span className="truncate text-sm font-bold">
+                          {getPageListLabel(page.slug, page.title)}
+                        </span>
                       </button>
                       <div className="flex shrink-0 items-center gap-0.5 opacity-80 group-hover:opacity-100">
                         <button
@@ -747,7 +756,7 @@ export function AdminPagesClient() {
                       })()}
                     </div>
                     <h2 className="text-2xl font-black tracking-tight text-[var(--v2-ink-950)]">
-                      {selected.title}
+                      {getPageListLabel(selected.slug, selected.title)}
                     </h2>
                     <span
                       className={cn(
@@ -983,8 +992,18 @@ export function AdminPagesClient() {
               }}
               role="status"
             >
-              <strong>System page.</strong> Publishing updates the marketing route backed by CMS;
-              drafts may fall back to seeded defaults where applicable.
+              {selected.slug === "contact" ? (
+                <>
+                  <strong>System page.</strong> Publishing updates the headline and intro
+                  on <code>/contact</code>. The form and email card stay in the app.
+                  Drafts fall back to seeded defaults.
+                </>
+              ) : (
+                <>
+                  <strong>System page.</strong> Publishing updates the marketing route
+                  backed by CMS; drafts may fall back to seeded defaults where applicable.
+                </>
+              )}
             </div>
           ) : null}
 

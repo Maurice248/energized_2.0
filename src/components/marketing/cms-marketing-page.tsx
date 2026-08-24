@@ -36,6 +36,18 @@ async function loadPublishedRow(slug: Slug) {
   return row ?? null;
 }
 
+/** Published CMS row merged onto seeded fallbacks. Used by hybrid routes (e.g. /contact). */
+export async function loadMarketingPage(slug: Slug) {
+  const fallback = getMarketingFallback(slug);
+  const row = await loadPublishedRow(slug);
+  return {
+    eyebrow: fallback.eyebrow,
+    title: row?.title ?? fallback.title,
+    body: row?.body ?? fallback.body,
+    bodyFormat: row?.bodyFormat ?? ("markdown" as const),
+  };
+}
+
 /**
  * Server-side helper used by each marketing route's `generateMetadata` to
  * compute SEO metadata from the CMS row (or fall back to the seeded defaults).

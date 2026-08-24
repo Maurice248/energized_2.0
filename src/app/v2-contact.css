@@ -44,6 +44,14 @@
   margin-left: auto;
 }
 .v2-contact-lede strong { color: var(--v2-ink-950); font-weight: 600; }
+.v2-contact-lede p {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+.v2-contact-lede p + p { margin-top: 12px; }
+.v2-contact-lede .v2-prose { margin-top: 0; max-width: none; font-size: inherit; }
 
 /* response strip */
 .v2-contact-strip {
@@ -73,7 +81,33 @@
   line-height: 1.1;
 }
 .v2-contact-strip-v em { font-style: italic; color: var(--v2-accent-deep); }
-@media (max-width: 800px) { .v2-contact-strip { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 800px) {
+  .v2-contact-strip { grid-template-columns: 1fr 1fr; }
+  .v2-contact-hero-grid { grid-template-columns: 1fr; gap: 20px; }
+  .v2-contact-lede { margin-left: 0; }
+}
+
+.v2-contact-side a.v2-channel {
+  text-decoration: none;
+  color: inherit;
+}
+.v2-contact-side a.v2-channel.dark {
+  color: #fff;
+}
+.v2-contact-form-error {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--v2-coral, #c2410c);
+  line-height: 1.5;
+}
+.v2-contact-form-error a { text-decoration: underline; text-underline-offset: 3px; }
+.v2-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
 
 /* ============ MAIN — message + side ============ */
 .v2-contact-main {
@@ -428,10 +462,24 @@
   background: var(--v2-accent-soft);
   color: var(--v2-ink-900);
 }
-.v2-channel.dark { background: var(--v2-ink-950); color: white; border-color: var(--v2-ink-950); }
-.v2-channel.dark .v2-channel-ico { background: rgba(199,249,86,0.15); color: var(--v2-accent); }
+.v2-channel.dark {
+  background: var(--v2-ink-950);
+  color: #fff;
+  border-color: var(--v2-ink-950);
+}
+.v2-channel.dark:hover { border-color: var(--v2-accent); }
+.v2-channel.dark .v2-channel-ico {
+  background: rgba(28, 170, 226, 0.16);
+  color: var(--v2-accent);
+}
+.v2-channel.dark .v2-channel-label { color: var(--v2-ink-400); }
+.v2-channel.dark .v2-channel-title { color: #fff; }
 .v2-channel.dark .v2-channel-sub { color: var(--v2-ink-300); }
-.v2-channel.dark .v2-channel-arrow { background: var(--v2-accent); color: var(--v2-ink-950); border-color: var(--v2-accent); }
+.v2-channel.dark .v2-channel-arrow {
+  background: var(--v2-accent);
+  color: var(--v2-ink-950);
+  border-color: var(--v2-accent);
+}
 .v2-channel-label {
   font-family: var(--v2-font-mono);
   font-size: 11px;
@@ -439,7 +487,6 @@
   text-transform: uppercase;
   color: var(--v2-ink-500);
 }
-.v2-channel.dark .v2-channel-label { color: var(--v2-ink-400); }
 .v2-channel-title {
   margin-top: 4px;
   font-family: var(--v2-font-serif);

@@ -27,8 +27,12 @@ const VALID_SUBSCRIBE = new Set(["gold", "platinum"]);
 export function JobseekerBillingSection({ id }: { id?: string }) {
   const router = useRouter();
   const params = useSearchParams();
-  const current = api.jobseekerBilling.getCurrent.useQuery();
-  const tiers = api.jobseekerBilling.listTiers.useQuery();
+  const current = api.jobseekerBilling.getCurrent.useQuery(undefined, {
+    retry: false,
+  });
+  const tiers = api.jobseekerBilling.listTiers.useQuery(undefined, {
+    retry: false,
+  });
   const utils = api.useUtils();
 
   const [error, setError] = useState<string | null>(null);

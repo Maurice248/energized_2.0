@@ -50,12 +50,14 @@ test.describe("marketing", () => {
 
     await expect(page).toHaveTitle(/Contact — Energized/);
 
-    // Form wrapper + FAQ both visible
+    await expect(
+      page.getByRole("heading", { level: 1 }),
+    ).toContainText(/help/i);
     await expect(page.locator(".v2-contact-form-wrap")).toBeVisible();
-    await expect(page.locator(".v2-faq")).toBeVisible();
-
-    // Topic chips are interactive
-    await expect(page.locator(".v2-topic-chip")).toHaveCount(6);
+    await expect(page.getByLabel(/your name/i)).toBeVisible();
+    await expect(page.getByLabel(/email address/i)).toBeVisible();
+    await expect(page.getByLabel(/how can we help/i)).toBeVisible();
+    await expect(page.locator(".v2-faq")).toHaveCount(0);
 
     await expect(page).toHaveScreenshot("contact.png", { fullPage: true });
   });

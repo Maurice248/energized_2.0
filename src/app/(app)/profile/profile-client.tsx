@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/shared/icon";
 import { PasswordInput } from "@/components/shared/password-input";
@@ -43,10 +43,10 @@ const NAV_ITEMS = [
   { id: "account", label: "Account & privacy", icon: "lock" as IconName },
 ];
 
-/** Stable order for scroll-spy anchors (`#pp-{id}`) in DOM order */
-const JOBSEEKER_PROFILE_SCROLL_IDS: readonly string[] = NAV_ITEMS.map(
-  (n) => n.id,
-);
+function navItemsForRole(role: string) {
+  if (role === "jobseeker") return NAV_ITEMS;
+  return NAV_ITEMS.filter((n) => n.id !== "billing");
+}
 
 type SectorEnum =
   | "oil_gas"
@@ -151,9 +151,12 @@ export function ProfileClient({
   const sidebarDividerFallbackAlignRef = useRef<HTMLDivElement | null>(null);
   const programmaticScrollHoldUntilRef = useRef(0);
   const setAvatar = api.profile.setAvatar.useMutation();
+  const isJobseeker = role === "jobseeker";
+  const navItems = useMemo(() => navItemsForRole(role), [role]);
+  const navIdsOrdered = useMemo(() => navItems.map((n) => n.id), [navItems]);
 
   useProfileSidebarScrollSpy({
-    navIdsOrdered: JOBSEEKER_PROFILE_SCROLL_IDS,
+    navIdsOrdered,
     sectionIdPrefix: "pp",
     setActive,
     enabled: true,
@@ -168,7 +171,7 @@ export function ProfileClient({
       const h = window.location.hash.slice(1);
       if (!h.startsWith("pp-")) return;
       const id = h.slice(3);
-      if (!(JOBSEEKER_PROFILE_SCROLL_IDS as readonly string[]).includes(id)) {
+      if (!navIdsOrdered.includes(id)) {
         return;
       }
       setActive(id);
@@ -176,7 +179,7 @@ export function ProfileClient({
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
-  }, [setActive]);
+  }, [navIdsOrdered, setActive]);
 
   const handleAvatar = async (file: File) => {
     setAvatarError(null);
@@ -320,7 +323,7 @@ export function ProfileClient({
           </div>
 
           <nav className="pp-nav">
-            {NAV_ITEMS.map((n) => (
+            {navItems.map((n) => (
               <div
                 key={n.id}
                 className={`pp-nav-item ${active === n.id ? "active" : ""}`}
@@ -846,8 +849,8 @@ export function ProfileClient({
             />
           )}
 
-          {/* Plan & billing */}
-          <JobseekerBillingSection id="pp-billing" />
+          {/* Plan & billing — job-seeker Stripe plans only */}
+          {isJobseeker && <JobseekerBillingSection id="pp-billing" />}
 
           {/* Account & privacy */}
           <div id="pp-account" style={{ scrollMarginTop: 100 }} />

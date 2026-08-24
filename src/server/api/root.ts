@@ -4,6 +4,7 @@ import { adminRouter } from "@/server/api/routers/admin";
 import { applicationsRouter } from "@/server/api/routers/applications";
 import { billingRouter } from "@/server/api/routers/billing";
 import { candidatesRouter } from "@/server/api/routers/candidates";
+import { contactRouter } from "@/server/api/routers/contact";
 import { employerRouter } from "@/server/api/routers/employer";
 import { faqsRouter } from "@/server/api/routers/faqs";
 import { healthRouter } from "@/server/api/routers/health";
@@ -27,6 +28,7 @@ export const appRouter = router({
   applications: applicationsRouter,
   billing: billingRouter,
   candidates: candidatesRouter,
+  contact: contactRouter,
   employer: employerRouter,
   faqs: faqsRouter,
   health: healthRouter,

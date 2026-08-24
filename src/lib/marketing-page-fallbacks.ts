@@ -88,36 +88,163 @@ We built Energized so the substance of your work — projects, sites, commoditie
     slug: "privacy",
     eyebrow: "Legal",
     title: "Privacy policy",
-    seoTitle: "Privacy",
-    seoDescription: "How Energized handles your personal data.",
-    body: `This page describes how Energized collects, uses, and protects your personal information.
+    seoTitle: "Privacy policy",
+    seoDescription:
+      "How Energized collects, uses, discloses, and protects personal information for Canadian energy job seekers and employers.",
+    body: `Energized (“Energized”, “we”, “our”, or “us”) values your privacy and is committed to protecting your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your data when you use our web platform and related services (collectively, the “Services”).
 
-We're drafting our full policy. In the meantime, reach us at **dev@energized.biz** with any privacy questions.`,
+Last updated: 25 August 2026.
+
+## 1. Information We Collect
+
+We collect personal and professional information necessary to operate a specialised job network for Canada’s energy sector. This includes:
+
+- Identification and contact details (e.g. name, email, phone number, location)
+- Account credentials, role (job seeker, employer, recruiter, or admin), and communication logs
+- Professional profile data (headline, summary, skills, sectors, years of experience, availability, compensation expectations, rotation and relocation preferences)
+- Work history, education, certifications and tickets (including uploaded credential scans)
+- Resumes, profile photos, and company logos
+- Job applications, cover notes, screening answers, interviews, intro requests, saved jobs, and saved searches
+- Skill-assessment attempts and results, and training progress
+- Employer organisation details, job postings, pipeline notes, and team membership
+- Billing and payment information needed to process subscriptions (handled by our payment processor)
+- Technical data such as IP address, browser or device information, and usage analytics
+
+## 2. How We Use Your Information
+
+We use your information to:
+
+- Create and manage accounts, profiles, job postings, and applications
+- Match job seekers with roles and help employers shortlist qualified candidates
+- Verify certifications and employer organisations
+- Generate AI-assisted match scores, profile polish, cover notes, screening questions, and skill assessments
+- Schedule interviews, send notifications, and deliver saved-search digests
+- Process payments and manage subscriptions
+- Improve our services, keep the platform secure, and comply with legal obligations
+
+## 3. Data Sharing and Disclosure
+
+We only share your data when necessary, including with:
+
+- Employers and recruiters involved in your application, or who search the candidate pool when your profile is visible
+- Payment processors (for secure subscription billing)
+- Email, analytics, AI, hosting, and file-storage providers that process data on our behalf to run the Services
+- Legal authorities, if required by law or court order
+
+We do not sell or rent personal information to third parties.
+
+## 4. Data Storage and Security
+
+Data is encrypted in transit. Files such as resumes, certification scans, and logos are stored in secured cloud storage, and access is limited to authorised personnel and, where relevant, verified employers reviewing an application or a visible candidate profile. We retain records only as long as necessary for legal or operational purposes (for example, application history an employer may need to keep), after which they are deleted or anonymised.
+
+## 5. Cookies and Tracking
+
+Energized uses cookies and analytics tools to keep you signed in, enhance user experience, and monitor platform performance. You may manage cookie preferences in your browser settings. No third-party advertising cookies are used for targeted marketing without consent.
+
+## 6. AI and Automated Scoring
+
+Our AI-powered features analyse profile and job data (experience, tickets, sector, location, and related signals) to generate match scores, draft profile copy or cover notes, extract resume details, suggest screening questions, and support skill assessments. We instruct these systems not to use protected characteristics (such as age, gender, family status, disability, religion, race, or nationality) as scoring factors.
+
+Automated outputs are reviewed periodically for fairness and compliance with the Canadian Human Rights Act and applicable provincial human rights legislation. You have the right to request a human review of any automated assessment that materially affects your application or profile on Energized.
+
+## 7. Your Rights
+
+Under PIPEDA and applicable Canadian privacy laws, you have the right to:
+
+- Access and correct your personal information
+- Withdraw consent at any time (subject to legal limitations)
+- Request deletion of your data after you close your account, subject to records we must keep for legal, billing, or dispute-resolution purposes
+- File a complaint with the Office of the Privacy Commissioner of Canada (OPC)
+
+Requests can be submitted via **dev@energized.biz**.
+
+## 8. International Data Transfers
+
+Energized is a Canadian service. Some subprocessors that help us operate the platform (for example AI, email, payments, analytics, hosting, and file storage) may process data outside Canada, including in the United States. Where data is transferred outside Canada, we take steps so that equivalent privacy protections are applied.
+
+## 9. Policy Updates
+
+Energized may update this Privacy Policy periodically. Material changes will be communicated to registered users via email or in-app notification. Your continued use of the platform after updates constitutes acceptance of the revised policy.
+
+## 10. Contact Information
+
+For privacy-related questions or concerns, contact us at:
+
+Email: **dev@energized.biz**
+
+© 2026 Energized. All Rights Reserved.`,
   },
   {
     slug: "terms",
     eyebrow: "Legal",
     title: "Terms of service",
-    seoTitle: "Terms",
-    seoDescription: "Energized terms of service.",
-    body: `These are the terms under which Energized provides its services.
+    seoTitle: "Terms of service",
+    seoDescription:
+      "Terms that govern your use of Energized — the job network for Canadian energy professionals and employers.",
+    body: `These Terms of Service (“Terms”) govern your access to and use of the Energized web platform and related services (“Services”). By using our platform, you agree to these Terms, our [Privacy Policy](/privacy), and any other applicable policies provided by Energized.
 
-We're drafting our full terms of service. In the meantime, reach us at **dev@energized.biz** with any questions about using Energized.`,
+Last updated: 25 August 2026.
+
+## 1. Definitions
+
+1.1 **“Job seeker”** refers to an individual building a professional profile, browsing roles, or applying for work through Energized.
+
+1.2 **“Employer”** refers to a company or hiring organisation posting roles, searching candidates, or managing a hiring pipeline through the platform.
+
+1.3 **“Recruiter”** refers to a seat under an employer organisation with permission to use hiring tools on that organisation’s behalf.
+
+1.4 **“User”** means any registered or unregistered person accessing the platform.
+
+1.5 **“Listings”** refer to job postings published on Energized.
+
+## 2. User Responsibilities
+
+Users agree to provide accurate and truthful information when using the platform — including work history, certifications, tickets, and job-posting details. You are responsible for maintaining the confidentiality of your account credentials and for all activities under your account. You must not impersonate another person, misrepresent credentials, or upload documents you do not have the right to share.
+
+## 3. Permitted Use
+
+Energized may only be used for legitimate job search, hiring, and recruiting in the Canadian energy sector (including oil & gas, renewables, nuclear, utilities, hydrogen, and power). You must not use the Services to discriminate, harass, scrape, spam, or violate applicable human rights, employment, or privacy laws. Employers and recruiters must not use candidate data for purposes unrelated to evaluating or filling a role.
+
+## 4. Data Privacy and Security
+
+Energized complies with the Personal Information Protection and Electronic Documents Act (PIPEDA) and other applicable privacy laws in Canada. Your personal data, including uploaded resumes and certification scans, is used to operate the Services as described in our [Privacy Policy](/privacy). AI-assisted match scores and related features are tools to help Users evaluate fit; they are not a guarantee of employment or of a hiring decision.
+
+## 5. Fees and Payments
+
+Core job-seeker features are free. Certain features — including employer posting packages, recruiter seats, featured listings, and optional job-seeker plans — may incur fees. By using paid features, you agree to pay the applicable charges as displayed during checkout. Fees are processed by our payment provider. Unless a paid plan states otherwise, charges are non-refundable once the billing period has started, except where required by law.
+
+## 6. Intellectual Property
+
+All content, trademarks, and code on the Energized platform are the property of Energized or its licensors. Users are granted a limited, non-transferable license to use the platform for its intended purpose. You retain rights in content you submit (such as your profile, resume, and job listings), and you grant Energized a licence to host, display, and process that content as needed to provide the Services.
+
+## 7. Limitation of Liability
+
+Energized provides its Services on an “as-is” and “as-available” basis. We do not guarantee that you will be hired, that a role will be filled, or that match scores, skill assessments, or other AI outputs will be error-free. Energized shall not be liable for any indirect, incidental, or consequential damages arising from the use of or inability to use the Services.
+
+## 8. Termination
+
+Energized reserves the right to suspend or terminate your access to the platform at any time for violations of these Terms or misuse of the Services, including fraudulent profiles, discriminatory hiring practices, or abuse of other Users. You may close your account at any time; some records may be retained as described in the Privacy Policy.
+
+## 9. Governing Law
+
+These Terms are governed by and construed in accordance with the federal laws of Canada applicable therein.
+
+## 10. Contact
+
+For questions or concerns about these Terms, please contact Energized at:
+
+Email: **dev@energized.biz**
+
+© 2026 Energized. All Rights Reserved.`,
   },
   {
     slug: "contact",
-    eyebrow: "Get in touch",
-    title: "Contact us",
+    eyebrow: "Contact us",
+    title: "We're here to help",
     seoTitle: "Contact",
     seoDescription:
       "Get in touch with the Energized team — we read every message and reply within one business day.",
-    body: `Whether you're hiring fifty wind techs in Halifax or wondering why your match score moved — **we read every message that comes in.** We reply within one business day.
-
-## Reach us
-
-- Email: **dev@energized.biz**
-- Reply time: under one business day
-- Languages: English`,
+    body: `Have a question or need assistance? Send a message and our team will get back to you within **one business day**.`,
   },
   {
     slug: "accessibility",
