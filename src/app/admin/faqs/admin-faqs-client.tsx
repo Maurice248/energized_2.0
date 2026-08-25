@@ -179,6 +179,20 @@ export function AdminFaqsClient() {
     onError: (e) => toast.error(e.message),
   });
 
+  const seedMut = api.admin.faqs.seedDefaults.useMutation({
+    onSuccess: async (res) => {
+      if (res.inserted === 0) {
+        toast.info("Starter FAQs were already seeded.");
+      } else {
+        toast.success(
+          `Seeded ${res.inserted} FAQ${res.inserted === 1 ? "" : "s"}.`,
+        );
+      }
+      await invalidateAll();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const rows = data ?? [];
 
   const sensors = useSensors(
@@ -395,6 +409,17 @@ export function AdminFaqsClient() {
                     className="h-10 rounded-xl border-[var(--v2-ink-200)]"
                   />
                 </div>
+                {stats && stats.total === 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 shrink-0 rounded-xl"
+                    disabled={seedMut.isPending}
+                    onClick={() => seedMut.mutate()}
+                  >
+                    {seedMut.isPending ? "Seeding…" : "Seed starter FAQs"}
+                  </Button>
+                ) : null}
                 <button
                   type="button"
                   className="v2-btn v2-btn-primary v2-admin-faq-new-btn shrink-0"
@@ -434,12 +459,25 @@ export function AdminFaqsClient() {
           ) : rows.length === 0 ? (
             <p className="text-sm text-[var(--v2-ink-600)]">
               No FAQs match these filters yet.{" "}
+              {stats?.total === 0 ? (
+                <>
+                  <button
+                    type="button"
+                    className="font-semibold text-[var(--v2-accent-deep)] underline-offset-2 hover:underline"
+                    disabled={seedMut.isPending}
+                    onClick={() => seedMut.mutate()}
+                  >
+                    Seed starter FAQs
+                  </button>
+                  {" or "}
+                </>
+              ) : null}
               <button
                 type="button"
                 className="font-semibold text-[var(--v2-accent-deep)] underline-offset-2 hover:underline"
                 onClick={openCreate}
               >
-                Create the first one
+                create one
               </button>
               .
             </p>

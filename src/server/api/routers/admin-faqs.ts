@@ -4,6 +4,7 @@ import { z } from "zod";
 import { adminProcedure, router } from "@/server/api/trpc";
 import { auditLog, faqs } from "@/server/db/schema";
 import { normalizeStoredCmsBody } from "@/lib/cms-page-sections";
+import { seedFaqsTables } from "@/server/services/seed-faqs";
 
 const faqCategorySchema = z.enum([
   "general",
@@ -342,4 +343,16 @@ export const adminFaqsRouter = router({
 
       return { ok: true as const };
     }),
+
+  /**
+   * Idempotently inserts starter FAQs when matching questions are missing.
+   * Does not overwrite existing copy.
+   */
+  seedDefaults: adminProcedure.mutation(async ({ ctx }) => {
+    const res = await seedFaqsTables({
+      actorUserId: ctx.session.user.id,
+      actorLabel: ctx.session.user.email,
+    });
+    return { inserted: res.inserted };
+  }),
 });

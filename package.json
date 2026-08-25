@@ -19,6 +19,7 @@
     "db:push": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs push",
     "db:studio": "node --env-file=.env.local ./node_modules/drizzle-kit/bin.cjs studio",
     "db:seed-system-pages": "node --env-file=.env.local ./node_modules/tsx/dist/cli.mjs scripts/seed-system-pages.ts",
+    "db:seed-faqs": "node --env-file=.env.local ./node_modules/tsx/dist/cli.mjs scripts/seed-faqs.ts",
     "email:dev": "email dev --dir src/emails --port 3001",
     "trigger:dev": "trigger dev"
   },
