@@ -663,10 +663,22 @@
 
 /* ============ FOOTER ============ */
 .v2-footer { background: var(--v2-ink-950); color: white; padding: 72px 0 32px; }
-.v2-footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 56px; }
+.v2-footer-grid { display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(auto-fit, minmax(140px, 1fr)); gap: 56px; }
 .v2-footer h5 { color: white; font-size: 13px; margin-bottom: 18px; letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--v2-font-mono); font-weight: 700; }
 .v2-footer a { display: block; padding: 6px 0; font-size: 14px; color: var(--v2-ink-300); transition: color .15s; }
 .v2-footer a:hover { color: var(--v2-accent); }
+.v2-footer-social { display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+.v2-footer-social a {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: white;
+}
+.v2-footer-bottom a { display: inline; padding: 0; }
 .v2-footer-bottom {
   margin-top: 64px; padding-top: 24px;
   border-top: 1px solid rgba(255,255,255,0.08);

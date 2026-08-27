@@ -2,8 +2,15 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { adminProcedure, router } from "@/server/api/trpc";
-import { auditLog, pages } from "@/server/db/schema";
+import { auditLog, pages, platformSettings } from "@/server/db/schema";
 import { MARKETING_PAGE_FALLBACKS } from "@/lib/marketing-page-fallbacks";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/public-contact-email";
+import {
+  DEFAULT_SITE_FOOTER,
+  normalizeSiteFooter,
+  parseSiteFooter,
+  siteFooterSchema,
+} from "@/lib/site-footer";
 import { normalizeStoredCmsBody } from "@/lib/cms-page-sections";
 import { SURFACE_CMS_PUBLIC_SLUGS } from "@/lib/surface-cms-seeds";
 import { seedSystemPagesTables } from "@/server/services/seed-system-pages";
@@ -128,6 +135,32 @@ const updatePageSchema = z.object({
   seoDescription: seoDescriptionSchema,
   status: statusSchema.optional(),
 });
+
+export const contactEmailSchema = z
+  .string()
+  .trim()
+  .min(1, "Email is required.")
+  .max(254, "Email must be 254 characters or fewer.")
+  .email("Enter a valid email address.");
+
+function chainMessage(err: unknown): string {
+  const parts: string[] = [];
+  let cur: unknown = err;
+  for (let i = 0; i < 8 && cur; i++) {
+    if (cur instanceof Error) {
+      parts.push(cur.message);
+      cur = cur.cause;
+    } else {
+      break;
+    }
+  }
+  return parts.join(" ");
+}
+
+function isPlatformSettingsTableMissing(err: unknown): boolean {
+  const msg = chainMessage(err);
+  return msg.includes("platform_settings") && msg.includes("does not exist");
+}
 
 const listInputSchema = z
   .object({
@@ -383,6 +416,165 @@ export const adminPagesRouter = router({
       });
 
       return { id: current.id };
+    }),
+
+  /**
+   * Public inbox shown on `/contact` and used as the contact-form destination.
+   * Stored on `platform_settings.site_email` (same field as /admin/settings).
+   */
+  getContactEmail: adminProcedure.query(async ({ ctx }) => {
+    try {
+      const [row] = await ctx.db
+        .select({ email: platformSettings.siteEmail })
+        .from(platformSettings)
+        .limit(1);
+      const email = row?.email?.trim() || PUBLIC_CONTACT_EMAIL;
+      return { email };
+    } catch (err) {
+      if (isPlatformSettingsTableMissing(err)) {
+        return { email: PUBLIC_CONTACT_EMAIL };
+      }
+      throw err;
+    }
+  }),
+
+  updateContactEmail: adminProcedure
+    .input(z.object({ email: contactEmailSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const email = input.email;
+
+      try {
+        const [current] = await ctx.db
+          .select({ id: platformSettings.id })
+          .from(platformSettings)
+          .limit(1);
+
+        let settingsId: string;
+        if (current) {
+          const [updated] = await ctx.db
+            .update(platformSettings)
+            .set({ siteEmail: email, updatedAt: new Date() })
+            .where(eq(platformSettings.id, current.id))
+            .returning({ id: platformSettings.id });
+          if (!updated) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to update contact email.",
+            });
+          }
+          settingsId = updated.id;
+        } else {
+          const [created] = await ctx.db
+            .insert(platformSettings)
+            .values({ siteEmail: email })
+            .returning({ id: platformSettings.id });
+          if (!created) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to save contact email.",
+            });
+          }
+          settingsId = created.id;
+        }
+
+        await ctx.db.insert(auditLog).values({
+          actorUserId: ctx.session.user.id,
+          actorLabel: ctx.session.user.email,
+          action: "platform_settings.site_email.updated",
+          entityType: "platform_settings",
+          entityId: settingsId,
+          meta: { siteEmail: email, source: "admin.pages" },
+        });
+
+        return { email };
+      } catch (err) {
+        if (err instanceof TRPCError) throw err;
+        if (isPlatformSettingsTableMissing(err)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              'Table "platform_settings" does not exist yet. Run `pnpm db:migrate` on this database, then try again.',
+          });
+        }
+        throw err;
+      }
+    }),
+
+  getFooter: adminProcedure.query(async ({ ctx }) => {
+    try {
+      const [row] = await ctx.db
+        .select({ footer: platformSettings.footer })
+        .from(platformSettings)
+        .limit(1);
+      return parseSiteFooter(row?.footer ?? null);
+    } catch (err) {
+      if (isPlatformSettingsTableMissing(err)) {
+        return structuredClone(DEFAULT_SITE_FOOTER);
+      }
+      throw err;
+    }
+  }),
+
+  updateFooter: adminProcedure
+    .input(siteFooterSchema)
+    .mutation(async ({ ctx, input }) => {
+      const footer = normalizeSiteFooter(input);
+
+      try {
+        const [current] = await ctx.db
+          .select({ id: platformSettings.id })
+          .from(platformSettings)
+          .limit(1);
+
+        let settingsId: string;
+        if (current) {
+          const [updated] = await ctx.db
+            .update(platformSettings)
+            .set({ footer, updatedAt: new Date() })
+            .where(eq(platformSettings.id, current.id))
+            .returning({ id: platformSettings.id });
+          if (!updated) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to update footer.",
+            });
+          }
+          settingsId = updated.id;
+        } else {
+          const [created] = await ctx.db
+            .insert(platformSettings)
+            .values({ footer })
+            .returning({ id: platformSettings.id });
+          if (!created) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to save footer.",
+            });
+          }
+          settingsId = created.id;
+        }
+
+        await ctx.db.insert(auditLog).values({
+          actorUserId: ctx.session.user.id,
+          actorLabel: ctx.session.user.email,
+          action: "platform_settings.footer.updated",
+          entityType: "platform_settings",
+          entityId: settingsId,
+          meta: { source: "admin.pages" },
+        });
+
+        return footer;
+      } catch (err) {
+        if (err instanceof TRPCError) throw err;
+        if (isPlatformSettingsTableMissing(err)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              'Table "platform_settings" does not exist yet. Run `pnpm db:migrate` on this database, then try again.',
+          });
+        }
+        throw err;
+      }
     }),
 
   /**

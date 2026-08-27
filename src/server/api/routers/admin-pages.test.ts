@@ -3,8 +3,11 @@ import { TRPCError } from "@trpc/server";
 import {
   MARKETING_STATIC_SLUGS,
   RESERVED_SLUGS,
+  contactEmailSchema,
   slugSchema,
 } from "./admin-pages";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/public-contact-email";
+import { DEFAULT_SITE_FOOTER } from "@/lib/site-footer";
 import { createCaller } from "@/server/api/root";
 
 vi.mock("@/server/db", () => ({
@@ -198,5 +201,171 @@ describe("admin-pages: isSystem protections", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin-pages: contactEmailSchema", () => {
+  it("accepts a valid email", () => {
+    expect(contactEmailSchema.safeParse("hello@energized.biz").success).toBe(
+      true,
+    );
+  });
+
+  it("trims whitespace", () => {
+    const parsed = contactEmailSchema.safeParse("  hello@energized.biz  ");
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data).toBe("hello@energized.biz");
+  });
+
+  it("rejects empty and invalid values", () => {
+    expect(contactEmailSchema.safeParse("").success).toBe(false);
+    expect(contactEmailSchema.safeParse("not-an-email").success).toBe(false);
+    expect(contactEmailSchema.safeParse("dev@").success).toBe(false);
+  });
+});
+
+describe("admin-pages: contact email", () => {
+  it("rejects non-admin callers on getContactEmail", async () => {
+    const caller = createCaller(buildCtx({ role: "jobseeker" }));
+    await expect(caller.admin.pages.getContactEmail()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("rejects non-admin callers on updateContactEmail", async () => {
+    const caller = createCaller(buildCtx({ role: "employer" }));
+    await expect(
+      caller.admin.pages.updateContactEmail({ email: "hello@energized.biz" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("getContactEmail returns the stored site email", async () => {
+    const limit = vi.fn().mockResolvedValue([{ email: "inbox@energized.biz" }]);
+    const from = vi.fn().mockReturnValue({ limit });
+    const select = vi.fn().mockReturnValue({ from });
+    const caller = createCaller(buildCtx({ db: { select } }));
+
+    await expect(caller.admin.pages.getContactEmail()).resolves.toEqual({
+      email: "inbox@energized.biz",
+    });
+  });
+
+  it("getContactEmail falls back when siteEmail is empty", async () => {
+    const limit = vi.fn().mockResolvedValue([{ email: "  " }]);
+    const from = vi.fn().mockReturnValue({ limit });
+    const select = vi.fn().mockReturnValue({ from });
+    const caller = createCaller(buildCtx({ db: { select } }));
+
+    await expect(caller.admin.pages.getContactEmail()).resolves.toEqual({
+      email: PUBLIC_CONTACT_EMAIL,
+    });
+  });
+
+  it("updateContactEmail writes siteEmail on an existing settings row", async () => {
+    const settingsId = "33333333-3333-3333-3333-333333333333";
+    const selectLimit = vi.fn().mockResolvedValue([{ id: settingsId }]);
+    const selectFrom = vi.fn().mockReturnValue({ limit: selectLimit });
+    const select = vi.fn().mockReturnValue({ from: selectFrom });
+
+    const updateReturning = vi.fn().mockResolvedValue([{ id: settingsId }]);
+    const updateWhere = vi.fn().mockReturnValue({ returning: updateReturning });
+    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+    const update = vi.fn().mockReturnValue({ set: updateSet });
+
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValue({ values: insertValues });
+
+    const caller = createCaller(
+      buildCtx({ db: { select, update, insert } }),
+    );
+
+    await expect(
+      caller.admin.pages.updateContactEmail({ email: "new@energized.biz" }),
+    ).resolves.toEqual({ email: "new@energized.biz" });
+
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ siteEmail: "new@energized.biz" }),
+    );
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "platform_settings.site_email.updated",
+        entityId: settingsId,
+      }),
+    );
+  });
+
+  it("updateContactEmail inserts a settings row when none exists", async () => {
+    const settingsId = "44444444-4444-4444-4444-444444444444";
+    const selectLimit = vi.fn().mockResolvedValue([]);
+    const selectFrom = vi.fn().mockReturnValue({ limit: selectLimit });
+    const select = vi.fn().mockReturnValue({ from: selectFrom });
+
+    const insertReturning = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: settingsId }])
+      .mockResolvedValueOnce(undefined);
+    const insertValues = vi.fn().mockReturnValue({ returning: insertReturning });
+    const insert = vi.fn().mockReturnValue({ values: insertValues });
+
+    const caller = createCaller(buildCtx({ db: { select, insert } }));
+
+    await expect(
+      caller.admin.pages.updateContactEmail({ email: "fresh@energized.biz" }),
+    ).resolves.toEqual({ email: "fresh@energized.biz" });
+
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ siteEmail: "fresh@energized.biz" }),
+    );
+  });
+});
+
+describe("admin-pages: footer", () => {
+  it("rejects non-admin callers on getFooter", async () => {
+    const caller = createCaller(buildCtx({ role: "jobseeker" }));
+    await expect(caller.admin.pages.getFooter()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+  });
+
+  it("getFooter returns defaults when footer is null", async () => {
+    const limit = vi.fn().mockResolvedValue([{ footer: null }]);
+    const from = vi.fn().mockReturnValue({ limit });
+    const select = vi.fn().mockReturnValue({ from });
+    const caller = createCaller(buildCtx({ db: { select } }));
+
+    await expect(caller.admin.pages.getFooter()).resolves.toEqual(
+      DEFAULT_SITE_FOOTER,
+    );
+  });
+
+  it("updateFooter writes the footer JSON on an existing settings row", async () => {
+    const settingsId = "55555555-5555-5555-5555-555555555555";
+    const selectLimit = vi.fn().mockResolvedValue([{ id: settingsId }]);
+    const selectFrom = vi.fn().mockReturnValue({ limit: selectLimit });
+    const select = vi.fn().mockReturnValue({ from: selectFrom });
+
+    const updateReturning = vi.fn().mockResolvedValue([{ id: settingsId }]);
+    const updateWhere = vi.fn().mockReturnValue({ returning: updateReturning });
+    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+    const update = vi.fn().mockReturnValue({ set: updateSet });
+
+    const insertValues = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValue({ values: insertValues });
+
+    const caller = createCaller(buildCtx({ db: { select, update, insert } }));
+    const payload = {
+      ...DEFAULT_SITE_FOOTER,
+      tagline: "Updated tagline for Canada's energy network.",
+    };
+
+    await expect(caller.admin.pages.updateFooter(payload)).resolves.toMatchObject({
+      tagline: payload.tagline,
+    });
+
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        footer: expect.objectContaining({ tagline: payload.tagline }),
+      }),
+    );
   });
 });

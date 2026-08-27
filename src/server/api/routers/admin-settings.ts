@@ -4,6 +4,8 @@ import { z } from "zod";
 import { adminProcedure, router } from "@/server/api/trpc";
 import { auditLog, platformSettings, type PlatformSocialLink } from "@/server/db/schema";
 import type { DB } from "@/server/db";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/public-contact-email";
+import { DEFAULT_SITE_FOOTER } from "@/lib/site-footer";
 
 function parseEmailFrom(from: string): { name: string; email: string } {
   const trimmed = from.trim();
@@ -22,7 +24,7 @@ async function defaultInsertValues(): Promise<typeof platformSettings.$inferInse
   return {
     siteName: "Energized",
     siteDescription: "Job search platform for Canada's energy sector.",
-    siteEmail: email,
+    siteEmail: PUBLIC_CONTACT_EMAIL,
     sitePhone: null,
     siteAddress: null,
     siteLogo: null,
@@ -42,6 +44,7 @@ async function defaultInsertValues(): Promise<typeof platformSettings.$inferInse
     googleAnalyticsId: null,
     stripePublishableKey: null,
     socialLinks: [],
+    footer: structuredClone(DEFAULT_SITE_FOOTER),
   };
 }
 

@@ -9,6 +9,7 @@ import {
   buildMarketingMetadata,
   loadMarketingPage,
 } from "@/components/marketing/cms-marketing-page";
+import { PUBLIC_CONTACT_EMAIL } from "@/lib/public-contact-email";
 import { ContactForm } from "./contact-form";
 import { ContactSidebar } from "./contact-sidebar";
 
@@ -17,8 +18,6 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   return buildMarketingMetadata("contact");
 }
-
-const FALLBACK_EMAIL = "dev@energized.biz";
 
 function splitMarkdownIntro(body: string): { lede: string; rest: string } {
   const text = body.replace(/\r\n/g, "\n").trim();
@@ -50,12 +49,12 @@ async function loadChannels() {
       .from(platformSettings)
       .limit(1);
     return {
-      email: row?.email?.trim() || FALLBACK_EMAIL,
+      email: row?.email?.trim() || PUBLIC_CONTACT_EMAIL,
       phone: row?.phone?.trim() || null,
       address: row?.address?.trim() || null,
     };
   } catch {
-    return { email: FALLBACK_EMAIL, phone: null, address: null };
+    return { email: PUBLIC_CONTACT_EMAIL, phone: null, address: null };
   }
 }
 
@@ -108,7 +107,7 @@ export default async function ContactPage() {
         <section>
           <div className="v2-container">
             <div className="v2-contact-main">
-              <ContactForm />
+              <ContactForm inboxEmail={channels.email} />
               <ContactSidebar channels={channels} />
             </div>
           </div>
