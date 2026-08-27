@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { adminProcedure, router } from "@/server/api/trpc";
 import {
   applications,
@@ -1067,6 +1068,61 @@ const supportRouter = router({
       introTotals,
     };
   }),
+
+  setTicketStatus: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: z.enum(["open", "in_progress", "closed"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [current] = await ctx.db
+        .select({
+          id: supportTickets.id,
+          status: supportTickets.status,
+          assignedTo: supportTickets.assignedTo,
+        })
+        .from(supportTickets)
+        .where(eq(supportTickets.id, input.id))
+        .limit(1);
+
+      if (!current) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found." });
+      }
+
+      const [updated] = await ctx.db
+        .update(supportTickets)
+        .set({
+          status: input.status,
+          closedAt: input.status === "closed" ? new Date() : null,
+          assignedTo:
+            input.status === "in_progress"
+              ? (current.assignedTo ?? ctx.session.user.id)
+              : current.assignedTo,
+          updatedAt: new Date(),
+        })
+        .where(eq(supportTickets.id, input.id))
+        .returning({
+          id: supportTickets.id,
+          status: supportTickets.status,
+        });
+
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ticket not found." });
+      }
+
+      await ctx.db.insert(auditLog).values({
+        actorUserId: ctx.session.user.id,
+        actorLabel: ctx.session.user.email,
+        action: "support_ticket.status_changed",
+        entityType: "support_ticket",
+        entityId: input.id,
+        meta: { from: current.status, to: input.status },
+      });
+
+      return updated;
+    }),
 });
 
 function hoursAgo(d: Date): string {

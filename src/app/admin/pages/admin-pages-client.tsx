@@ -30,6 +30,7 @@ import {
   GraduationCap,
   GripVertical,
   Home,
+  PanelBottom,
   Phone,
   Plus,
   Shield,
@@ -66,6 +67,8 @@ import {
   SortableSectionRow,
   type SortableDragProps,
 } from "./_components/sortable-section-row";
+import { ContactEmailCard } from "./_components/contact-email-card";
+import { FooterEditor } from "./_components/footer-editor";
 
 type PageStatus = "draft" | "published";
 type CmsBodyFormat = "markdown" | "html";
@@ -241,15 +244,17 @@ export function AdminPagesClient() {
 
   const rows: PageRow[] = useMemo(() => data ?? [], [data]);
   const [focusedPageId, setFocusedPageId] = useState<string | null>(null);
+  const [sidebarView, setSidebarView] = useState<"page" | "footer">("page");
 
   const selected = useMemo(() => {
+    if (sidebarView !== "page") return null;
     if (rows.length === 0) return null;
     if (focusedPageId) {
       const hit = rows.find((r) => r.id === focusedPageId);
       if (hit) return hit;
     }
     return rows[0]!;
-  }, [rows, focusedPageId]);
+  }, [rows, focusedPageId, sidebarView]);
 
   const [previewMode, setPreviewMode] = useState(false);
   const [pageDialog, setPageDialog] = useState<PageDialog>(null);
@@ -343,6 +348,7 @@ export function AdminPagesClient() {
 
   function openCreatePage() {
     resetPageForm();
+    setSidebarView("page");
     setPageDialog("create");
   }
 
@@ -582,8 +588,11 @@ export function AdminPagesClient() {
 
       <div className="flex min-h-[calc(100vh-220px)] flex-1 gap-5 overflow-hidden">
         <div
-          className="flex w-80 shrink-0 flex-col overflow-hidden rounded-2xl border border-[var(--v2-ink-200)] bg-[var(--v2-bg,#fff)] shadow-sm"
+          className="flex w-80 shrink-0 flex-col gap-4"
           style={{ maxHeight: "calc(100vh - 120px)" }}
+        >
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--v2-ink-200)] bg-[var(--v2-bg,#fff)] shadow-sm"
         >
           <div className="border-b border-[var(--v2-ink-100)] bg-[var(--v2-ink-50)] p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -649,7 +658,7 @@ export function AdminPagesClient() {
               <div className="space-y-1">
                 {sidebarFiltered.map((page) => {
                   const IconComponent = getPageIcon(page.slug, page.title);
-                  const isSelected = selected?.id === page.id;
+                  const isSelected = sidebarView === "page" && selected?.id === page.id;
                   const isPublished = page.status === "published";
                   return (
                     <div
@@ -663,7 +672,10 @@ export function AdminPagesClient() {
                     >
                       <button
                         type="button"
-                        onClick={() => setFocusedPageId(page.id)}
+                        onClick={() => {
+                          setSidebarView("page");
+                          setFocusedPageId(page.id);
+                        }}
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <div
@@ -685,6 +697,7 @@ export function AdminPagesClient() {
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
+                            setSidebarView("page");
                             setFocusedPageId(page.id);
                             setFormTitle(page.title);
                             setFormSlug(page.slug);
@@ -731,10 +744,57 @@ export function AdminPagesClient() {
         </div>
 
         <div
+          className={cn(
+            "w-full shrink-0 rounded-2xl border p-2 shadow-sm transition-all",
+            sidebarView === "footer"
+              ? "scale-[1.01] border-[var(--v2-ink-950)] bg-[var(--v2-ink-950)] text-white"
+              : "border-[var(--v2-ink-200)] bg-[var(--v2-bg,#fff)] text-[var(--v2-ink-700)] hover:border-[var(--v2-ink-300)] hover:bg-[var(--v2-ink-50)]",
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => setSidebarView("footer")}
+            className="flex w-full items-center p-2.5 text-left"
+          >
+            <span
+              className={cn(
+                "shrink-0 rounded-lg p-1.5",
+                sidebarView === "footer"
+                  ? "bg-[var(--v2-ink-800)] text-white"
+                  : "bg-[var(--v2-ink-100)] text-[var(--v2-ink-700)]",
+              )}
+            >
+              <PanelBottom className="h-4 w-4" />
+            </span>
+            <span className="ml-3 min-w-0">
+              <span
+                className={cn(
+                  "block text-sm font-bold",
+                  sidebarView === "footer" ? "text-white" : "text-[var(--v2-ink-950)]",
+                )}
+              >
+                Footer
+              </span>
+              <span
+                className={cn(
+                  "block truncate text-xs font-medium",
+                  sidebarView === "footer" ? "text-white/70" : "text-[var(--v2-ink-400)]",
+                )}
+              >
+                Links, social icons, wordmark
+              </span>
+            </span>
+          </button>
+        </div>
+        </div>
+
+        <div
           className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--v2-ink-200)] bg-[var(--v2-bg,#fff)] shadow-sm"
           style={{ maxHeight: "calc(100vh - 120px)" }}
         >
-          {!selected ? (
+          {sidebarView === "footer" ? (
+            <FooterEditor />
+          ) : !selected ? (
             <div className="flex flex-1 flex-col items-center justify-center p-12 text-center">
               <div className="mb-6 inline-block rounded-3xl bg-[var(--v2-ink-50)] p-6">
                 <FileText className="h-12 w-12 text-[var(--v2-ink-300)]" />
@@ -862,6 +922,7 @@ export function AdminPagesClient() {
                 </div>
               ) : (
                 <div>
+                  {selected.slug === "contact" ? <ContactEmailCard /> : null}
                   <div className="mb-6 flex items-center justify-between gap-3">
                     <h3 className="text-base font-black text-[var(--v2-ink-950)]">
                       Page sections
@@ -995,8 +1056,8 @@ export function AdminPagesClient() {
               {selected.slug === "contact" ? (
                 <>
                   <strong>System page.</strong> Publishing updates the headline and intro
-                  on <code>/contact</code>. The form and email card stay in the app.
-                  Drafts fall back to seeded defaults.
+                  on <code>/contact</code>. Edit the public inbox on the Contact page
+                  editor — the form stays in the app. Drafts fall back to seeded defaults.
                 </>
               ) : (
                 <>

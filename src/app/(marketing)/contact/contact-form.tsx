@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api } from "@/lib/trpc/client";
 import { Icon } from "@/components/shared/icon";
 
-export function ContactForm() {
+export function ContactForm({ inboxEmail }: { inboxEmail: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -110,7 +110,7 @@ export function ContactForm() {
       {submit.error ? (
         <p className="v2-contact-form-error" role="alert">
           Couldn&rsquo;t send that just now. Try again, or email{" "}
-          <a href="mailto:dev@energized.biz">dev@energized.biz</a>.
+          <a href={`mailto:${inboxEmail}`}>{inboxEmail}</a>.
         </p>
       ) : null}
 

@@ -1,25 +1,50 @@
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Icon, type IconName } from "@/components/shared/icon";
+import { FooterSocialIcon } from "@/components/shared/footer-social-icon";
+import {
+  isFooterExternalHref,
+  isFooterInternalHref,
+  type FooterLink,
+} from "@/lib/site-footer";
+import { loadSiteFooter } from "@/server/services/site-footer";
 
-const SOCIAL: { name: string; href: string; icon: IconName }[] = [
-  { name: "LinkedIn", href: "https://linkedin.com", icon: "linkedin" },
-  { name: "Facebook", href: "https://facebook.com", icon: "facebook" },
-  { name: "X", href: "https://x.com", icon: "twitterX" },
-  { name: "Instagram", href: "https://instagram.com", icon: "instagram" },
-];
+function FooterNavLink({
+  href,
+  children,
+  ...rest
+}: {
+  href: string;
+  children: ReactNode;
+} & Omit<ComponentPropsWithoutRef<"a">, "href">) {
+  if (isFooterInternalHref(href)) {
+    return (
+      <Link href={href} {...rest}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={href}
+      {...(isFooterExternalHref(href) ? { target: "_blank", rel: "noreferrer" } : {})}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+}
 
-const socialCircle: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: "50%",
-  border: "1px solid rgba(255,255,255,0.15)",
-  display: "grid",
-  placeItems: "center",
-  color: "white",
-};
+function sortedLinks(links: FooterLink[]) {
+  return [...links].sort((a, b) => a.order - b.order);
+}
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const footer = await loadSiteFooter();
+  const year = new Date().getFullYear();
+  const social = [...footer.social].sort((a, b) => a.order - b.order);
+  const columns = [...footer.columns].sort((a, b) => a.order - b.order);
+
   return (
     <footer className="v2-footer" style={{ marginTop: "auto" }}>
       <div className="v2-container">
@@ -27,7 +52,7 @@ export function SiteFooter() {
           <div>
             <Link
               href="/"
-              aria-label="Energized — home"
+              aria-label={`${footer.copyrightName} — home`}
               style={{
                 marginBottom: 20,
                 display: "inline-flex",
@@ -36,7 +61,7 @@ export function SiteFooter() {
             >
               <Image
                 src="/energized-logo-white.svg"
-                alt="Energized"
+                alt={footer.copyrightName}
                 width={200}
                 height={112}
                 style={{ height: 56, width: "auto" }}
@@ -50,60 +75,51 @@ export function SiteFooter() {
                 lineHeight: 1.6,
               }}
             >
-              The specialized job network for Canada&rsquo;s energy
-              transition — from reservoirs to renewables.
+              {footer.tagline}
             </p>
-            <div style={{ display: "flex", gap: 8, marginTop: 24 }}>
-              {SOCIAL.map((s) => (
-                <a
-                  key={s.name}
-                  href={s.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={s.name}
-                  style={socialCircle}
-                >
-                  <Icon name={s.icon} size={16} />
-                </a>
+            {social.length > 0 ? (
+              <div className="v2-footer-social">
+                {social.map((item) => (
+                  <FooterNavLink
+                    key={item.id}
+                    href={item.href}
+                    aria-label={item.name}
+                  >
+                    <FooterSocialIcon name={item.icon} size={16} />
+                  </FooterNavLink>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {columns.map((column) => (
+            <div key={column.id}>
+              <h5>{column.title}</h5>
+              {sortedLinks(column.links).map((link) => (
+                <FooterNavLink key={link.id} href={link.href}>
+                  {link.label}
+                </FooterNavLink>
               ))}
             </div>
-          </div>
-
-          <div>
-            <h5>For candidates</h5>
-            <Link href="/for-seekers">For job seekers</Link>
-            <Link href="/jobs">Browse jobs</Link>
-            <Link href="/sign-up">Create profile</Link>
-            <Link href="/sign-in">Sign in</Link>
-          </div>
-
-          <div>
-            <h5>For employers</h5>
-            <Link href="/for-employers">Why Energized</Link>
-            <Link href="/sign-up?role=employer">Post a job</Link>
-            <Link href="/sign-up?role=employer">Search talent</Link>
-            <Link href="/for-employers">For employers</Link>
-          </div>
-
-          <div>
-            <h5>Company</h5>
-            <Link href="/about">About</Link>
-            <Link href="/faqs">FAQs</Link>
-            <Link href="/contact">Contact</Link>
-            <a href="mailto:dev@energized.biz">dev@energized.biz</a>
-          </div>
+          ))}
         </div>
 
         <div className="v2-footer-big">
-          energ<em>ized</em>.
+          {footer.wordmarkBefore}
+          {footer.wordmarkAccent ? <em>{footer.wordmarkAccent}</em> : null}
+          {footer.wordmarkAfter}
         </div>
 
         <div className="v2-footer-bottom">
-          <div>© {new Date().getFullYear()} Energized</div>
+          <div>
+            © {year} {footer.copyrightName}
+          </div>
           <div style={{ display: "flex", gap: 24 }}>
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-            <Link href="/accessibility">Accessibility</Link>
+            {sortedLinks(footer.legalLinks).map((link) => (
+              <FooterNavLink key={link.id} href={link.href}>
+                {link.label}
+              </FooterNavLink>
+            ))}
           </div>
         </div>
       </div>

@@ -1840,6 +1840,37 @@
   outline: 2px solid var(--v2-accent-soft);
   border-color: var(--v2-accent);
 }
+.v2-admin-users-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--v2-r-sm);
+  border: 1px solid var(--v2-ink-200);
+  font: inherit;
+  font-size: 15px;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 72px;
+}
+.v2-admin-users-field textarea:focus {
+  outline: 2px solid var(--v2-accent-soft);
+  border-color: var(--v2-accent);
+}
+
+.v2-footer-editor input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--v2-r-sm);
+  border: 1px solid var(--v2-ink-200);
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: var(--v2-bg, #fff);
+  color: var(--v2-ink-900);
+}
+.v2-footer-editor input:focus {
+  outline: 2px solid var(--v2-accent-soft);
+  border-color: var(--v2-accent);
+}
 
 .v2-admin button.v2-admin-users-add-btn {
   border: none;
@@ -2257,11 +2288,26 @@
   color: var(--v2-accent-deep);
 }
 
-.v2-supp-pill--declined,
-.v2-supp-pill--canceled,
-.v2-supp-pill--expired {
+.v2-supp-pill--in_progress {
+  background: rgba(245, 185, 69, 0.25);
+  color: var(--v2-ink-950);
+}
+
+.v2-supp-pill--closed {
   background: var(--v2-ink-100);
   color: var(--v2-ink-700);
+}
+
+.v2-ticket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: end;
+}
+
+.v2-ticket-actions .v2-btn-sm {
+  padding: 5px 10px;
+  font-size: 11.5px;
 }
 
 .v2-supp-aside-lede {

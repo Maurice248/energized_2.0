@@ -8,6 +8,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { SiteFooterContent } from "@/lib/site-footer";
 
 /** Persisted row for /admin/settings (Greenopia-style hub); secrets stay in env. */
 export type PlatformSocialLink = {
@@ -46,6 +47,7 @@ export const platformSettings = pgTable("platform_settings", {
     .$type<PlatformSocialLink[]>()
     .notNull()
     .default(sql`'[]'::jsonb`),
+  footer: jsonb("footer").$type<SiteFooterContent>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at")
     .notNull()

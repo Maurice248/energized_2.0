@@ -246,6 +246,13 @@
       "when": 1778874000000,
       "tag": "0034_staff_profile_prefs",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1778875000000,
+      "tag": "0035_site_footer",
+      "breakpoints": true
     }
   ]
 }

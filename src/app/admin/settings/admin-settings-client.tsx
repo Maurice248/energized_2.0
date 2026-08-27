@@ -182,7 +182,10 @@ function SettingsEditor({
   const updateMut = api.admin.settings.update.useMutation({
     onSuccess: async () => {
       toast.success("Settings saved.");
-      await utils.admin.settings.get.invalidate();
+      await Promise.all([
+        utils.admin.settings.get.invalidate(),
+        utils.admin.pages.getContactEmail.invalidate(),
+      ]);
     },
     onError: (e) => toast.error(e.message || "Save failed."),
   });
@@ -190,7 +193,10 @@ function SettingsEditor({
   const resetMut = api.admin.settings.resetToDefaults.useMutation({
     onSuccess: async () => {
       toast.success("Restored factory defaults.");
-      await utils.admin.settings.get.invalidate();
+      await Promise.all([
+        utils.admin.settings.get.invalidate(),
+        utils.admin.pages.getContactEmail.invalidate(),
+      ]);
     },
     onError: (e) => toast.error(e.message || "Reset failed."),
   });

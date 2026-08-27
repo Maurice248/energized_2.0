@@ -3,6 +3,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@/server/api/root";
 import { Icon } from "@/components/shared/icon";
 import { SectionCard } from "../../_components/section-card";
+import { TicketStatusControls } from "./ticket-status-controls";
 
 export type SupportInbox = inferRouterOutputs<AppRouter>["admin"]["support"]["inbox"];
 
@@ -117,10 +118,10 @@ export function SupportInboxView({ inbox }: { inbox: SupportInbox }) {
         <div className="v2-supp-metric v2-supp-metric-note">
           <span className="v2-supp-metric-k">Public contact form</span>
           <span className="v2-supp-metric-v" style={{ fontSize: 15, fontWeight: 700 }}>
-            Email only
+            Opens a ticket
           </span>
           <span className="v2-supp-metric-meta">
-            <code>/contact</code> sends to dev@energized.biz — not stored in the database yet.
+            <code>/contact</code> files a ticket here, and still emails the public inbox when the mail worker is running.
           </span>
         </div>
       </div>
@@ -135,7 +136,7 @@ export function SupportInboxView({ inbox }: { inbox: SupportInbox }) {
             }
             action={
               <span className="v2-supp-card-hint">
-                Last {inbox.tickets.length} by priority &amp; recency
+                Mark in progress or close from each row
               </span>
             }
           >
@@ -166,7 +167,10 @@ export function SupportInboxView({ inbox }: { inbox: SupportInbox }) {
                     >
                       {t.priority.toUpperCase()}
                     </span>
-                    <span className="v2-supp-pill">{t.status.replace("_", " ")}</span>
+                    <span className={`v2-supp-pill v2-supp-pill--${t.status}`}>
+                      {t.status.replace("_", " ")}
+                    </span>
+                    <TicketStatusControls ticketId={t.id} status={t.status} />
                   </div>
                 </div>
               ))
