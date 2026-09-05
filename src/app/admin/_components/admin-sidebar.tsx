@@ -61,34 +61,36 @@ export function AdminSidebar({ user, counts }: Props) {
       <AdminSearchTrigger onClick={() => setCommandOpen(true)} modKey={modKey} />
       <AdminCommandPalette open={commandOpen} onOpenChange={setCommandOpen} counts={counts} />
 
-      {navLinks.map((link) => {
-        const sectionHeader =
-          link.section !== lastSection ? (
-            <div key={`section-${link.section}`} className="v2-asb-section">
-              {link.section}
-            </div>
-          ) : null;
-        lastSection = link.section;
+      <nav className="v2-asb-nav" aria-label="Admin">
+        {navLinks.map((link) => {
+          const sectionHeader =
+            link.section !== lastSection ? (
+              <div key={`section-${link.section}`} className="v2-asb-section">
+                {link.section}
+              </div>
+            ) : null;
+          lastSection = link.section;
 
-        const active = isActive(link.href);
+          const active = isActive(link.href);
 
-        return (
-          <span key={link.id} style={{ display: "contents" }}>
-            {sectionHeader}
-            <Link href={link.href} className={`v2-asb-link ${active ? "active" : ""}`}>
-              <Icon name={link.icon} size={16} />
-              {link.label}
-              {link.count !== undefined && link.count !== null && link.count > 0 ? (
-                <span
-                  className={`count ${link.alert ? "alert" : link.accent ? "accent" : ""}`}
-                >
-                  {link.count}
-                </span>
-              ) : null}
-            </Link>
-          </span>
-        );
-      })}
+          return (
+            <span key={link.id} style={{ display: "contents" }}>
+              {sectionHeader}
+              <Link href={link.href} className={`v2-asb-link ${active ? "active" : ""}`}>
+                <Icon name={link.icon} size={16} />
+                {link.label}
+                {link.count !== undefined && link.count !== null && link.count > 0 ? (
+                  <span
+                    className={`count ${link.alert ? "alert" : link.accent ? "accent" : ""}`}
+                  >
+                    {link.count}
+                  </span>
+                ) : null}
+              </Link>
+            </span>
+          );
+        })}
+      </nav>
 
       <div className="v2-asb-foot">
         <DropdownMenu>
