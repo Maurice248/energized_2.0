@@ -186,7 +186,16 @@
 .v2-asb {
   position: sticky;
   top: 0;
+  align-self: start;
   height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
   background: var(--v2-ink-950);
   color: white;
   padding: 24px 18px;
@@ -199,6 +208,7 @@
   align-items: center;
   gap: 10px;
   padding: 4px 10px 24px;
+  flex-shrink: 0;
 }
 .v2-asb-brand .v2-logomark {
   width: 32px;
@@ -225,6 +235,7 @@
   gap: 10px;
   width: 100%;
   height: 38px;
+  flex-shrink: 0;
   padding: 0 12px;
   margin-bottom: 14px;
   background: rgba(255, 255, 255, 0.05);
@@ -260,6 +271,41 @@
   color: var(--v2-ink-400);
 }
 
+.v2-asb::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.v2-asb-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.v2-asb-nav:hover,
+.v2-asb-nav:focus-within {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.v2-asb-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.v2-asb-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.v2-asb-nav::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.v2-asb-nav:hover::-webkit-scrollbar-thumb,
+.v2-asb-nav:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+.v2-asb-nav:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
 .v2-asb-section {
   margin-top: 10px;
   font-family: var(--v2-font-mono);
@@ -324,7 +370,8 @@
 }
 
 .v2-asb-foot {
-  margin-top: 16px;
+  flex-shrink: 0;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
